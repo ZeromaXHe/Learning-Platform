@@ -673,3 +673,86 @@ public class Teenager{
 
 ### 第9条：try-catch-resources优先于try-finally
 
+Java 类库中包括许多必须通过调用 close 方法来手工关闭的资源 例如 InputStream、OutputStream和java.sql.Connection 客户端经常会忽略资源，造成严重的性能后果也就可想而知了。虽然这其中的许多资源都是用终结方法作为安全网，但是效果并不理想（详见第8条）。
+
+根据经验， try finally 语句是确保资源会被适时关闭的最佳方法，就算发生异常或者返回也一样：
+~~~java
+// try-finally - No longer the best way to close resources!
+static String firstlineOfFile(String path) throws IOException { 
+    BufferedReader br = new BufferedReader(new FileReader(path));
+    try {
+        return br.readline();
+    } finally { 
+        br.close();
+    }
+}
+~~~
+这看起来好像也不算太坏，但是如果再添加第二个资源，就会一团糟了:
+~~~java
+// try-finally is ugly when used with more than one resource!
+static void copy(String src, String dst) throws IOException { 
+    InputStream in = new FileinputStream(src);
+    try { 
+        OutputStream out = new FileOutputStream(dst);
+        try { 
+            byte[] buf = new byte[BUFFER_SIZE]; 
+            int n; 
+            while ((n = in.read(buf)) >= 0)
+                out.write(buf, 0, n); 
+        } finally { 
+            out.close ();
+        } 
+    } finally { 
+        in.close();
+    }
+}
+~~~
+即使用 try-finally 语句正确地关闭了资源，如前两段代码范例所示，它也存在着些许不足。因为在 try 块和 finally 块中的代码，都会抛出异常 例如在 firstLineOfFile方法中，如果底层的物理设备异常，那么调用 readLine 就会抛出异常，基于同样的原因，调用 close 也会出现异常。在这种情况下，第二个异常完全抹除了第一个异常。在异常堆栈轨迹中，完全没有关于第一个异常的记录，这在现实的系统中会导致调试变得非常复杂，因为通常需要看到第一个异常才能诊断出问题何在 虽然可以通过编写代码来禁止第二个异常，保留第一个异常，但事实上没有人会这么做，因为实现起来太烦琐了。
+
+当Java 7引入 try-with-sources 语句时，所有这些问题一下子就全部解决了。要使用这个构造的资源，必须先实现 AutoCloseable 接口，其中包含了单个返回 void 的 close 方法。Java 类库与第三方类库中的许多类和接口，现在都实现或扩展了 AutoCloseable 接口。如果编写了一个类，它代表的是必须被关闭的资源，那么这个类也应该实现 AutoCloseable。
+
+以下就是使用 try-with-resources 的第一个范例：
+~~~java
+// try-with-resources - the the best way to close resources! 
+static String firstlineOfFile(String path) throws IOException { 
+    try(BufferedReader = new BufferedReader(new FileReader(path))){
+        return br.readline();
+    }
+}
+~~~
+以下是使用 try-with-resources 的第二个范例：
+~~~java
+// try-with-resources on multiple resources - short and sweet 
+static void copy(String src, String dst) throws IOException { 
+    try(InputStream in = new FileinputStream(src);
+        OutputStream out = new FileOutputStream(dst)) {
+            byte[] buf =new byte[BUFFER_SIZE]; 
+            int n; 
+            while ((n = in.read(buf)) >= 0)
+                out.write(buf, 0, n);
+        }
+}
+~~~
+使用 try-with-resources 不仅使代码变得更简洁易懂，也更容易进行诊断 firstLineOfFile 方法为例，如果调用 readLine 和（不可见的） close 方法都抛出异常，后一个异常就会被禁止，以保留第一个异常。事实上，为了保留你想要看到的那个异常，即便多个异常都可以被禁止。这些被禁止的异常并不是简单地被抛弃了，而是会被打印在堆栈轨迹中，并注明它们是被禁止的异常。通过编程调用 getSuppressed 方法还可以访问到它们， getsuppressed 方法也已经添加在 Java7的 Throwable 中了。
+
+try-with-resources 语句中还可以使用 catch 子句，就像在平时的 try-finally 语句中一样。这样既可以处理异常，又不需要再套用一层代码。下面举一个稍费了点心思的范例，这个 firstLineOfFile 方法没有抛出异常，但是如果它无法打开文件，或者无法从中读取，就会返回一个默认值：
+~~~java
+// try-with-resources with a catch clause 
+static String firstLineOfFile(String path, String defaultVal) { 
+    try (BufferedReade br = new BufferedReader(new FileReader(path))){
+        return br.readline();
+    } catch (IOException e) { 
+        return defaultVal; 
+    }
+}
+~~~
+结论很明显:在处理必须关闭的资源时，始终要优先考虑用 try-with-resources ，而不是try-finally。这样得到的代码将更加简洁、清晰，产生的异常也更有价值。有了 trywith resources 语句，在使用必须关闭的资源时，就能更轻松地正确编写代码了。实践证明，这个用 try-finally 是不可能做到的。
+
+## 第3章 对于所有对象都通用的方法
+
+尽管 Object 是一个具体类，但设计它主要是为了扩展。它所有的非 final 方法（equals、hashCode、toString、clone和finalize）都有明确的通用约定（general contract),因为它们设计成是要被覆盖（override）的。任何一个类，它在覆盖这些方法的时候，都有责任遵守这些通用约定；如果不能做到这一点，其他依赖于这些约定的类（例如 HashMap和HashSet）就无法结合该类一起正常运作。
+
+本章将讲述何时以及如何覆盖这些非final的 Object 方法。本章不再讨论 finalize 方法，因为第8条已经讨论过这个方法了。 而Comparable.compareTo 虽然不是 Object 方法，但是本章也将对它进行讨论，因为它具有类似的特征。
+
+### 第10条：覆盖equals时请遵守通用约定
+
