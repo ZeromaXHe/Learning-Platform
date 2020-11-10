@@ -1,3 +1,5 @@
+# IDEA 常用快捷键
+
 | 快捷键                         | 作用                                                         |
 | ------------------------------ | ------------------------------------------------------------ |
 | `Ctrl + /`或`Ctrl + shift + /` | 注释（`//`或`/*...*/`）                                      |
@@ -51,3 +53,21 @@ for(User user : users)只需输入`user.for + Tab`。再比如，要输入Date b
 打开intellij idea设置界面，点击【Editor】-【Code style】-【java】,在右侧切换到【Imports】选项卡
 
 设置"Class count to use import with *"这个数字调整的大些，就不会出现import * 的问题了
+
+# IDEA 类的默认注释设置
+
+点击settings --> editor --> file and code emplates
+
+可以在class的模板上面添加：
+~~~java
+/**
+ * @Author: ${USER}
+ * @Time: ${DATE} ${TIME}
+ * @Description: 
+ * @Modified By: ${USER}
+ */
+~~~
+
+# IDEA 自动生成序列化ID（SerialVersionUID）
+
+点击settings --> editor --> Inspections。搜索`Serializable class without serialVersionUID`,勾选上设置成warning以后，在对应的没有序列化ID的类上面按`Alt + Enter`就可以选择自动生成序列化UID了。
