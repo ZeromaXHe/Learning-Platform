@@ -1,5 +1,6 @@
 package leetcode.first100;
 
+import java.util.Arrays;
 import java.util.LinkedList;
 
 /**
@@ -69,6 +70,15 @@ public class Solution10 {
     private static final int BACK_TRACK_FAIL = Integer.MIN_VALUE;
     private static final int BACK_TRACK_SUCCESS = Integer.MAX_VALUE;
 
+    /**
+     * 执行用时： 148 ms , 在所有 Java 提交中击败了 5.02% 的用户
+     * 内存消耗： 38.9 MB , 在所有 Java 提交中击败了 16.82% 的用户
+     * TODO: 待优化，太慢了~ 考虑使用动态规划解决
+     *
+     * @param s
+     * @param p
+     * @return
+     */
     public boolean isMatch(String s, String p) {
         parseP(p);
         boolean result = backTrackMatch(s);
@@ -110,6 +120,10 @@ public class Solution10 {
     private boolean backTrackMatch(String s) {
         char[] chars = s.toCharArray();
         for (int i = 0; i < chars.length; i++) {
+            // 测试语句，之后删除
+//            System.out.println("pList: " + pList + "; matchStack: " + matchStack + "; numStack: " + numStack + ";");
+//            System.out.println("i: " + i + "; chars: " + Arrays.toString(chars) + ";");
+
             if (pList.isEmpty()) {
                 int backTrackIndex = backTrack(i, chars);
                 if (backTrackIndex == BACK_TRACK_FAIL || backTrackIndex == BACK_TRACK_SUCCESS) {
@@ -157,22 +171,38 @@ public class Solution10 {
         while (!matchStack.isEmpty()) {
             char c = matchStack.peek();
             boolean isSingle = isSingleMatch(c);
-            if (!isSingle && (c == ':' || chars[index] == Character.toLowerCase(c))) {
+
+            //测试语句，之后删除
+//            System.out.println("pList: " + pList + "; matchStack: " + matchStack + "; numStack: " + numStack + ";");
+//            System.out.println("index: " + index + "; chars: " + Arrays.toString(chars) + "; c: " + c);
+
+            if (!isSingle && (c == ':' || (chars[index] == Character.toLowerCase(c)))) {
+                //测试语句，之后删除
+//                System.out.println("backTrack继续匹配分支");
+
                 // 如果是任意次匹配的匹配元素，且还可以继续匹配一个字符
                 // 那就继续匹配一个字符，此次回溯到此
                 numStack.push(numStack.pop() + 1);
-                if (index >= chars.length - 1) {
+                index++;
+                if (index == chars.length) {
                     if (pList.isEmpty() || allNotSingle(pList)) {
                         return BACK_TRACK_SUCCESS;
                     } else {
+//                        System.out.println("index: " + index + "; pList: " + pList + "; matchStack: " + matchStack + "; numStack: " + numStack + ";");
+
                         // 无法继续匹配，则回溯上一次操作
                         pList.addFirst(matchStack.pop());
                         index -= numStack.pop();
+
+//                        System.out.println("index: " + index + "; pList: " + pList + "; matchStack: " + matchStack + "; numStack: " + numStack + ";");
                     }
                 } else {
-                    return index;
+                    return index - 1;
                 }
             } else {
+                //测试语句，之后删除
+//                System.out.println("backTrack无法匹配分支");
+
                 // 无法继续匹配，则回溯上一次操作
                 pList.addFirst(matchStack.pop());
                 if (isSingle) {
@@ -192,8 +222,8 @@ public class Solution10 {
      * @return
      */
     private boolean allNotSingle(LinkedList<Character> pList) {
-        for(char c: pList){
-            if(isSingleMatch(c)){
+        for (char c : pList) {
+            if (isSingleMatch(c)) {
                 return false;
             }
         }
@@ -221,32 +251,31 @@ public class Solution10 {
         Solution10 solution10 = new Solution10();
         // false
         boolean isMatch1 = solution10.isMatch("aa", "a");
-        System.out.println("case1：" + !isMatch1);
+        System.out.println("case1：" + isMatch1 + " - should be false");
         // true
         boolean isMatch2 = solution10.isMatch("aa", "a*");
-        System.out.println("case2：" + isMatch2);
+        System.out.println("case2：" + isMatch2 + " - should be true");
         // true
         boolean isMatch3 = solution10.isMatch("ab", ".*");
-        System.out.println("case3：" + isMatch3);
+        System.out.println("case3：" + isMatch3 + " - should be true");
         // true
         boolean isMatch4 = solution10.isMatch("aab", "c*a*b");
-        System.out.println("case4：" + isMatch4);
+        System.out.println("case4：" + isMatch4 + " - should be true");
         // false
         boolean isMatch5 = solution10.isMatch("mississippi", "mis*is*p*");
-        System.out.println("case5：" + !isMatch5);
+        System.out.println("case5：" + isMatch5 + " - should be false");
         // true
         boolean isMatch6 = solution10.isMatch("mississippi", "mis*is*ip*i");
-        System.out.println("case6：" + isMatch6);
+        System.out.println("case6：" + isMatch6 + " - should be true");
         // false
         boolean isMatch7 = solution10.isMatch("ab", ".*c");
-        System.out.println("case7：" + !isMatch7);
+        System.out.println("case7：" + isMatch7 + " - should be false");
         // true
         boolean isMatch8 = solution10.isMatch("a", "ab*");
-        System.out.println("case8：" + isMatch8);
-
-        // FIXME: ArrayIndexOutOfBoundsException to be fixed
+        System.out.println("case8：" + isMatch8 + " - should be true");
+        // false
         boolean isMatch9 = solution10.isMatch("acaabbaccbbacaabbbb", "a*.*b*.*a*aa*a*");
-        System.out.println("case9：" + isMatch9);
+        System.out.println("case9：" + isMatch9 + " - should be false");
 
         // 断言默认不开启的
         assert isMatch1 : "isMatch(\"aa\",\"a\") is wrong";
