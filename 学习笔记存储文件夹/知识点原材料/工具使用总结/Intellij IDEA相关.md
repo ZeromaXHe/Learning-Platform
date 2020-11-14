@@ -56,7 +56,7 @@ for(User user : users)只需输入`user.for + Tab`。再比如，要输入Date b
 
 # IDEA 类的默认注释设置
 
-点击settings --> editor --> file and code emplates
+点击settings --> editor --> file and code templates
 
 可以在class的模板上面添加：
 ~~~java
