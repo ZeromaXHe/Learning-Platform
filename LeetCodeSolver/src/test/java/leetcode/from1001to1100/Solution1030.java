@@ -1,6 +1,7 @@
 package leetcode.from1001to1100;
 
-import java.util.Arrays;
+import com.zerox.util.Array2DUtils;
+
 import java.util.LinkedList;
 
 /**
@@ -42,6 +43,19 @@ import java.util.LinkedList;
  * @Modified By: ZeromaXHe
  */
 public class Solution1030 {
+    /**
+     * 执行用时： 15 ms, 在所有 Java 提交中击败了 69.71% 的用户
+     * 内存消耗： 40.2 MB, 在所有 Java 提交中击败了 97.83% 的用户
+     * 为了刷每日一题，先用答案题解在23：59提交了……
+     * 然后发现直接实现排序的确理解起来很简单
+     * 不过看运行结果，bfs速度倒是差不多
+     *
+     * @param R
+     * @param C
+     * @param r0
+     * @param c0
+     * @return
+     */
     public int[][] allCellsDistOrder(int R, int C, int r0, int c0) {
         int[][] visited = new int[R][C];
         visited[r0][c0] = 1;
@@ -67,9 +81,9 @@ public class Solution1030 {
                     queue.addLast(new int[]{x + 1, y});
                     visited[x + 1][y] = 1;
                 }
-                if (y < C - 1 && visited[x][y + 1] == 0) {
-                    queue.addLast(new int[]{x, y + 1});
-                    visited[x][y + 1] = 1;
+                if (y > 0 && visited[x][y - 1] == 0) {
+                    queue.addLast(new int[]{x, y - 1});
+                    visited[x][y - 1] = 1;
                 }
                 index++;
             }
@@ -79,7 +93,9 @@ public class Solution1030 {
 
     public static void main(String[] args) {
         Solution1030 solution1030 = new Solution1030();
-        System.out.println(Arrays.toString(solution1030.allCellsDistOrder(1,2,0,0)));
-        System.out.println(Arrays.toString(solution1030.allCellsDistOrder(2,2,0,1)));
+        // [[0,0],[0,1]]
+        System.out.println(Array2DUtils.print2DArr(solution1030.allCellsDistOrder(1, 2, 0, 0)));
+        // [[0,1],[1,1],[0,0],[1,0]]
+        System.out.println(Array2DUtils.print2DArr(solution1030.allCellsDistOrder(2, 2, 0, 1)));
     }
 }

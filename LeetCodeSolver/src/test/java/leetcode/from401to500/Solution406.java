@@ -1,5 +1,7 @@
 package leetcode.from401to500;
 
+import com.zerox.util.Array2DUtils;
+
 import java.util.Arrays;
 import java.util.Comparator;
 
@@ -63,22 +65,6 @@ public class Solution406 {
     public static void main(String[] args) {
         Solution406 solution406 = new Solution406();
         // [[5,0], [7,0], [5,2], [6,1], [4,4], [7,1]]
-        System.out.println(print2DArr(solution406.reconstructQueue(new int[][]{{7, 0}, {4, 4}, {7, 1}, {5, 0}, {6, 1}, {5, 2}})));
-    }
-
-    private static String print2DArr(int[][] arr2D) {
-        StringBuilder sb = new StringBuilder();
-        sb.append('[');
-        for (int i = 0; i < arr2D.length; i++) {
-            if (i != 0) sb.append(',');
-            sb.append('[');
-            for (int j = 0; j < arr2D[0].length; j++) {
-                if (j != 0) sb.append(',');
-                sb.append(arr2D[i][j]);
-            }
-            sb.append(']');
-        }
-        sb.append(']');
-        return sb.toString();
+        System.out.println(Array2DUtils.print2DArr(solution406.reconstructQueue(new int[][]{{7, 0}, {4, 4}, {7, 1}, {5, 0}, {6, 1}, {5, 2}})));
     }
 }
