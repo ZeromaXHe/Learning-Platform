@@ -71,3 +71,7 @@ for(User user : users)只需输入`user.for + Tab`。再比如，要输入Date b
 # IDEA 自动生成序列化ID（SerialVersionUID）
 
 点击settings --> editor --> Inspections。搜索`Serializable class without serialVersionUID`,勾选上设置成warning以后，在对应的没有序列化ID的类上面按`Alt + Enter`就可以选择自动生成序列化UID了。
+
+# IDEA Plugins 搜不出来
+
+修改 Plugins右上角齿轮->HTTP Proxy Settings （也可以从Appearance & Behavior -> System Settings -> HTTP Proxy),勾选 Auto-detect proxy settings，再勾选下面的 Automatic proxy configuration URL，填入`https://plugins.jetbrains.com`
