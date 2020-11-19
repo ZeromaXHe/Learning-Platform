@@ -52,7 +52,7 @@
         </javaModelGenerator>
 
         <!-- targetPackage 和 targetProject：生成的 mapper 文件的包和位置 -->
-        <sqlMapGenerator targetPackage="generated.mapper"
+        <sqlMapGenerator targetPackage="mappers"
                          targetProject=".\src\main\resource">
             <!-- 针对数据库的一个配置，是否把 schema 作为字包名 -->
             <property name="enableSubPackages" value="false" />
@@ -60,11 +60,13 @@
 
         <!-- targetPackage 和 targetProject：生成的 interface 文件的包和位置 -->
         <javaClientGenerator type="XMLMAPPER"
-                             targetPackage="generated.mapper" targetProject=".\src\main\java">
+                             targetPackage="generated.dao" targetProject=".\src\main\java">
             <!-- 针对 oracle 数据库的一个配置，是否把 schema 作为字包名 -->
             <property name="enableSubPackages" value="false" />
         </javaClientGenerator>
-        <table tableName="user" domainObjectName="User"
+
+        <!-- 选择一个table来生成相关文件，可以有一个或多个table，必须要有table元素 -->
+        <table tableName="api_papperad_confirm_plans" domainObjectName="ZkaLkCommonConfirm"
                enableCountByExample="false" enableUpdateByExample="false"
                enableDeleteByExample="false" enableSelectByExample="false"
                selectByExampleQueryId="false">
