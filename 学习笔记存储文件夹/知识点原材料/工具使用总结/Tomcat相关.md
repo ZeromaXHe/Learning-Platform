@@ -45,3 +45,7 @@ IDEA settings里面搜file encoding，也将project encoding改为UTF-8
 ## IDEA tomcat控制台乱码
 
 修改conf/logging.properties, 把UTF-8的几行注释掉
+
+## 查看Tomcat版本
+
+使用 bin/version.sh（找到tomcat包下面的bin/目录，执行version.sh文件。）
