@@ -84,6 +84,7 @@ https://blog.csdn.net/young951023/article/details/79601664
 
 | 名称 | 语法                 | 效果                 |
 | ---- | -------------------- | -------------------- |
+| 向量 | `\vec`               | $\vec c$             |
 | 点乘 | `\cdot`              | $\cdot$              |
 | 叉乘 | `\times`             | $\times$             |
 | 除   | `\div`               | $\div$               |
@@ -257,6 +258,26 @@ $$
 | χ    | X    | /kaɪ/                   | 恺            | \chi                   | $\chi \Chi$                         |
 | ψ    | Ψ    | /psai/                  | 普西          | \psi                   | $\psi \Psi \varPsi$                 |
 | ω    | Ω    | /'əʊmɪɡə/               | 奥米加/欧米伽 | \omega                 | $\omega \Omega \varOmega$           |
+
+
+
+## 上标和下标
+
+| 名称                                                         | 写法                                                         | 效果                                                         |
+| ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| 导数点                                                       | `\dot{x}`                                                    | $\dot{x}$                                                    |
+|                                                              | `\ddot{y}`                                                   | $\ddot {y}$                                                  |
+| 向量                                                         | `\vec{c}`                                                    | $\vec{c}$                                                    |
+|                                                              | `\overleftarrow{a b}`                                        | $\overleftarrow{a b}$                                        |
+|                                                              | `\overrightarrow{c d}`                                       | $\overrightarrow{c d}$                                       |
+|                                                              | `\widehat{e f g}`                                            | $\widehat{e f g}$                                            |
+| 上弧 (注: 正确应该用 \overarc, 但在这里行不通。要用建议的语法作为解决办法) | `\overset{\frown} {AB}`                                      | $\overset{\frown} {AB}$                                      |
+| 上划线                                                       | `\overline{h i j}`                                           | $\overline{h i j}$                                           |
+| 下划线                                                       | `\underline{k l m}`                                          | $\underline{k l m}$                                          |
+| 上括号                                                       | `\overbrace{1+2+\cdots+100}`                                 | $\overbrace{1+2+\cdots+100}$                                 |
+|                                                              | `\begin{matrix} 5050 \\ \overbrace{ 1+2+\cdots+100 }\end{matrix}` | $\begin{matrix} 5050 \\ \overbrace{ 1+2+\cdots+100 }\end{matrix}$ |
+| 下括号                                                       | `\underbrace{a+b+\cdots+z}`                                  | $\underbrace{a+b+\cdots+z}$                                  |
+|                                                              | `\begin{matrix} \underbrace{ a+b+\cdots+z } \\ 26\end{matrix}` | $\begin{matrix} \underbrace{ a+b+\cdots+z } \\ 26\end{matrix}$ |
 
 
 
