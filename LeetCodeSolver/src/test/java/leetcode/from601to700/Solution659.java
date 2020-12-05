@@ -7,9 +7,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * @Author: zhuxiaohe
@@ -51,6 +49,7 @@ public class Solution659 {
     /**
      * 执行用时： 7 ms , 在所有 Java 提交中击败了 85.86% 的用户
      * 内存消耗： 39.7 MB , 在所有 Java 提交中击败了 57.83% 的用户
+     * 不知道为啥换成hashmap，case3就过了
      *
      * @param nums
      * @return
