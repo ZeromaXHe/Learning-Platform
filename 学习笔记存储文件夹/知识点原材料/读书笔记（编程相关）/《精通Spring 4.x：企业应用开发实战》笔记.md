@@ -1,3 +1,5 @@
+# 第一篇 基础篇
+
 # 第1章 Spring概述
 
 ## 1.1 认识Spring
@@ -95,3 +97,295 @@ Spring 4.0基于Java 6.0，全面支持Java 8.0。运行Spring 4.0必须使用Ja
 ### 1.6.2 核心容器的增强
 
 Spring 4.0对核心容器进行了增强，支持泛型依赖注入，对CgLib类代理不再要求必须有空参构造器（这个特性带来很大便利）；在基于Java的配置里添加了@Description；提供@Conditional注解来实现Bean的条件过滤；提供@Lazy注解解决Bean延时依赖注入；支持Bean被注入List或者Array时可以通过@Order注解或基于Ordered接口进行排序。如果使用Spring的注解支持，则可以使用自定义注解来组合多个注解，方便对外公开特定的属性。
+
+- 泛型依赖注入：Spring 4.0可以为子类的成员变量注入泛型类型
+~~~java
+public abstract class BaseService<M extends Serializable> {
+    @Autowired
+    protected BaseDao<M> dao;
+    ...
+}
+@Service
+public class UserService extends BaseService<User> {
+}
+@Service
+public class ViewSpaceService extends BaseService<ViewSpace>{
+}
+~~~
+
+- Map依赖注入。
+~~~java
+@Autowired
+private Map<String, BaseService> map;
+~~~
+上述写法将BaseService类型注入map中。其中，key是Bean的名字；value是所有实现了BaseService的Bean。
+
+- @Lazy延迟依赖注入。
+~~~java
+@Lazy
+@Service
+public class UserService extends BaseService<User>{
+}
+~~~
+也可以把@Lazy放在@Autowired之上，即依赖注入也是延时的，当调用userService时才会注入。同样适用于@Bean。
+
+- List注入。
+~~~java
+@Autowired
+private List<BaseService> list;
+~~~
+这样就会注入所有实现了BaseService的Bean,但顺序是不确定的。在Spring 4.0中可以使用@Order或Ordered接口来实现排序，例如：
+~~~java
+@Order(value=1)
+@Service
+public class UserService extends BaseService<User>{
+}
+~~~
+
+- @Conditional注解：@Conditional类似于@Profile，一般用于在多个环境（开发环境、测试环境、正式机环境）中进行配置切换，即通过某个配置来开启某个环境。@Conditional注解的优点是允许自己定义规则。可以指定在如@Component、@Bean、@Configuration等注解的类上，以决定是否创建Bean等。
+
+- CGLIB代理类增强：在Spring4.0中，基于CGLIB的代理类不再要求类必须有空参构造器，这是一个很好的特性。使用构造器注入有很多好处，比如，可以确保只在创建Bean时注入依赖，以保证Bean不可更改；又如，如果对UserService类进行事务增强，此时要求UserService类必须有空参构造器，就会造成很多不便。
+
+### 1.6.3 支持用Groovy定义Bean
+
+### 1.6.4 Web的增强
+
+从Spring 4.0开始，Spring MVC基于Servlet3.0开发，如需使用Spring MVC测试框架，则要依赖Servlet 3.0相关.jar包（因为Mock的对象都是基于Servlet 3.0的）。另外，为了方便REST开发，引入新的@RestController控制器注解，这样就不需要在每个@RequestMapping方法上加@ResponceBody了。同时添加了一个AsyncRestTemplate，支持REST客户端的异步无阻塞请求。
+
+### 1.6.5 支持WebSocket
+
+### 1.6.6 测试的增强
+
+### 1.6.7 其他
+
+## 1.7 Spring子项目
+
+## 1.8 如何获取Spring
+
+## 1.9 小结
+
+# 第2章 快速入门
+
+## 2.1 实例概述
+
+### 2.1.1 比Hello World更适用的实例
+
+为了让Spring的功能轮廓更加清晰，笔者试图通过一个功能涵盖面更广的论坛登录模块替换经典的Hello World实例。
+
+# 第3章 Spring Boot
+
+## 3.1 Spring Boot概览
+
+Spring Boot是由Pivotal团队设计的全新框架，其目的是用来简化Spring应用开发过程。该框架使用了特定的方式来进行配置，从而使得开发人员不再需要定义一系列样板化的配置文件，而专注于核心业务开发，项目涉及的一些基础设施则交由Spring Boot来解决。
+
+### 3.1.1 Spring Boot发展背景
+
+多年来，Spring配置复杂性一直为人所诟病，Spring IO子项目试图化解这一问题，但由于其主要侧重于解决集成方面的问题，因此Spring配置复杂性并没有得到本质的改观，如何实现简化Spring配置的呼声依旧高亢，直到Spring Boot的出现。Spring Boot可让开发人员不再需要编写复杂的XML配置文件，仅仅通过几行代码就能实现一个可运行的Web应用。
+
+Spring Boot不是去再造一个“轮子”，它的“革命宣言”是为Spring项目开发带来一种全新的体验，从而大大降低Spring框架的使用门槛。
+
+Spring Boot革新Spring项目开发体验之道，其实是借助强大的Groovy动态语言实现的，如借助Groovy强大的MetaObject协议、可插拔的AST转换器及内置的依赖解决方案引擎等。在其核心的编译模型中，Spring Boot使用Groovy来构建工程文件，所以它可以轻松地利用导入模板及方法模板对类所生成地字节码进行改造，从而让开发者仅用很简单的代码就可以完成很复杂的操作。
+
+### 3.1.2 Spring Boot特点
+
+Spring Boot包含如下特性：
+
+- 为开发者提供Spring快速入门体验
+- 内嵌Tomcat和Jetty容器，不需要部署WAR文件到Web容器就可独立运行应用。
+- 提供许多基于Maven的pom配置模板来简化工程配置。
+- 提供实现自动化配置的基础设施。
+- 提供可以直接在生产环境中使用的功能，如性能指标、应用信息和应用健康检查。
+- 开箱即用，没有代码生成，也无须XML配置文件，支持修改默认值来满足特定需求。
+
+通过Spring Boot，创建一个新的Spring应用变得非常简单，只需几步即可完成。
+
+### 3.1.3 Spring Boot启动器
+
+| 启动器名称                             | 启动器说明                                                   |
+| -------------------------------------- | ------------------------------------------------------------ |
+| spring-boot-starter                    | 核心模块，包含自动配置支持、日志库和对YAML配置文件的支持     |
+| spring-boot-starter-amqp               | 支持AMQP，包含spring-rabbit                                  |
+| spring-boot-starter-aop                | 支持面向切面编程（AOP），包含spring-aop和AspectJ             |
+| spring-boot-starter-artemis            | 通过Apache Artemis支持JMS的API（Java Message Service API）   |
+| spring-boot-starter-batch              | 支持Spring Batch，包含HSQLDB                                 |
+| spring-boot-starter-cache              | 支持Spring的Cache抽象                                        |
+| spring-boot-starter-cloud-connectors   | 支持Spring Cloud Connectors, 简化了在像Cloud Foundry或Heroku这样的云平台上连接服务 |
+| spring-boot-starter-data-gemfire       | 支持GemFire分布式数据存储，包含spring-data-gemfire           |
+| spring-boot-starter-data-jpa           | 支持JPA，包含spring-data-jpa、spring-orm和Hibernate          |
+| spring-boot-starter-data-elasticsearch | 支持ElasticSearch搜索和分析引擎，包含spring-data-elasticsearch |
+| spring-boot-starter-data-solr          | 支持Apache Solr搜索平台，包含spring-data-solr                |
+| spring-boot-starter-data-mongodb       | 支持MongoDB，包含spring-data-mongodb                         |
+| spring-boot-starter-data-rest          | 支持以REST方式暴露Spring Data仓库，包含spring-data-rest-webmvc |
+| spring-boot-starter-redis              | 支持Redis键值存储数据库，包含spring-redis                    |
+| spring-boot-starter-jdbc               | 支持使用JDBC访问数据库                                       |
+| spring-boot-starter-jta-atomikos       | 通过Atomikos支持JTA分布式事务处理                            |
+| spring-boot-starter-jta-bitronix       | 通过Bitronix支持JTA分布式事务处理                            |
+| spring-boot-starter-security           | 包含spring-security                                          |
+| spring-boot-starter-test               | 包含常用的测试所需的依赖，如TestNG、Hamcrest、Mockito和spring-test等 |
+| spring-boot-starter-velocity           | 支持使用Velocity作为模板引擎                                 |
+| spring-boot-starter-freemarker         | 支持FreeMarker模板引擎                                       |
+| spring-boot-starter-thymeleaf          | 支持Thymeleaf模板引擎，包括与Spring的集成                    |
+| spring-boot-starter-mustache           | 支持Mustache模板引擎                                         |
+| spring-boot-starter-web                | 支持Web应用开发，包含tomcat、spring-mvc、spring-webmvc和jackson |
+| spring-boot-starter-websocket          | 支持使用Tomcat开发WebSocket应用                              |
+| spring-boot-starter-ws                 | 支持Spring Web Service                                       |
+| spring-boot-starter-groovy-templates   | 支持Groovy模板引擎                                           |
+| spring-boot-starter-hateoas            | 通过spring-hateoas支持基于Hateoas的RESTful Web服务           |
+| spring-boot-starter-hornetq            | 通过HornetQ支持JMS                                           |
+| spring-boot-starter-log4j              | 添加Log4j的支持                                              |
+| spring-boot-starter-logging            | 使用Spring Boot默认的日志框架Logback                         |
+| spring-boot-starter-integration        | 支持通用的spring-integaration模块                            |
+| spring-boot-starter-jersey             | 支持Jersey RESTful Web服务框架                               |
+| spring-boot-starter-mail               | 支持javax.mail模块                                           |
+| spring-boot-starter-mobile             | 支持spring-mobile                                            |
+| spring-boot-starter-social-facebook    | 支持spring-social-facebook                                   |
+| spring-boot-starter-social-linkedin    | 支持spring-social-linkedin                                   |
+| spring-boot-starter-social-twitter     | 支持spring-social-twitter                                    |
+| spring-boot-starter-actuator           | 添加适用于生产环境的功能，如性能指标和监测等功能             |
+| spring-boot-starter-remote-shell       | 支持远程SSH命令操作                                          |
+| spring-boot-starter-tomcat             | 使用Spring Boot默认的Tomcat作为应用服务器                    |
+| spring-boot-starter-jetty              | 引入了Jetty HTTP引擎（用于替换Tomcat）                       |
+| spring-boot-starter-undertow           | 引入了Undertow HTTP引擎（用于替换Tomcat）                    |
+
+>计算机引导启动的英文单词是boot，可是，boot原意是靴子，“启动”与“靴子”有何关系？原来，这里的boot是bootstrap（鞋带）的缩写，它来自西方一句“拉鞋带”的谚语“pull oneself up by one's bootstraps”，译为“拽着鞋带把自己拉起来”，这就相当于项羽坐在椅子上要把自己举起来的典故一样，当然是不可能的。计算机启动本身就是一个很矛盾的过程：必须先运行程序，然后计算机才能启动，但是计算机不启动就无法运行程序——就像鸡生蛋、蛋生鸡一样！所以，工程师把这个启动过程叫做“拉鞋带”，久而久之就简称为boot了。
+
+## 3.2 快速入门
+
+首先需要在pom.xml文件中引入Spring Boot依赖
+
+~~~xml
+<dependecies>
+	<dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-web</artifactId>
+        <version>1.3.3.RELEASE</version>
+    </dependency>
+</dependecies>
+~~~
+
+当使用Maven"mvn dependency:tree"命令或IDEA依赖查看视图功能（在pom.xml文件视图中单击鼠标右键选择Diagrams->Show Dependencies）时，会发现spring-boot-starter-web内部已经封装了spring-web、spring-webmvc、jackson-databind等模块依赖。
+
+配置好Spring Boot相关依赖之后，接下来就可以通过几行代码，快速创建一个Web应用
+
+~~~java
+@RestController
+@EnableAutoConfiguration
+public class BbsDaemon{
+    @RequestMapping("/")
+    public String index(){
+        return "欢迎光临小春论坛！";
+    }
+    
+    public static void main(String[] args) throws Exception {
+        SpringApplication.run(BbsDaemon.class, args);
+    }
+}
+~~~
+
+其中，@EnableAutoConfiguration注解是由Boot提供的，用于对Spring框架进行自动配置，减少了开发人员的工作量；@RestController和@RequestMapping注解是由SpringMVC提供的，用于创建Rest服务。
+
+直接运行BbsDaemon类会启动一个运行于8080端口的内嵌Tomcat服务，在浏览器中访问"http://localhost:8080"，即可看到页面上显示“欢迎光临小春论坛！”。也就是说，只需简单的两个步骤就完成了一个可独立启动运行的Web应用。既没有配置安装Tomcat或Jetty这样的应用服务器，也没有打包成WAR文件——与传统开发方式相比，Spring Boot堪称犀利！
+
+## 3.3 安装配置
+
+## 3.4 持久层
+
+Spring框架提供了几种可选的操作数据库方式，可以直接使用Spring内置轻量级JdbcTemplate，也可以使用第三方持久化框架Hibernate或MyBatis。Spring Boot为这两种操作数据库方式分别提供了相应的启动器spring-boot-starter-jdbc和spring-boot-starter-jpa。应用Spring Boot启动器使数据库持久化操作变得更加简单，因为Spring Boot会自动配置访问数据库相关设施。只需在工程模块pom.xml文件中添加spring-boot-starter-data-jdbc或spring-boot-starter-data-jpa依赖即可。
+
+## 3.5 业务层
+
+在编写业务层代码时有两个重要的步骤：一是编写正确的业务逻辑；二是对业务事务的管控。在Spring Boot中，使用事务非常简单，首先在主类Application上标注@EnableTransactionManagerment注解（开启事务支持，相当于XML中的`<tx:annotation-driven/>`配置方式），然后在访问Service方法上标注@Transactional注解即可。如果将@Transactional注解标注在Service类级别上，那么当前Service类的所有方法都将被事务增强，建议不要在类级别上标注@Transactional注解
+
+~~~java
+@SpringBootApplication
+@EnableTransactionManagement //启动注解事务管理
+public class Application {
+    public static void main(String[] args) throws Exception {
+        SpringApplication.run(Application.class, args);
+    }
+}
+~~~
+
+通过@EnableTransactionManagement注解，Boot为应用自己装配了事务支持。这对用户并不透明，用户如果想自己定义事务管理器，则在Application类中添加一个即可。
+
+~~~java
+@SpringBootApplication
+@EnableTransactionManagement // 启用注解事务管理
+public class Application{
+    @Bean
+    public PlatformTransactionManager txManager(DataSource dataSource){
+        return new DataSourceTransactionManager(dataSource);
+    }
+    ...
+}
+~~~
+
+在Application中添加自定义事务管理器方法txManager(),并在方法上标注@Bean注解，此时SpringBoot会加载自定义的事务管理器，不会重新实例化其他事务管理器。
+
+## 3.6 展示层
+
+> 基于Spring Boot应用，由于当前应用包含了一个可直接运行的Application类，所以在开发过程中，大家很容易在IDE（如IDEA工具）中单击鼠标右键运行当前类。虽然可以启动当前应用，在非Web应用中可能不会有什么问题，但在Web应用中，如果采用上述方法直接运行应用，那么在访问有视图的页面时（如JSP），会一直报404错误。
+>
+> 因为直接运行当前启动类，Spring Boot无法找到当前页面资源。因此，基于Spring Boot的应用在开发调试的时候，一定要基于Spring Boot提供的spring-boot-maven-plugin插件命令来运行应用或通过Spring Boot命令行来运行应用。
+
+## 3.7 运维支持
+
+Spring Boot对运维监控相关的类库进行了整合，形成了一个功能完备和可定制的启动器，称为Actuator。
+
+基于Spring Boot应用，添加监控功能非常简单，只需在应用的pom.xml文件中添加spring-boot-starter-actuator依赖即可。
+
+Spring Boot默认提供了对应用本身、关系数据库连接、MongoDB、Redis、Solr、ElasticSearch、JMS和RabbitMQ等服务的健康状态的检测功能。这些服务都可以在application.properties的management.health.*选项中进行配置
+
+~~~properties
+#数据库监控配置
+management.health.db.enabled=true
+management.health.defaults.enabled=true
+#应用磁盘空间检查配置
+management.health.diskspace.enabled=true
+management.health.diskspace.path=D:/masterSpring/code
+management.health.diskspace.threshold=0
+#ElaticSearch服务健康检查配置
+management.health.elasticsearch.enabled=true
+management.health.elasticsearch.indices=index1,index2
+management.health.elasticsearch.response-timeout=100
+#Solr服务健康检查配置
+management.health.solr.enabled=true
+#JMS服务健康检查配置
+management.health.jms.enabled=true
+#Mail服务健康检查配置
+management.health.mail.enabled=true
+#MongoDB服务健康检查配置
+management.health.mongo.enabled=true
+#Rabbit MQ服务健康检查配置
+management.health.rabbit.enabled=true
+#Redis服务健康检查配置
+management.health.redis.enabled=true
+management.health.status.order=DOWN, OUT_OF_SERVICE, UNKNOWN, UP
+~~~
+
+配置好Actuator相关依赖及服务健康检查属性配置，重新启动应用，就可以在控制台上看到很多服务映射，如"/health"、"/env"、"/info"等。
+
+在浏览器地址栏中输入其中的一个服务地址”http://localhost:8080/health“，就可以在浏览器中看到服务信息。
+
+| 服务名称     | 服务说明                                                |
+| ------------ | ------------------------------------------------------- |
+| /health      | 显示应用的健康状态信息                                  |
+| /configprops | 显示应用中的配置参数的实际值                            |
+| /beans       | 显示应用中包含的Spring Bean的信息                       |
+| /env         | 显示从ConfigurableEnvironment得到的环境配置信息         |
+| /metrics     | 显示应用的性能指标                                      |
+| /trace       | 显示应用相关的跟踪（trace）信息                         |
+| /dump        | 生成一个线程dump                                        |
+| /autoconfig  | 显示Spring Boot自动配置的信息                           |
+| /mappings    | 显示Spring MVC应用中通过“@RequestMapping”添加的路径映射 |
+| /info        | 显示应用的基本信息                                      |
+| /shutdown    | 关闭应用                                                |
+
+## 3.8 小结
+
+# 第二篇 核心篇
+
+# 第4章 IoC容器
+
+## 4.1 IoC概述
+
