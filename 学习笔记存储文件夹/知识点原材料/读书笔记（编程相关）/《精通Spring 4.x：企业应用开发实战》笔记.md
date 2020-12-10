@@ -389,3 +389,223 @@ management.health.status.order=DOWN, OUT_OF_SERVICE, UNKNOWN, UP
 
 ## 4.1 IoC概述
 
+IoC(Inverse of Control, 控制反转)是Spring容器的内核，AOP、声明式事务等功能在此基础上开花结果。IoC确实包括很多内涵，它涉及代码解耦、设计模式、代码优化等问题的考量，我们试图通过一个小例子来说明这个概念。
+
+### 4.1.1 通过实例理解IoC的概念
+
+贺岁大片《墨攻》中有一个场景，当刘德华所饰演的墨者革离到达梁国都城下时，城上梁国守军问道：“来者何人？”刘德华回答：“墨者革离！”我们不妨通过Java语言为这个“城门叩问”的场景编写剧本，并借此理解IoC的概念
+
+~~~java
+public class MoAttack{
+    public void cityGateAsk(){
+        //①演员直接侵入剧本
+        LiuDeHua ldh = new LiuDeHua();
+        ldh.responseAsk("墨者革离！");
+    }
+}
+~~~
+
+我们会发现，以上剧本在①处，作为具体角色饰演者的刘德华直接侵入剧本，使剧本和演员直接耦合在一起
+
+~~~mermaid
+classDiagram
+  class MoAttack{
+  	+cityGateAsk(): void
+  }
+  class LiuDeHua{
+  	+responseAsk(): void
+  }
+  MoAttack..>LiuDeHua
+~~~
+
+一个明智的编剧在剧情创作时应围绕故事的角色进行，而不应考虑角色的具体饰演者，这样才可能在剧本投拍时自由地遴选任何适合的演员，而非绑定在某一人身上。通过以上分析，我们知道需要为该剧本的主人公革离定义一个接口
+
+~~~java
+public class MoAttack{
+    public void cityGateAsk(){
+        //①引入革离角色接口
+        GeLi geli = new LiuDeHua();
+        //②通过接口展开剧情
+        geli.responseAsk("墨者革离！");
+    }
+}
+~~~
+
+在①处引入了剧本的角色——革离，剧本的情节通过角色展开，在拍摄时角色由演员饰演，如②处所示。因此，墨攻、革离、刘德华三者的类图关系如下：
+
+~~~mermaid
+classDiagram
+  class MoAttack{
+  	+cityGateAsk(): void
+  }
+  class LiuDeHua{
+  	+responseAsk(): void
+  }
+  class GeLi{
+  	<<interface>>
+  	+responseAsk(): void
+  }
+  MoAttack ..> LiuDeHua : <<create>>
+  MoAttack ..> GeLi
+  LiuDeHua ..|> GeLi
+~~~
+
+MoAttack同时依赖于GeLi接口和LiuDeHua类，并没有达到我们所期望的剧本仅依赖于角色的目的。但是角色最终必须通过具体的演员才能完成拍摄，如何让LiuDeHua和剧本无关而又能完成GeLi的具体动作呢？当然是在影片投拍时，导演将LiuDeHua安排在GeLi的角色上，导演负责剧本、角色、饰演者三者的协调控制。
+
+~~~mermaid
+classDiagram
+  class MoAttack{
+  	+cityGateAsk(): void
+  }
+  class LiuDeHua{
+  	+responseAsk(): void
+  }
+  class GeLi{
+  	<<interface>>
+  	+responseAsk(): void
+  }
+  class Director{
+  	+directMovie(): void
+  }
+  Director ..> MoAttack
+  
+  Director ..> GeLi
+  MoAttack ..> LiuDeHua
+  Director ..> LiuDeHua : <<create>>
+  MoAttack ..> GeLi
+  LiuDeHua ..|> GeLi
+~~~
+
+通过引入导演，使得剧本和具体饰演者解耦。对应到软件中，导演就像一台装配器，安排演员表演具体的角色。
+
+
+
+现在我们可以反过来讲解IoC的概念了。IoC（Inverse of Control）的字面意思是控制反转，它包括两方面的内容：
+
+- 其一是控制
+- 其二是反转
+
+那到底是什么东西的“控制”被“反转”了呢？对应到前面的例子，“控制”是指选择GeLi角色扮演者的控制权；“反转”是指这种控制权从《墨攻》剧本中移除，转交到导演手中。对于软件来说，即某一接口具体实现类的选择控制权从调用类中移除，转交给第三方决定，即由Spring容器借由Bean配置来进行控制。
+
+因为IoC确实不够开门见山，因此业界曾进行了广泛的讨论，最终软件界的泰斗级人物Martin Fowler提出了DI(Dependecy Injection, 依赖注入)的概念用来代替IoC，即让调用类对某一接口实现类的依赖关系由第三方（容器或协作类）注入，以移除调用类对某一接口实现类的依赖。“依赖注入”这个名词显然比“控制反转”直接明了、易于理解。
+
+### 4.1.2 IoC的类型
+
+从注入方法上看，IoC主要可以划分为3种类型：构造函数注入、属性注入和接口注入。Spring支持构造函数注入和属性注入。下面我们继续使用以上的例子说明这3种注入方式的区别。
+
+#### 1.构造函数注入
+
+在构造函数注入中，通过调用类的构造函数，将接口实现类通过构造函数变量传入
+
+~~~java
+public class MoAttack{
+    private GeLi geli;
+    
+    //①注入革离的具体饰演者
+    public MoAttack(GeLi geli){
+        this.geli = geli;
+    }
+    public void cityGateAsk(){
+        geli.responseAsk("墨者革离！");
+    }
+}
+~~~
+
+MoAttack的构造函数不关心具体由谁来饰演革离这个角色，只要在①处传入的饰演者按剧本要求完成相应的表演即可，角色的具体饰演者由导演来安排
+
+~~~java
+public class Director{
+    public void direct(){
+        //①指定角色的饰演者
+        GeLi geli = new LiuDeHua();
+        
+        //②注入具体饰演者到剧本中
+        MoAttack moAttack = new MoAttack(geli);
+        moAttack.cityGateAsk();
+    }
+}
+~~~
+
+在①处导演安排刘德华饰演革离，并在②处将刘德华“注入”到《墨攻》剧本中，然后开始“城门叩问”剧情的演出工作。
+
+#### 2.属性注入
+
+有时，导演会发现，虽然革离是影片《墨攻》的第一主角，但并非每个场景都需要革离的出现，在这种情况下通过构造函数注入并不妥当，这时可以考虑使用属性注入。属性注入可以有选择地通过Setter方法完成调用类所需依赖的注入，更加灵活方便。
+
+~~~java
+public class MoAttack{
+    private GeLi geli;
+    
+    //①属性注入方法
+    public void setGeli(GeLi geli){
+        this.geli = geli;
+    }
+    public void cityGateAsk(){
+        geli.responseAsk("墨者革离！");
+    }
+}
+~~~
+
+MoAttack在①处为geli属性提供了一个Setter方法，以便让导演在需要时注入geli的具体饰演者
+
+~~~java
+public class Director{
+    public void direct(){
+        MoAttack moAttack = new MoAttack();
+        //①调用属性Setter方法注入
+        GeLi geli = new LiuDeHua();
+        moAttack.setGeli(geli);
+        moAttack.cityGateAsk();
+    }
+}
+~~~
+
+和通过构造函数注入革离饰演者不同，在实例化MoAttack剧本时，并未指定任何饰演者，而是在实例化MoAttack后，在需要革离出场时，才调用其setGeli()方法注入饰演者。按照类似的方式，还可以分别为剧本中的其他诸如梁王、巷淹中等角色提供输入的Setter方法，这样，导演就可以根据所拍剧段的不同，按需注入相应的角色。
+
+#### 3.接口注入
+
+将调用类所有依赖注入的方法抽取到一个接口中，调用类通过实现该接口提供相应的注入方法。为了采取接口注入的方式，必须先声明一个ActorArrangable接口，如下：
+
+~~~java
+public interface ActorArrangable{
+    void injectGeli(Geli geli);
+}
+~~~
+
+然后，MoAttack通过ActorArrangable接口提供具体的实现
+
+~~~java
+public class MoAttack implements ActorArrangable{
+    private GeLi geli;
+    
+    //①实现接口方法
+    public void injectGeli(GeLi geli){
+        this.geli = geli;
+    }
+    public void cityGateAsk(){
+        geli.responseAsk("墨者革离！");
+    }
+}
+~~~
+
+Director通过ActorArrangable的injectGeli()方法完成饰演者的注入工作
+
+~~~java
+public class Director{
+    public void direct(){
+        MoAttack moAttack = new MoAttack();
+        GeLi geli = new LiuDeHua();
+        moAttack.injectGeli(geli);
+        moAttack.cityGateAsk();
+    }
+}
+~~~
+
+由于通过接口注入需要额外声明一个接口，增加了类的数目，而且它的效果和属性注入并无本质区别，因此我们不提倡采用这种注入方式。
+
+### 4.1.3 通过容器完成依赖关系的注入
+
+
+
+
+

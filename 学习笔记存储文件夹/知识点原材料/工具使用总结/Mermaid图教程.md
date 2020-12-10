@@ -266,3 +266,173 @@ sequenceDiagram
     A--x B: 有箭头虚线，加上叉
 ```
 
+## 类图
+
+### 泛化（Generalization）
+
+~~~
+classDiagram
+    A<|--B
+~~~
+
+~~~mermaid
+classDiagram
+    A<|--B
+~~~
+
+示例：
+
+~~~
+classDiagram
+    Animal <|-- Duck
+    Animal <|-- Fish
+    Animal <|-- Zebra
+    Animal : +int age
+    Animal : +String gender
+    Animal: +isMammal()
+    Animal: +mate()
+    class Duck{
+      +String beakColor
+      +swim()
+      +quack()
+    }
+    class Fish{
+      -int sizeInFeet
+      -canEat()
+    }
+    class Zebra{
+      +bool is_wild
+      +run()
+    }
+~~~
+
+
+
+~~~mermaid
+classDiagram
+    Animal <|-- Duck
+    Animal <|-- Fish
+    Animal <|-- Zebra
+    Animal : +int age
+    Animal : +String gender
+    Animal: +isMammal()
+    Animal: +mate()
+    class Duck{
+      +String beakColor
+      +swim()
+      +quack()
+    }
+    class Fish{
+      -int sizeInFeet
+      -canEat()
+    }
+    class Zebra{
+      +bool is_wild
+      +run()
+    }
+~~~
+
+### 实现（Realization）
+
+~~~
+classDiagram
+   class IFlyable{
+     <<interface>>
+     + flying()
+   }
+   IFlyable<|..Bat
+   Bat:+flying()
+~~~
+
+~~~mermaid
+classDiagram
+   class IFlyable{
+     <<interface>>
+     + flying()
+   }
+   IFlyable<|..Bat
+   Bat:+flying()
+~~~
+
+### 组合（Composition）
+
+~~~
+classDiagram
+  Computer *-- CPU
+  Computer *-- Mainboard
+  Computer *-- HardDisk
+  Computer *-- MemeryCard
+~~~
+
+~~~mermaid
+classDiagram
+  Computer *-- CPU
+  Computer *-- Mainboard
+  Computer *-- HardDisk
+  Computer *-- MemeryCard
+~~~
+
+### 聚合（Aggregation)
+
+~~~
+classDiagram
+  Company o-- Empolyee
+~~~
+
+~~~mermaid
+classDiagram
+  Company o-- Empolyee
+~~~
+
+### 关联（Association）
+
+~~~
+classDiagram
+  Reader "1..*" -- "1..*" Book
+  Book "1..*"--> "1"Author
+~~~
+
+~~~mermaid
+classDiagram
+  Reader "1..*" -- "1..*" Book
+  Book "1..*"--> "1"Author
+~~~
+
+### 依赖（Dependency）
+
+~~~
+classDiagram
+  Animal..>Food
+~~~
+
+~~~mermaid
+classDiagram
+  Animal..>Food
+~~~
+
+### 总结
+
+泛化=实现>组合>聚合>关联>依赖
+
+~~~
+classDiagram
+classA --|> classB : Generalization
+classM ..|> classN : Realization
+classC --* classD : Composition
+classE --o classF : Aggregation
+classG --> classH : Association
+classI -- classJ : Association
+classK ..> classL : Dependency
+~~~
+
+~~~mermaid
+classDiagram
+classA --|> classB : Generalization
+classM ..|> classN : Realization
+classC --* classD : Composition
+classE --o classF : Aggregation
+classG --> classH : Association
+classI -- classJ : Association
+classK ..> classL : Dependency
+~~~
+
