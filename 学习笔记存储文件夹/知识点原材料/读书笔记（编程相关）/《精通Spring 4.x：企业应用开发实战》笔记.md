@@ -605,7 +605,182 @@ public class Director{
 
 ### 4.1.3 通过容器完成依赖关系的注入
 
+虽然MoAttack和LiuDeHua实现了解耦，MoAttack无须关注角色实现类的实例化工作，但这些工作在代码种依然存在，只是转移到Director类种而已。假设某一制片人想改变这一局面，在选择某个剧本之后，希望通过媒体“海选”或者第三方代理机构来选择导演、演员，让他们各司其职，那么剧本、导演、演员就都实现了解耦。
 
+所谓媒体“海选”和第三方代理机构，在程序领域就是一个第三方的容器，它帮助完成类的初始化与装配工作，让开发者从这些底层实现类的实例化、依赖关系装配等工作种解脱出来，专注于更有意义的业务逻辑开发工作。这无疑是一件令人向往的事情。Spring就是这样一个容器，它通过配置文件或注解描述类与类之间的依赖关系，自动完成类的初始化和依赖注入工作。下面是Spring配置文件对以上实例进行配置的配置文件片段：
 
+~~~xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w4.org/2001/XMLSchema-instance"
+       xmlns:p="http://www.springframework.org/schema/beans"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+                           http://www.springframework.org/schema/beans/spring-beans-4.0.xsd">
+	<!--①实现类实例化-->
+    <bean id="geli" class="LiuDeHua"/>
+    <bean id="moAttack" class="com.smart.ioc.MoAttack" p:geli-ref="geli"/><!--②通过geli-ref建立依赖关系-->
+</beans>
+~~~
 
+通过new XmlBeanFactory("bean.xml")等方式即可启动容器。在容器启动时，Spring根据配置文件的描述信息，自动实例化Bean并完成依赖关系的装配，从容器中即可返回准备就绪的Bean实例，后续可直接使用之。
+
+Spring为什么会有这种“神奇”的力量，仅凭一个简单的配置文件，就能魔法般地实例化并装配好程序所用地Bean呢？这种“神奇”地力量归功于Java语言本身的类反射功能。下面我们独辟章节专门讲解Java语言的反射知识，为大家深刻理解Spring的技术内幕做好准备。
+
+## 4.2 相关Java基础知识
+
+Java语言允许通过程序化的方式间接对Class进行操作。Class文件由类装载器装载后，在JVM中将形成一份描述Class结构的元信息对象，通过该元信息对象可以获知Class的结构信息，如构造函数、属性和方法等。Java允许用户借由这个与Class相关的元信息对象间接调用Class对象的功能，这就为使用程序化方式操作Class对象开辟了途径。
+
+### 4.2.1 简单实例
+
+我们将从一个简单的例子开始探访Java反射机制的征程。下面的Car类拥有两个构造函数、一个方法及3个属性，如下：
+
+~~~java
+package com.smart.reflect;
+public class Car{
+    private String brand;
+    private String color;
+    private int maxSpeed;
+    // ①默认构造函数
+    public Car(){}
+    // ②带参构造函数
+    public Car(String brand, String color, int maxSpeed){
+        this.brand = brand;
+        this.color = color;
+        this.maxSpeed = maxSpeed;
+    }
+    // ③未带参的方法
+    public void introduce() {
+        System.out.println("brand:" + brand + ";color:" + color + ";maxSpeed" + maxSpeed);
+    }
+    // 省略参数的getter/setter方法
+    ...
+}
+~~~
+
+一般情况下，我们会使用如下代码创建Car的实例：
+
+~~~java
+Car car = new Car();
+car.setBrand("红旗CA72");
+~~~
+
+或者：
+
+~~~java
+Car car = new Car("红旗CA72", "黑色");
+~~~
+
+以上两种方法都采用传统方式直接调用目标类的方法。下面我们通过Java反射机制以一种间接的方式操控目标类，如下代码清单4-10：
+
+~~~java
+package com.smart.reflect;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+public class ReflectTest {
+    public static Car initByDefaultConst() throws Throwable {
+        // ①通过类装载器获取Car类对象
+        ClassLoader loader = Thread.currentThread().getContextClassLoader();
+        Class clazz = loader.loadClass("com.smart.reflect.Car");
+        
+        // ②获取类的默认构造器对象并通过它实例化Car
+        Constructor cons = clazz.getDeclaredConstructor((Class[])null);
+        Car car = (Car)cons.newInstance();
+        
+        // ③通过反射方法设置属性
+        Method setBrand = clazz.getMethod("setBrand", String.class);
+        serBrand.invoke(car, "红旗CA72");
+        Method setColor = clazz.getMethod("setColor", String.class);
+        setColor.invoke(car, "黑色");
+        Method setMaxSpeed = clazz.getMethod("setMaxSpeed", int.class);
+        setColor.invoke(car, 200);
+        return car;
+    }
+    
+    public static void main(String[] args) throws Throwable{
+        Car car = initByDefaultConst();
+        car.introduce();
+    }
+}
+~~~
+
+运行以上程序，在控制台上将打印出以下信息：
+
+~~~
+brand:红旗CA72;color:黑色;maxSpeed:200
+~~~
+
+这说明我们完全可以通过编程方式调用Class的各项功能，与通过构造函数和方法直接调用类功能的效果是一致的，只不过前者是间接调用，后者是直接调用罢了。
+
+在ReflectTest中使用了几个重要的反射类，分别是ClassLoader、Class、Constructor和Method，通过这些反射类就可以间接调用目标Class的各项功能。
+
+- 在①处，我们获取当前线程的ClassLoader，然后通过指定的全限定类名"com.smart.beans.Car"装载Car类对应的反射实例。
+- 在②处，我们通过Car的反射类对象获取Car的构造函数对象cons，通过构造函数对象的newInstance()方法实例化Car对象，其效果等同于`new Car()`。
+- 在③处，我们又通过Car的反射类对象的`getMethod(String method name, Class paramClass)`获取属性的Setter方法对象，其中第一个参数是目标Class的方法名；第二个参数是方法入参的对象类型。在获取方法反射对象后，即可通过`invoke(Object object, Object param)`方法调用目标类的方法，该方法的第一个参数是操作的目标类对象实例，第二个参数是目标方法的入参。
+
+在代码清单4-10中，"com.smart.reflect.Car"、“setBrand”、“红旗CA72”之类的信息即通过反射方法操控目标类的元信息，如果我们将这些信息以一个配置文件的方法提供，就可以使用Java语言的反射功能编写一段通用的代码，对类似于Car的类进行实例化及功能调用操作。
+
+### 4.2.2 类装载器ClassLoader
+
+#### 1.类装载器的工作机制
+
+类装载器就是寻找类的字节码文件并构造出类在JVM内部表示对象的组件。在Java中，类装载器把一个类装入JVM中，需要经过以下步骤：
+
+1. 装载：查找和导入Class文件。
+2. 链接：执行校验、准备和解析步骤，其中解析步骤是可以选择的。
+   1. 校验：检查载入Class文件数据的正确性。
+   2. 准备：给类的静态变量分配存储空间。
+   3. 解析：将符号引用转换成直接引用。
+3. 初始化：对类的静态变量、静态代码块执行初始化工作。
+
+类装载工作由ClassLoader及其子类负责。ClassLoader是一个重要的Java运行时系统组件，它负责在运行时查找和装入Class字节码文件。JVM在运行时会产生3个ClassLoader：根装载器、ExtClassLoader（扩展类装载器）和AppClassLoader（应用类装载器）。其中，根装载器不是ClassLoader的子类，它使用C++语言编写，因而在Java中看不到它，根装载器负责装载JRE的核心类库，如JRE目标下的rt.jar、charsets.jar等。ExtClassLoader和AppClassLoader都是ClassLoader的子类，其中ExtClassLoader负责装载JRE扩展目录ext中的JAR类包；AppClassLoader负责装载Classpath路径下的类包。
+
+这3个类装载器之间存在父子层级关系，即根装载器是ExtClassLoader的父装载器，ExtClassLoader是AppClassLoader的父装载器。在默认情况下，使用AppClassLoader装载应用程序的类。我们可以做一个实验，如下面代码清单4-11所示。
+
+~~~java
+public class ClassLoaderTest {
+    public static void main(String[] args){
+        ClassLoader loader = Thread.currentThread().getContextClassLoader();
+        System.out.println("current loader:" + loader);
+        System.out.println("parent loader:" + loader.getParent());
+        System.out.println("grandparent loader:" + loader.getParent().getParent());
+    }
+}
+~~~
+
+运行以上代码，在控制台上将打印出以下信息：
+
+~~~java
+current loader: sum.misc.Launcher$AppClassLoader@131f71a
+parent loader: sum.misc.Launcher$ExtClassLoader@15601ea
+// ①根装载器在Java中访问不到，所以返回null
+grandparent loader: null
+~~~
+
+通过以上输出信息，我们知道当前的ClassLoader是AppClassLoader，其父ClassLoader是ExtClassLoader，祖父ClassLoader是根装载器，因为在Java中无法获得它的句柄，所以仅返回null。
+
+JVM装载类时使用“全盘负责委托机制”，“全盘负责”是指当一个ClassLoader装载一个类时，除非显式地使用另一个ClassLoader，该类所依赖及引用的类也由这个ClassLoader载入：“委托机制”是指先委托父装载器寻找目标类，只有在找不到的情况下才从自己的类路径中查找并装载目标类。这一点是从安全角度考虑的，试想，如果有人编写了一个恶意的基础类（如java.lang.String）并装载到JVM中，将会引起多么可怕的后果？但是由于有了“全盘负责委托机制”，java.lang.String永远是由根装载器来装载的，这样就避免了上述安全隐患的发生。
+
+> Java的开发者想必都遇到过java.lang.NoSuchMethodError的错误信息吧。究其根源，这个错误基本上都是由JVM的“全盘负责委托机制”引发的问题。因为在类路径下放置了多个不同版本的类包，如commons-lang2.x.jar和commons-lang4.x.jar都位于类路径中，代码用到了commons-lang4.x类的某个方法，而这个方法在commons-lang2.x中并不存在，JVM加载器碰巧又从commons-lang2.x.jar中加载类，运行时就会抛出NoSuchMethodError错误。
+
+#### 2.ClassLoader的重要方法
+
+在Java中，ClassLoader是一个抽象类，位于java.lang包中。下面对该类的一些重要接口方法进行介绍。
+
+- `Class loadClass(String name)`：
+  name参数指定类装载器需要装载类的名字，必须使用全限定类名，如com.smart.beans.Car。该方法有一个重载方法loadClass(String name, boolean resolve)，resolve函数告诉类装载器是否需要解析该类。在初始化类之前，应考虑进行类解析的工作，但并不是所有的类都需要解析。如果JVM只需要知道该类是否存在或找出该类的超类，那么就不需要进行解析。
+- `Class defineClass(String name, byte[] b, int off, int len)`：
+  将类文件的字节数组转换成JVM内部的java.lang.Class对象。字节数组可以从本地文件系统、远程网络获取。参数name为字节数组对应的全限定类名。
+- `Class findSystemClass(String name)`：
+  从本地文件系统载入Class文件。如果本地文件系统不存在该Class文件，则将抛出ClassNotFoundException异常。该方法是JVM默认使用的装载机制。
+- `Class findLoadedClass(String name)`：
+  调用该方法来查看ClassLoader是否已装入某个类。如果已装入，那么返回java.lang.Class对象；否则返回null。如果强行装载已存在的类，那么将会抛出链接错误。
+- `ClassLoader getParentO()`：
+  获取类装载器的父装载器。除根装载器外，所有的类装载器都有且仅有一个父装载器。ExtClassLoader的父装载器是根装载器，因为根装载器非Java语言编写，所以无法获得，将返回null。
+
+除JVM默认的3个ClassLoader外，用户可以编写自己的第三方类装载器，以实现一些特殊的需求。类文件被装载并解析后，在JVM内将拥有一个对应的java.lang.Class类描述对象，该类的实例都拥有指向这个类描述对象的引用，而类描述对象又拥有指向关联ClassLoader的引用。
+
+每个类在JVM中都拥有一个对应的java.lang.Class对象，它提供了类结构信息的描述。数组、枚举、注解及基本Java类型（如int、double等），甚至void都拥有对应的Class对象。Class没有public的构造方法。Class对象是在装载类时由JVM通过调用类装载器中的defineClass()方法自动构造的。
+
+### 4.2.3 Java反射机制
 
