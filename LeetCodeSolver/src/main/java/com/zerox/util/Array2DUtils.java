@@ -22,4 +22,20 @@ public class Array2DUtils {
         sb.append(']');
         return sb.toString();
     }
+
+    public static String print2DArrWithChangeLine(int[][] arr2D) {
+        StringBuilder sb = new StringBuilder();
+        sb.append('[');
+        for (int i = 0; i < arr2D.length; i++) {
+            if (i != 0) sb.append(",\n");
+            sb.append('[');
+            for (int j = 0; j < arr2D[0].length; j++) {
+                if (j != 0) sb.append(',');
+                sb.append(arr2D[i][j]);
+            }
+            sb.append(']');
+        }
+        sb.append(']');
+        return sb.toString();
+    }
 }
