@@ -670,7 +670,7 @@ car.setBrand("红旗CA72");
 Car car = new Car("红旗CA72", "黑色");
 ~~~
 
-以上两种方法都采用传统方式直接调用目标类的方法。下面我们通过Java反射机制以一种间接的方式操控目标类，如下代码清单4-10：
+以上两种方法都采用传统方式直接调用目标类的方法。下面我们通过Java反射机制以一种间接的方式操控目标类，如下<span id="code4_10">代码清单4-10</span>：
 
 ~~~java
 package com.smart.reflect;
@@ -784,3 +784,122 @@ JVM装载类时使用“全盘负责委托机制”，“全盘负责”是指�
 
 ### 4.2.3 Java反射机制
 
+Class反射对象描述类语义结构，可以从Class对象中获取构造函数、成员变量、方法类等类元素的反射对象，并以编程的方式通过这些反射对象对目标类对象进行操作。这些反射对象类在java.reflect包中定义。下面介绍3个主要的反射类。
+
+- Constructor：类的构造函数反射类，通过`Class#getConstructors()`方法可以获取类的所有构造函数反射对象数组。在Java 5.0中，还可以通过`getConstructor(Class... parameterTypes)`获取拥有特定入参的构造函数反射对象。Constructor的一个主要方法是`newInstance(Object[] initargs)`，通过该方法可以创建一个对象类的实例，相当于new关键字。在Java 5.0中，该方法演化为更为灵活的形式：`newInstance(Object... initargs)`。
+- Method：类方法的反射类，通过`Class#getDeclaredMethods()`方法可以获取类的所有方法反射类对象数组Method[]。在Java 5.0中，可以通过`getDeclaredMethod(String name, Class... parameterTypes)`获取特定签名的方法，其中name为方法名；Class...为方法入参类型列表。Method最主要的方法是invoke(Object obj, Object[] args)，其中obj表示操作的目标对象；args为方法入参，[代码清单4-10](#code4_10) 中的③处演示了这个反射类的使用方法。在Java 5.0中，该方法的形式调整为invoke(Object obj, Object... args)。此外，Method还有很多用于获取类方法更多信息的方法。
+  - `Class getReturnType()`：获取方法的返回值类型。
+  - `Class[] getParameterTypes()`：获取方法的入参类型数组。
+  - `Class[] getExceptionTypes()`：获取方法的异常类型数组。
+  - `Annotation[][] getParameterAnnotations()`：获取方法的注解信息，是Java 5.0中的新方法。
+- Field：类的成员变量的反射类，通过`Class#getDeclaredFields()`方法可以获取类的成员变量反射对象数组，通过`Class#getDeclaredFields(String name)`则可以获取某个特定名称的成员变量反射对象。Field类最主要的方法是`set(Object obj, Object value)`，其中obj表示操作的目标对象，通过value为目标对象的成员变量设置值。如果成员变量为基础类型，则用户可以使用Field类中提供的带类型名的值设置方法，如setBoolean(Object obj, boolean value)、setInt(Object obj, int value)等。
+
+此外，Java还为包提供了Package反射类，在Java 5.0中还为注解提供了AnnotatedElement反射类。总之，Java的反射体系保证了可以通过程序化的方式访问目标类中所有的元素，对于private或protected成员变量和方法，只要JVM的安全机制允许，也可以通过反射进行调用，请看下面的例子代码清单4-12：
+
+~~~java
+package com.smart.reflect;
+public class PrivateCar {
+    // ①private成员变量：使用传统的类实例调用方式，只能在本类中访问
+    private String color;
+    
+    // ②protected方法：使用传统的类实例调用方式，只能在子类和本包中访问
+    protected void drive(){
+        System.out.println("drive private car! the color is:" + color);
+    }
+}
+~~~
+
+color变量和drive()方法都是私有的，通过类实例变量无法在外部访问私有变量、调用私有方法，但通过反射机制则可以绕过这个限制，如下代码清单4-13：
+
+~~~java
+...
+public class PrivateCarReflect {
+    public static void main(String[] args) throws Throwable {
+        ClassLoader loader = Thread.currentThread().getContextClassLoader();
+        Class clazz = loader.loadClass("com.smart.reflect.PrivateCar");
+        PrivateCar pcar = (PrivateCar)clazz.newInstance();
+        Field colorFld = clazz.getDeclaredField("color");
+        
+        // ①取消Java语言访问检查以访问private变量
+        colorFld.setAccessible(true);
+        colorFld.set(pcar, "红色");
+        
+        Method driveMtd = clazz.getDeclaredMethod("drive", (Class[])null);
+        // Method driveMtd = clazz.getDeclaredMethod("drive"); JDK 5.0下使用
+        
+        // ②取消Java语言访问检查以访问protected方法
+        driveMtd.setAccessible(true);
+        driveMtd.invoke(pcar, (Object[])null);
+    }
+}
+~~~
+
+运行该类，打印出以下信息：
+
+~~~
+drive private car! the color is: 红色
+~~~
+
+在访问private或protected成员变量和方法时，必须通过setAccessible(boolean access)方法取消Java语言检查，否则将抛出IllegalAccessException。如果JVM的安全管理器设置了相应的安全机制，那么调用该方法将抛出SecurityException。
+
+## 4.3 资源访问利器
+
+### 4.3.1 资源抽象接口
+
+JDK所提供的访问资源的类（如java.net.URL、File类）并不能很好地满足各种底层资源的访问需求，比如确少从类路径或者Web容器的上下文中获取资源的操作类。鉴于此，Spring设计了一个Resource接口，它为应用提供了更强的底层资源访问能力。该接口具有对应不同资源类型的实现类。先来了解一下Resource接口的主要方法。
+
+- `boolean exists()`： 资源是否存在。
+- `boolean isOpen()`： 资源是否打开。
+- `URL getURL() throws IOException`：如果底层资源可以表示成URL，则该方法返回对应的URL对象。
+- `File getFile() throws IOException`： 如果底层资源对应一个文件，则该方法返回对应的File对象。
+- `InputStream getInputStream() throws IOException`： 返回资源对应的输入流。
+
+Resource在Spring框架中起着不可或缺的作用，Spring框架使用Resource装载各种资源，包括配置文件资源、国际化属性文件资源等。下面我们来了解一下Resource的具体实现类。
+
+~~~mermaid
+classDiagram
+	Resource<|..AbstractResource
+	Resource<|--WritableResource
+	AbstractResource<|--ByteArrayResource
+	AbstractResource<|--InputStreamResource
+	AbstractResource<|--ClassPathResource
+	AbstractResource<|--PortletContextResource
+	AbstractResource<|--ServletContextResource
+	AbstractResource<|--DescriptiveResource
+	AbstractResource<|--UrlResource
+	AbstractResource<|--PathResource
+	WritableResource<|..PathResource
+	AbstractResource<|--FileSystemResource
+	WritableResource<|..FileSystemResource
+~~~
+
+- WritableResource：可写资源接口，是Spring 3.1版本新加的接口，有两个实现类，即FileSystemResource和PathResource，其中PathResource是Spring 4.0提供的实现类。
+- ByteArrayResource：二进制数组表示的资源，二进制数组资源可以在内存中通过程序构造。
+- ClassPathResource：类路径下的资源，资源以相对于类路径的方式表示。
+- FileSystemResource：文件系统资源，资源以文件系统路径的方式表示，如`D:/conf/bean.xml`等。
+- InputStreamResource：以输入流返回表示的资源。
+- ServletContextResource：为访问Web容器上下文中的资源而设计的类，负责以相对于Web应用根目录的路径加载资源。它支持以流和URL的方式访问，在WAR解包的情况下，也可以通过File方式访问。该类还可以直接从JAR包中访问资源。
+- UrlResource：URL封装了java.net.URL，它使用户能够访问任何可以通过URL表示的资源，如文件系统的资源、HTTP资源、FTP资源等。
+- PathResource：Spring 4.0提供的读取资源文件的新类。Path封装了java.net.URL、java.nio.file.Path（Java 7.0 提供）、文件系统资源，它使用户能够访问任何可以通过URL、Path、系统文件路径表示的资源，如文件系统的资源、HTTP资源、FTP资源等。
+
+有了这个抽象的资源类后，就可以将Spring的配置信息放置在任何地方（如数据库、LDAP中），只要最终可以通过Resource接口返回配置信息即可。
+
+> 提示：Spring的Resource接口及其实现类可以在脱离Spring框架的情况下使用，它比通过JDK访问资源的API更好用、更强大。
+
+假设有一个文件位于Web应用的类路径下，用户可以通过以下方式对这个方式资源进行访问：
+
+- 通过FileSymtemResource以文件系统绝对路径的方式进行访问。
+- 通过ClassPathResource以类路径的方式进行访问。
+- 通过ServletContextResource以相对于Web应用根目录的方式进行访问。
+
+相比于通过JDK的File类访问文件资源的方式，Spring的Resource实现类无疑提供了更加灵活便捷的访问方式，用户可以根据实际情况选择适合的Resource实现类访问资源。
+
+在获取资源后，用户就可以通过Resource接口定义的多个方法访问文件的数据和其他信息。如可以通过getFileName()方法获取文件名，通过getFile()方法获取资源对应的File对象，通过getInputStream()方法直接获取文件的输入流。通过WritableResource接口定义的多个方法向文件写数据，通过getOutputStream()方法直接获取文件的输出流。此外，还可以通过createRelative(String relativePath)在资源相对地址上创建新的文件。
+
+在Web应用中，用户还可以通过ServletContextResource以相对于Web应用根目录的方式访问文件资源。
+
+对于位于远程服务器（Web服务器或FTP服务器）的文件资源，用户可以方便地通过UrlResource进行访问。
+
+资源加载时默认采用系统编码读取资源内容。如果资源文件采用特殊的编码格式，那么可以通过EncodedResource对资源进行编码，以保证资源内容操作的正确性。
+
+### 4.3.2 资源加载
