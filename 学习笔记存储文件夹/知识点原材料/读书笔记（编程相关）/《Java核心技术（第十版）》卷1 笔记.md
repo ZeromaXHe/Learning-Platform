@@ -62,6 +62,106 @@
 
 ### 5.1.6 理解方法调用
 
+## 5.6 枚举类
+
+读者在第3章已经看到如何定义枚举类型。下面是一个典型的例子：
+
+`public enum Size{SMALL, MEDIUM, LARGE, EXTRA_LARGE};`
+
+实际上，这个声明定义的类型是一个类，它刚好有4个实例，在此尽量不要构造新对象。
+
+因此，在比较两个枚举类型的值时，永远不需要调用equals，而直接使用“==”就可以了。
+
+如果需要的话，可以在枚举类型中添加一些构造器、方法和域。当然，构造器只是在构造枚举常量的时候被调用。下面是一个示例：
+
+~~~java
+public enum Size{
+    SMALL("S"),
+    MEDIUM("M"),
+    LARGE("L"),
+    EXTRA_LARGE("XL");
+    
+    private String abbreviation;
+    
+    private Size(String abbreviation) {
+        this.abbreviation = abbreviation;
+    }
+    public String getAbbreviation() {
+        return abbreviation;
+    }
+}
+~~~
+
+所有的枚举类型都是Enum类的子类。它们继承了这个类的许多方法。其中最有用的一个是toString，这个方法能够返回枚举常量名。例如，Size.SMALL.toString()将返回字符串"SMALL"。
+
+toString的逆方法是静态方法valueOf。例如，语句:
+
+`Size s = Enum.valueOf(Size.class, "SMALL");`
+
+将s设置成Size.SMALL。
+
+每个枚举类型都是一个静态的values方法，它将返回一个包含全部枚举值的数组。例如，如下调用
+
+`Size[] values = Size.values();`
+
+返回包含元素Size.SMALL, Size.MEDIUM, Size.LARGE, Size.EXTRA_LARGE的数组。
+
+ordinal方法返回enum声明中枚举常量的位置，位置从0开始计数。例如：Size.MEDIUM.ordinal()返回1。
+
+程序清单5-12演示了，枚举类型的工作方式。
+
+> 注释：如同Class类一样，鉴于简化的考虑，Enum类省略了一个类型参数。例如，实际上，应该将枚举类型Size扩展为`Enum<Size>`。类型参数在compareTo方法中使用（compareTo方法在第6章中介绍，类型参数在第8章中介绍）。
+
+~~~java
+package enums;
+
+import java.util.*;
+
+/**
+ * This program demonstrates enumerated types.
+ */
+public class EnumTest {
+    public static void main(String[] args){
+        Scanner in = new Scanner(System.in);
+        System.out.print("Enter a size: (SMALL, MEDIUM, LARGE, EXTRA_LARGE)");
+        String input = in.next().toUpperCase();
+        Size size = Enum.valueOf(Size.class, input);
+        System.out.println("size=" + size);
+        System.out.println("abbreviation=" + size.getAbbreviation());
+        if(size == Size.EXTRA_LARGE){
+            System.out.println("Good job--you paid attention to the _.")
+        }
+    }
+}
+
+enum Size {
+    SMALL("S"),
+    MEDIUM("M"),
+    LARGE("L"),
+    EXTRA_LARGE("XL");
+    
+    private Size(String abbreviation) {
+        this.abbreviation = abbreviation;
+    }
+    public String getAbbreviation() {
+        return abbreviation;
+    }
+    
+    private String abbreviation;
+}
+~~~
+
+【API】java.lang.Enum\<E> 1.0 :
+
+- `static Enum valueOf(Class enumClass, String name)`
+  返回指定名字、给定类的枚举常量。
+- `String toString()`
+  返回枚举常量名。
+- `int ordinal()`
+  返回枚举常量在enum声明中的位置，位置从0开始计数。
+- `int compareTo(E other)`
+  如果枚举常量出现在other之前，则返回一个负值；如果this==other,则返回0；否则返回正值。枚举常量的出现次序在enum声明中给出。
+
 # 第6章 接口、Lambda表达式与内部类
 
 ## 6.1 接口
