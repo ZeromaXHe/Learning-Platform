@@ -1907,45 +1907,158 @@ public void configureSlider(){...}
 
 ### 8.6.2 运行时类型查询只适用于原始类型
 
-虚拟机中的对象总有一个特定的非泛型类型。 因此， 所有的类型查询只产生原始类型。 
+虚拟机中的对象总有一个特定的非泛型类型。 因此， 所有的类型查询只产生原始类型。 例如：
+
+`if (a instanceof Pair<String>) //Error`
+
+实际上仅仅测试a是否是任意的一个Pair。下面的测试同样如此：
+
+`if (a instanceof Pair<T>) //Error`
+
+或强制类型转换：
+
+`Pair<String> p = (Pair<String>) a; // warning--can only test that a is a Pair`
 
 为提醒这一风险， 试图查询一个对象是否属于某个泛型类型时，==倘若使用 instanceof 会得到一个编译器错误， 如果使用强制类型转换会得到一个警告==。
 
-同样的道理， getClass 方法总是返回原始类型。 
+同样的道理， getClass 方法总是返回原始类型。 例如：
+
+~~~java
+Pair<String> stringPair = ...;
+Pair<Employee> employeePair = ...;
+if(stringPair.getClass() == employeePair.getClass()) // they are equal
+~~~
+
+其比较的结果是true，这是因为两次调用getClass都将返回Pair.class。
 
 ### 8.6.3 不能创建参数化类型的数组
 
+不能实例化参数化类型的数组，例如：
+
+`Pair<String>[] table = new Pair<String>[10]; // Error`
+
+这有什么问题呢？擦除之后，table的类型是Pair[]。可以把它转换为Object[]：
+
+`Object[] objarray = table;`
+
+数组会记住它的元素类型，如果视图存储其他类型的元素，就会抛出一个ArrayStoreException异常：
+
+`objarray[0] = "hello"; // Error -- component type is Pair`
+
 不过对于泛型类型， 擦除会使这种机制无效。 以下赋值：
 `objarray[0] = new Pair< Employee>0;`
-能够通过数组存储检査， 不过仍会导致一个类型错误。 出于这个原因， 不允许创建参数
-化类型的数组。 
+能够通过数组存储检査， 不过仍会导致一个类型错误。 出于这个原因， 不允许创建参数化类型的数组。 
 
 需要说明的是， 只是不允许创建这些数组， 而声明类型为 Pair\<String>[] 的变量仍是合法的。不过不能用 new Pair\<String>[10] 初始化这个变量。 
 
-*注释： 可以声明通配类型的数组， 然后进行类型转换：
-`Pair<String>[] table = (Pair<String>[]) new Pair<?>[10];`
-结果将是不安全的。 如果在 table[0] 中存储一个 `Pair<Employee>`, 然后对 table[0].getFirst() 调用一个 String 方法， 会得到一个 ClassCastException 异常。*
+> 注释： 可以声明通配类型的数组， 然后进行类型转换：
+> `Pair<String>[] table = (Pair<String>[]) new Pair<?>[10];`
+> 结果将是不安全的。 如果在 table[0] 中存储一个 `Pair<Employee>`, 然后对 table[0].getFirst() 调用一个 String 方法， 会得到一个 ClassCastException 异常。
 
-*提示：如果需要收集参数化类型对象， 只有一种安全而有效的方法： 使用 `ArrayList:Arra
-yList<Pair<String>>`。
+> 提示：如果需要收集参数化类型对象， 只有一种安全而有效的方法： 使用 `ArrayList:Arra
+> yList<Pair<String>>`。
 
 ### 8.6.4 Varargs警告
 
 上一节中已经了解到， Java 不支持泛型类型的数组。这一节中我们再来讨论一个相关的问题：向参数个数可变的方法传递一个泛型类型的实例。 
 
+考虑下面这个简单的方法，它的参数个数是可变的：
+
+~~~java
+public static <T> void addAll(Collection<T> coll, T... ts){
+    for(T t : ts) coll.add(t);
+}
+~~~
+
+应该记得，实际上参数ts是一个数组，包含提供的所有实参。
+
+现在考虑如下调用：
+
+~~~java
+Collection<Pair<String>> table = ...;
+Pair<String> pair1 = ...;
+Pair<String> pair2 = ...;
+addAll(table, pair1, pair2);
+~~~
+
 为了调用这个方法， Java 虚拟机必须建立一个 Pair\<String> 数组， 这就违反了前面的规则。不过，对于这种情况， 规则有所放松， 你只会得到一个警告，而不是错误。
 
-可以采用两种方法来抑制这个警告。 一种方法是为包含 addAll 调用的方法增加注解 @SuppressWamings("unchecked"。) 或者在 Java SE 7中， 还可以用@SafeVarargs 直接标注addAll 方法 。
+可以采用两种方法来抑制这个警告。 一种方法是为包含 addAll 调用的方法增加注解 @SuppressWamings("unchecked")。 或者在 Java SE 7中， 还可以用@SafeVarargs 直接标注addAll 方法 。
 
-*注释： 可以使用 @SafeVarargs标注来消除创建泛型数组的有关限制。这看起来很方便， 不过隐藏着危险。 *
+> 注释： 可以使用 @SafeVarargs标注来消除创建泛型数组的有关限制，方法如下：
+>
+> ~~~java
+> @SafeVarargs
+> static <E> E[] array(E... array) {
+>     return array;
+> }
+> ~~~
+>
+> 现在可以调用：
+>
+> ~~~java
+> Pair<String>[] table = array(pair1, pair2);
+> ~~~
+>
+> 这看起来很方便， 不过隐藏着危险。以下代码：
+>
+> ~~~java
+> Object[] objarray = table;
+> objarray[0] = new Pair<Employee>();
+> ~~~
+>
+> 能顺利运行而不会出现ArrayStoreException异常（因为数组存储只会检查擦除的类型），但在处理table[0]时你会在别处得到一个异常。
 
 ### 8.6.5 不能实例化类型变量
 
-不能使用像 new T(...)， new T[...] 或 T.class 这样的表达式中的类型变量。 
+不能使用像 new T(...)， new T[...] 或 T.class 这样的表达式中的类型变量。 例如，下面的`Pair<T>`构造器就是非法的：
 
-在 Java SE 8 之后，最好的解决办法是让调用者提供一个构造器表达式。 
+~~~java
+public Pair(){
+    first = new T();
+    second = new T();
+} // Error
+~~~
 
-比较传统的解决方法是通过反射调用 Class.newlnstance 方法来构造泛型对象 
+类型擦除将T改变成Object，而且，本意肯定不希望调用new Object()。在Java SE 8之后，最好的解决办法是让调用者提供一个构造器表达式。例如：
+
+~~~java
+Pair<String> p = Pair.makePair(String::new);
+~~~
+
+makePair方法接收一个`Supplier<T>`，这是一个函数式接口，表示一个无参数而且返回类型为T的函数：
+
+~~~java
+public static <T> Pair<T> makePair(Supplier<T> constr){
+    return new Pair<>(constr.get(), constr.get());
+}
+~~~
+
+比较传统的解决方法是通过反射调用Class.newInstance方法来构造泛型对象。
+
+遗憾的是，细节有点复杂。不能调用：
+
+~~~java
+first = T.class.newInstance(); // Error
+~~~
+
+表达式T.class是不合法的，因为它会擦除为Object.class。必须像下面这样设计API以便得到一个Class对象：
+
+~~~java
+public static <T> Pair<T> makePair(Class<T> cl){
+    try {
+        return new Pair<>(cl.newInstance(), cl.newInstance());
+    } catch(Exception ex) {
+        return null;
+    }
+}
+~~~
+
+这个方法可以按照下列方式调用：
+
+~~~java
+Pair<String> p = Pair.makePair(String.class);
+~~~
 
 注意，Class类本身是泛型。 例如， String.daSS 是一个 Class\<String> 的实例（事实上，它是唯一的实例。)  
 
