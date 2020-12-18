@@ -2064,25 +2064,155 @@ Pair<String> p = Pair.makePair(String.class);
 
 ### 8.6.6 不能构造泛型数组
 
-就像不能实例化一个泛型实例一样， 也不能实例化数组。不过原因有所不同，毕竟数组会填充null 值，构造时看上去是安全的。不过， 数组本身也有类型，用来监控存储在虚拟机中的数组。这个类型会被擦除。 
+就像不能实例化一个泛型实例一样， 也不能实例化数组。不过原因有所不同，毕竟数组会填充null 值，构造时看上去是安全的。不过， 数组本身也有类型，用来监控存储在虚拟机中的数组。这个类型会被擦除。 例如，考虑下面的例子：
 
-如果数组仅仅作为一个类的私有实例域， 就可以将这个数组声明为 Object[]，并且在获取元素时进行类型转换。 
+~~~java
+public static <T extends Comparable> T[] minmax(T[] a){
+    T[] mm = new T[2];
+}
+~~~
 
-在这种情况下， 最好让用户提供一个数组构造器表达式 
+类型擦除会让这个方法永远构造Comparable[2]数组。
 
-比较老式的方法是利用反射， 调用 Array.newlnstance 
+如果数组仅仅作为一个类的私有实例域， 就可以将这个数组声明为 Object[]，并且在获取元素时进行类型转换。 例如，ArrayList类可以这样实现：
+
+~~~java
+public class ArrayList<E> {
+    private Object[] elements;
+    ...
+    @SuppressWarnings("unchecked")
+    public E get(int n) {
+        return (E) elements[n];
+    }
+    public void set(int n, E e) {
+        elements[n] = e;
+    }// no cast needed
+}
+~~~
+
+实际的实现没有这么清晰：
+
+~~~java
+public class ArrayList<E> {
+    private E[] elements;
+    ...
+    public ArrayList(){
+        elements = (E[]) new Object[10];
+    }
+}
+~~~
+
+这里，强制类型转换E[]是一个假象，而类型擦除使其无法察觉。
+
+由于minmax方法返回T[]数组，使得这一技术无法施展，如果掩盖这个类型会有运行时错误结果。假设实现代码：
+
+~~~java
+public static <T extends Comparable> T[] minmax(T... a) {
+    Object[] mm = new Object[2];
+    ...
+    return (T[]) mm; // compiles with warning
+}
+~~~
+
+调用
+
+~~~java
+String[] ss = ArrayAlg.minmax("Tom", "Dick", "Harry");
+~~~
+
+编译时不会有任何警告。当Object[]引用赋给Comparable[]变量时，将会发生ClassCastException异常。
+
+在这种情况下， 最好让用户提供一个数组构造器表达式 ：
+
+~~~java
+String[] ss = ArrayAlg.minmax(String[]::new, "Tom", "Dick", "Harry");
+~~~
+
+构造器表达式String::new指示一个函数，给定所需的长度，会构造一个指定长度的String数组。
+
+minmax方法使用这个参数生成一个有正确类型的数组：
+
+~~~java
+public static <T extends Comparable> T[] minmax(IntFunction<T[]> constr, T... a) {
+    T[] mm = constr.apply(2);
+    ...
+}
+~~~
+
+比较老式的方法是利用反射， 调用 Array.newlnstance :
+
+~~~java
+public static <T extends Comparable> T[] minmax(T... a) {
+    T[] mm = (T[]) Array.newInstance(a.getClass().getComponentType(), 2);
+    ...
+}
+~~~
+
+ArrayList类的toArray方法就没有这么幸运。它需要生成一个T[]数组，但没有成分类型。因此，有下面两种不同的形式：
+
+~~~java
+Object[] toArray()
+T[] toArray(T[] result)
+~~~
+
+第二个方法接受一个数组参数。如果数组足够大，就使用这个数组。否则，用result的成分类型构造一个足够大的新数组。
 
 ### 8.6.7 泛型类的静态上下文中类型变量无效
 
-不能在静态域或方法中引用类型变量。 
+不能在静态域或方法中引用类型变量。 例如，下列高招将无法施展：
+
+~~~java
+public class Singleton<T> {
+    private static T singleInstance; // Error
+    
+    public static T getSingleInstance() {
+        // Error
+        if(singleInstance == null) {
+            // construct new instance of T
+        }
+        return singleInstance;
+    }
+}
+~~~
+
+如果这个程序能够运行，就可以声明一个`Singleton<Random>`共享随机数生成器，声明一个`Singleton<JFileChooser>`共享文件选择器对话框。但是，这个程序无法工作。类型擦除之后，只剩下Singleton类，它只包含一个singleInstance域。因此，禁止使用带有类型变量的静态域和方法。
 
 ### 8.6.8 不能抛出或捕获泛型类的实例
 
-既不能抛出也不能捕获泛型类对象。实际上， 甚至泛型类扩展 Throwable 都是不合法的。 
+既不能抛出也不能捕获泛型类对象。实际上， 甚至泛型类扩展 Throwable 都是不合法的。 例如，以下定义就不能正常编译：
 
-catch 子句中不能使用类型变量。 
+~~~java
+public class Problem<T> extends Exception {
+    /* ... */
+} // Error -- can't extend Throwable
+~~~
 
-不过， 在异常规范中使用类型变量是允许的。 
+catch 子句中不能使用类型变量。 例如，以下方法将不能编译：
+
+~~~java
+public static <T extends Throwable> void doWork(Class<T> t){
+    try{
+        // do work
+    } catch (T e) {
+        // Error -- can't catch type variable
+        Logger.glabal.info(...)
+    }
+}
+~~~
+
+不过， 在异常规范中使用类型变量是允许的。 以下方法是合法的：
+
+~~~java
+public static <T extends Throwable> void doWork(T t) throws T {
+    // OK
+    try {
+        // do work
+    } catch(Throwable realCause) {
+        t.initCause(realCause);
+        throw t;
+    }
+}
+~~~
 
 ### 8.6.9 可以消除对受查异常的检查
 
