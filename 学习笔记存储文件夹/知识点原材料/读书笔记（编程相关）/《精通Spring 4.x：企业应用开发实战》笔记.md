@@ -1526,7 +1526,7 @@ Bean的完整生命周期从Spring容器着手实例化Bean开始，直到最终
 
 Bean级生命周期接口和容器级生命周期接口是个性和共性辩证统一思想的体现，前者解决Bean个性化处理的问题，而后者解决容器中某些Bean共性化处理的问题。
 
-Spring容器中是否可以注册多个后处理器呢？答案是肯定的。只要它们同时实现org.springframework.core.Ordered接口，容器将按特定的顺序依次调用这些后处理器。所以图4-11带"`*`"的步骤都可能调用多个后处理器进行一系列加工操作。
+Spring容器中是否可以注册多个后处理器呢？答案是肯定的。只要它们同时实现org.springframework.core.Ordered接口，容器将按特定的顺序依次调用这些后处理器。所以[图4-11](#graph4-11)带"`*`"的步骤都可能调用多个后处理器进行一系列加工操作。
 
 InstantiationAwareBeanPostProcessor其实是BeanPostProcessor接口的子接口，Spring为其提供了一个适配器类InstantiationAwareBeanPostProcessorAdapter，一般情况下，可以方便地扩展该适配器覆盖感兴趣的方法以定义实现类。下面将通过一个具体的实例来更好地理解Bean生命周期的各个步骤。
 
@@ -1704,8 +1704,152 @@ import com.smart.Car;
 public class BeanLifeCycle{
     private static void LifeCycleInBeanFactory(){
         // ①下面两句装载配置文件并启动容器
+        Resource res = new ClassPathResource("com/smart/beanfactory/beans.xml");
         
+        BeanFactory bf = new DefaultListableBeanFactory();
+        XmlBeanDefinitionReader reader = new XmlBeanDefinitionReader((DefaultListableBeanFactory)bf);
+        reader.loadBeanDefinitions(res);
+        
+        // ②向容器中注册MyBeanPostProcessor后处理器
+        ((ConfigurableBeanFactory)bf).addBeanPostProcessor(new MyBeanPostProcessor());
+        
+        // ③向容器中注册MyInstantiationAwareBeanPostProcessor后处理器
+        ((ConfigurableBeanFactory)bf).addBeanPostProcessor(new MyInstantiationAwareBeanPostProcessor());
+        
+        // ④第一次从容器中获取car，将触发容器实例化该Bean，这将引发Bean生命周期方法的调用
+        Car car1 = (Car)bf.getBean("car");
+        car1.introduce();
+        car1.setColor("红色");
+        
+        // ⑤第二次从容器中获取car，直接从缓存池中获取
+        Car car = (Car)bf.getBean("car");
+        
+        // ⑥查看car1和car2是否指向同一引用
+        System.out.println("car1==car2:"+(car1==car2));
+        
+        // ⑦关闭容器
+        ((DefaultListableBeanFactory)bf).destroySingletons();
+    }
+    
+    public static void main(String[] args){
+        LifeCycleInBeanFactory();
     }
 }
 ~~~
 
+在①处，装载了配置文件并启动容器。在②处，向容器中注册了MyBeanPostProcessor后处理器，注意对BeanFactory类型的bf变量进行了强制类型转换，因为用于注册后处理器的addBeanPostProcessor()方法是在ConfigurableBeanFactory接口中定义的。如果有多个后处理器，则可以按照相似的方式调用addBeanPostProcessor()方法进行注册。需要强调的是，后处理器的实际调用顺序和注册顺序是无关的，在具有多个后处理器的情况下，必须通过实现的org.springframework.core.Ordered接口来确定调用顺序。
+
+在③处，按照注册MyBeanPostProcessor后处理器相同的方法注册MyInstantiationAwareBeanPostProcessor后处理器，Spring容器会自动检查后处理器是否实现了InstantiationAwareBeanPostProcessor接口，并据此判断后处理器的类型。
+
+在④处，第一次从容器中获取car Bean，容器将按[图4-11](#graph4-11)中描述的Bean生命周期过程，实例化Car并将其放入缓存池中，然后再将这个Bean引用返回给调用者。在⑤处，再次从容器中获取car Bean，Bean将从容器缓存池中直接取出，不会引发生命周期相关方法的执行。如果Bean的作用范围定义为scope="prototype"，则第二次getBean()时，生命周期方法会再次被调用，因为prototype范围的Bean每次都返回新的实例。在⑥处，检验car1和car2是否指向相同的对象。
+
+运行BeanLifeCycle，在控制台得到以下输出信息：
+
+~~~
+InstantiationAwareBeanPostProcessor.postProcessorBeforeInstantiation
+调用Car()构造函数。
+InstantiationAwareBeanPostProcessor.postProcessorAfterInstantiation
+InstantiationAwareBeanPostProcessor.postProcessorPropertyValues
+调用setBrand()设置属性。
+调用BeanNameAware.setBeanName()。
+调用BeanFactoryAware.setBeanFactory()。
+调用BeanPostProcessor.postProcessBeforeInitialization(), color为空，设置为默认黑色。
+调用InitializingBean.afterPropertiesSet()。
+调用myInit()，将maxSpeed设置为240。
+调用BeanPostProcessor.postProcessAfterInitialization(),将maxSpeed调整为200。
+brand:奇瑞QQ;color:黑色;maxSpeed:200
+brand:奇瑞QQ;color:红色;maxSpeed:200
+2016-01-03 15:47:10,640 INFO [main] (DefaultSingletonBeanRegistry.java:272) - Destroying singletons in (org.springframework.beans.factory.xml.XmlBeanFactory defining beans [car]; root of BeanFactory hierarchy)
+调用DisposableBean.destroy()。
+调用myDestroy()。
+~~~
+
+仔细观察输出的信息，发现其验证了前面所介绍的Bean生命周期的完整过程。在⑦处，通过destroySingletons()方法关闭了容器，由于Car实现了销毁接口并指定了销毁方法，所以容器将触发调用这两个方法。
+
+#### 3、关于Bean生命周期接口的探讨
+
+通过实现Spring的Bean生命周期接口对Bean进行额外控制，虽然让Bean具有了更细致的生命周期阶段，但也带来了一个问题：Bean和Spring框架紧密地绑定在一起，这和Spring一直推崇的“不对应用程序类作任何限制”的理念是相悖的。因此，如果用户希望将业务类完全POJO化，则可以只实现自己的业务接口，不需要和某个特定框架（包括Spring框架）的接口关联。可以通过`<bean>`的init-method和destroy-method属性配置方式为Bean指定初始化和销毁的方法，采用这种方式对Bean生命周期的控制效果和通过实现InitializingBean和DisposableBean接口所达到的效果是完全不同的。采用前者的配置方式可以使Bean不需要和特定的Spring框架接口绑定，达到了框架解耦的目的。此外，Spring还拥有一个Bean后置处理器initDestroyAnnotationBeanPostProcessor，它负责对标注了@PostConstruct、@PreDestroy的Bean进行处理，在Bean初始化后及销毁前执行相应的逻辑。喜欢注解的读者，可以通过InitDestroyAnnotationBeanPostProcessor达到和以上两种方式相同的效果（如果在ApplicationContext中，则已经默认装配了该处理器）。
+
+对于BeanFactoryAware和BeanNameAware接口，前者让Bean感知容器（BeanFactory实例），而后者让Bean获得配置文件中对应的配置名称。一般情况下，用户几乎不需要关心这两个接口。如果Bean希望获取容器中的其他Bean，则可以通过属性注入的方式引用这些Bean；如果Bean希望在运行期获知在配置文件中的Bean名称，则可以简单地将名称作为属性注入。
+
+综上所述，我们认为，除非编写一个基于Spring之上的扩展插件或子项目之类的东西，否则用户完全可以抛开以上4个Bean生命周期的接口类，使用更好的方案替代之。
+
+但BeanPostProcessor接口却不一样，它不要求Bean去继承它，可以完全像插件一样注册到Spring容器中，为容器提供额外的功能。Spring容器充分利用了BeanPostProcessor对Bean进行加工处理，当我们讲到Spring的AOP功能时，还会对此进行分析，了解BeanPostProcessor对Bean的影响，对于深入理解Spring核心功能的工作机理将会有很大的帮助。很多Spring扩展插件或Spring子项目都是使用这些后处理器完成激动人心的功能的。
+
+### 4.5.2 ApplicationContext中Bean的生命周期
+
+Bean在应用上下文中的生命周期和在BeanFactory中的生命周期类似，不同的是，如果Bean实现了org.springframework.context.ApplicationContextAware接口，则会增加一个调用该接口方法setApplicationContext()的步骤，如图4-12所示。
+
+~~~mermaid
+graph TB
+start(( ))--启动容器-->postProcessBeanFatory(调用BeanFactoryPostProcessor的postProcessBeanFactory方法对工厂定义信息进行后处理)
+postProcessBeanFatory--通过getBean调用某一个Bean-->postProcessBeforeInstantiation(*调用InstantiationAwareBeanPostProcessor的postProcessBeforeInstantiation方法)
+postProcessBeforeInstantiation-->实例化
+实例化-->postProcessAfterInstantiation(*调用InstantiationAwareBeanPostProcessor的postProcessBeforeInstantiation方法)
+postProcessAfterInstantiation-->postProcessPropertyValues(*调用InstantiationAwareBeanPostProcessor的postProcessPropertyValues方法)
+postProcessPropertyValues-->设置属性值
+设置属性值-->setBeanName(调用BeanNameAware的setBeanName方法)
+setBeanName-->setBeanFactory(调用BeanFactoryAware的setBeanFactory方法)
+setBeanFactory-->setApplicationContext(调用ApplicationContextAware的setApplicationContext方法)
+setApplicationContext-->postProcessBeforeInitialization(*调用BeanPostProcessor的postProcessBeforeInitialization方法)
+postProcessBeforeInitialization-->afterPropertiesSet(调用InitializingBean的afterPropertiesSet方法)
+afterPropertiesSet-->init-method(通过init-method属性配置的初始化方法)
+init-method--singleton-->缓冲池Bean((Spring缓存池中准备就绪的Bean))
+init-method--prototype-->调用者Bean((将准备就绪的Bean交给调用者))
+缓冲池Bean--容器销毁-->destroy(调用DisposableBean的destroy方法)
+destroy-->destroy-method(通过destroy-method属性配置的销毁方法)
+destroy-method-->stop(( ))
+style 调用者Bean stroke:#f66,stroke-width:2px,stroke-dasharray: 5, 5
+~~~
+
+此外，如果在配置文件中声明了工厂后处理器接口BeanFactoryPostProcessor的实现类，则应用上下文在装载配置文件之后、初始化Bean实例之前将调用这些BeanFactoryPostProcessor对配置信息进行加工处理。Spring框架提供了多个工厂后处理器，如CustomEditorConfigurer、PropertyPlaceholderConfigurer等，我们将在第5章中详细介绍它们的功用。如果在配置文件中定义了多个工厂后处理器，那么最好让它们实现org.springframework.core.Ordered接口，以便Spring以确定的顺序调用它们。工厂后处理器是容器级的，仅在应用上下文初始化时调用一次，其目的是完成一些配置文件的加工处理工作。
+
+ApplicationContext和BeanFactory另一个最大的不同之处在于：前者会利用Java反射机制自动识别出配置文件中定义的BeanPostProcessor、InstantiationAwareBeanPostProcessor和BeanFactoryPostProcessor，并自动将它们注册到应用上下文中；而后者需要在代码中通过手工调用addBeanPostProcessor()方法进行注册。这也是为什么在应用开发时普遍使用ApplicationContext而很少使用BeanFactory的原因之一。
+
+在ApplicationContext中，只需在配置文件中通过`<bean>`定义工厂后处理器和Bean后处理器，它们就会按预期的方式运行。
+
+来看一个使用工厂后处理器的实例。假设我们希望对配置文件中car的brand配置属性进行调整，则可以编写一个如代码清单4-34所示的工厂后处理器。
+
+~~~java
+package com.smart.context;
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
+import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
+import com.smart.Car;
+
+public class MyBeanFactoryPostProcessor implements BeanFactoryPostProcessor {
+    // ①对car <bean>的brand属性配置信息进行“偷梁换柱”的加工操作
+    public void postProcessBeanFactory(ConfigurableListableBeanFactory bf) throws BeansException {
+        BeanDefinition bd = bf.getBeanDefinition("car");
+        
+        bd.getPropertyValues().addPropertyValue("brand", "奇瑞QQ");
+        System.out.println("调用BeanFactoryPostProcessor.postProcessBeanFactory()!");
+    }
+}
+~~~
+
+ApplicationContext在启动时，将首先为配置文件中的每个`<bean>`生成一个BeanDefinition对象，BeanDefinition是`<bean>`在Spring容器中的内部表示。当配置文件中所有的`<bean>`都被解析成BeanDefinition时，ApplicationContext将调用工厂后处理器的方法，因此，我们有机会通过程序的方式调整Bean的配置信息。在这里，我们将car对应的BeanDefinition进行调整，将brand属性设置为"奇瑞QQ"，具体配置如代码清单4-35所示
+
+~~~xml
+<!--①这个brand属性的值将被工厂后处理器更改掉-->
+<bean id="car" class="com.smart.Car" init-method="myInit" destroy-method="myDestroy"
+      p:brand="红旗CA72"
+      p:maxSpeed="200"/>
+<!--②工厂后处理器-->
+<bean id="myBeanPostProcessor"
+      class="com.smart.context.MyBeanPostProcessor"/>
+<!--③注册Bean后处理器-->
+<bean id="myBeanFactoryPostProcessor"
+      class="com.smart.context.MyBeanFactoryPostProcessor"/>
+~~~
+
+在②和③处定义的BeanPostProcessor和BeanFactoryPostProcessor会自动被ApplicationContext识别并注册到容器中。在②处注册的工厂后处理器将会对在①处配置的属性值进行调整。在③处还声明了一个Bean后处理器，它也可以对Bean的属性进行调整。启动容器并查看car Bean的信息，将发现car Bean的brand属性成功被工厂后处理器更改了。
+
+## 4.6 小结
+
+# 第5章 在IoC容器中装配Bean
+
+## 5.1 Spring配置概述
+
+### 5.1.1 Spring容器高层视图
