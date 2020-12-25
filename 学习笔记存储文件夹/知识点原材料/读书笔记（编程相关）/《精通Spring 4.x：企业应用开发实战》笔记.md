@@ -1853,3 +1853,156 @@ ApplicationContext在启动时，将首先为配置文件中的每个`<bean>`生
 ## 5.1 Spring配置概述
 
 ### 5.1.1 Spring容器高层视图
+
+要使应用程序中的Spring容器成功启动，需要同时具备以下三方面的条件：
+
+- Spring框架的类包都已经放到应用程序的类路径下。
+- 应用程序为Spring提供了完备的Bean配置信息。
+- Bean的类都已经放到应用程序的类路径下。
+
+Spring启动时读取应用程序提供的Bean配置信息，并在Spring容器中生成一份响应的Spring配置注册表，然后根据这张注册表实例化Bean，装配好Bean之间的依赖关系，为上层应用提供准备就绪的运行环境。
+
+Bean配置信息是Bean的元数据信息，它由以下4个方面组成：
+
+- Bean的实现类。
+- Bean的属性信息，如数据源的连接数、用户名、密码等。
+- Bean的依赖关系，Spring根据依赖关系配置完成Bean之间的装配。
+- Bean的行为配置，如生命周期范围及生命周期各过程的回调函数等。
+
+Bean元数据信息在Spring容器中的内部对应物是由一个个BeanDefinition形成的Bean注册表，Spring实现了Bean元数据信息内部表示和外部定义的解耦。Spring支持多种形式的Bean配置方式。Spring1.0仅支持基于XML的配置，Spring2.0新增基于注解配置的支持，Spring3.0新增基于Java类配置的支持，而Spring4.0则新增基于Groovy动态语言配置的支持。
+
+Bean配置信息首先定义了Bean的实现及依赖关系，Spring容器根据各种形式的Bean配置信息在容器内建立Bean定义注册表；然后根据注册表加载、实例化Bean，并建立Bean和Bean之间的依赖关系；最后将这些准备就绪的Bean放到Bean缓存池中，以供外层的应用程序进行调用。
+
+### 5.1.2 基于XML的配置
+
+对于基于XML的配置，Spring1.0的配置文件采用DTD格式，Spring2.0以后采用Schema格式，后者让不同类型的配置拥有了自己的命名空间，使得配置文件更具扩展性。此外，Spring基于Schema配置方案为许多领域的问题提供了简化的配置方法，配置工作因此得到了大幅简化。
+
+## 5.2 Bean基本配置
+
+### 5.2.1 装配一个Bean
+
+### 5.2.2 Bean的命名
+
+一般情况下，在配置一个Bean时，需要为其指定一个id属性作为Bean的名称。id在IoC容器中必须是唯一的，而且id的命名需要满足XML对id的命名规范（id是XML规定的特殊属性）：必须以字母开始，后面可以是字母、数字、连字符、下划线、句号、冒号等完整结束（full stops）的符号，逗号和空格这些非完整结束符是非法的。在实际情况下，id命名约束并不会给用户带来影响，但如果用户确实希望用一些特殊字符进行Bean命名，则可以使用`<bean>`的name属性。name属性没有字符上的限制，几乎可以使用任何字符，如`?ab`、`123`等。
+
+id和name都可以指定多个名字，名字之间可用逗号、分号或者空格进行分隔。
+
+Spring配置文件不允许出现两个相同id的`<bean>`，但却可以出现两个相同name的`<bean>`。如果有多个name相同的`<bean>`，那么通过getBean(beanName)获取Bean时，将返回后面声明的那个Bean，原因是后面的Bean覆盖了前面同名的Bean。所以为了避免无意间Bean覆盖的隐患，尽量使用id而非name命名Bean。
+
+如果id和name两个属性都未指定，那么Spring自动将全限定类名作为Bean的名称，这时用户可以通过`getBean("com.smart.simple.Car")`获取car Bean。如果存在多个实现类相同的匿名`<bean>`,如下：
+
+~~~xml
+<bean class="com.smart.simple.Car"/>
+<bean class="com.smart.simple.Car"/>
+<bean class="com.smart.simple.Car"/>
+~~~
+
+第一个Bean通过`getBean("com.smart.simple.Car")`获得；第二个Bean通过`getBean("com.smart.simple.Car#1")`获得；第三个Bean通过`getBean("com.smart.simple.Car#3")`获得，以此类推。一般匿名`<bean>`在内部Bean为外层Bean提供注入值时使用，正如Java匿名类一样。
+
+> 提示： 各种眼花缭乱、花拳绣腿式的命名方式着实让我们见识了Spring配置的灵活性和包容性，但在一般情况下，那些奇怪的命名大多是唬人的噱头，不值得在实际项目中使用，通过id为Bean指定唯一的名称才是“康庄大道”。
+
+## 5.3 依赖注入
+
+Spring支持两种依赖注入方式，分别是属性注入和构造函数注入。除此之外，Spring还支持工厂方法注入方式。
+
+### 5.3.1 属性注入
+
+属性注入指通过setXxx()方法注入Bean的属性值或依赖对象。由于属性注入方式具有可选择性和灵活性高的特点，因此属性注入是实际应用中最常采用的注入方式。
+
+#### 1. 属性注入实例
+
+属性注入要求Bean提供一个默认的构造函数，并为需要注入的属性提供对应的setter方法。Spring先调用Bean的默认构造函数实例化Bean对象，然后通过反射的方式调用Setter方法注入属性值。
+
+> 提示：默认构造函数是不带参的构造函数。Java语言规定，如果类中没有定义任何构造函数，则JVM会自动为其生成一个默认的构造函数；反之，如果类中显式定义了构造函数，则JVM不会为其生成默认的构造函数。所以假设Car类中显式定义了一个带参的构造函数，如public Car(String brand)，则需要同时提供一个默认的构造函数public Car()，否则使用属性注入时将抛出异常。
+
+需要指出的是，Spring只会检查Bean是否有对应的Setter方法，至于Bean中是否有对应的属性成员变更则不做要求。举个例子，配置文件中`<property name="brand">`的属性配置项仅要求Car类中拥有setBrand()方法，但Car类不一定要拥有brand成员变量。
+
+虽然如此，但在一般情况下，仍然按照约定俗成的方式在Bean中提供同名的属性变量。
+
+#### 2. JavaBean关于属性命名的特殊规范
+
+Spring配置文件中`<property>`元素所指定的属性名和Bean实现类的Setter实现类的Setter方法满足Sun JavaBean的属性命名规范：xxx的属性对应setXxx()方法。
+
+一般情况下，Java的属性变量名都以小写字母开头，如maxSpeed、brand等，但也存在特殊情况。考虑到一些特定意义的大写英文缩略词（如USA、XML等），JavaBean也允许以大写字母开头的属性变量名，不过必须满足“变量的前两个字母要么全部大写，要么全部小写”的要求，如brand、IDCode、IC、ICCard等属性变量名是合法的，而iC、iCcard、iDCode等属性变量名则是非法的。这个并不广为人知的JavaBean规范条款引发了让人困惑的配置问题。
+
+为了更清楚地理解这个隐晦地问题，我们来看一个具体的实例。下面是一个“违反”了JavaBean属性命名规范的类：
+
+~~~java
+public class Foo {
+    // ①非法的属性变量名，不过Java语言本身不会报错，因为它将iDCode看成普通的变量
+    private String iDCode;
+    
+    // ②该Setter方法对应IDCode属性而非iDCode属性
+    public void setIDCode(String iDcode){
+        this.iDCode = iDcode;
+    }
+}
+~~~
+
+在Spring配置文件中，我们可能会想当然地为Foo提供以下配置：
+
+~~~xml
+<bean id="foo" class="com.smart.attr.Foo">
+	<!--①这个属性变量名是非法的！！-->
+    <property name="iDCode" value="070101"/>
+</bean>
+~~~
+
+当我们试图启动Spring容器时，将会得到启动失败的结果，控制台输出如下错误信息：
+
+~~~
+Error setting property values; 
+nested exception is org.springframework.beans.NotWritablePropertyException: Invalid property 'iDCode' of bean class [com.smart.attr.Foo]: Bean property 'iDCode' is not writable or has an invalid Setter method. Did you mean 'IDCode'?
+Caused by: org.springframework.beans.NotWritablePropertyException: Invalid property 'iDCode' of bean class
+~~~
+
+虽然Spring给出了启动失败的原因，但错误信息具有很强的误导性，因为它“抱怨”Foo中没有提供对应于iDCode的Setter方法，但事实上Foo已经提供了setIDCode()方法。那真相到底是什么呢？其实真正的错误根源是我们在Spring配置文件中指定了一个非法的属性名iDcode，这个非法的属性名永远不可能有对应的Setter方法，因此错误就产生了。
+
+纠正的办法是将配置文件中的属性名改为IDCode，如下：
+
+~~~xml
+<bean id="foo" class="com.smart.attr.Foo">
+	<!--①IDCode对应setIDCode()属性设置方法-->
+    <property name="IDCode" value="070101"/>
+</bean>
+~~~
+
+Foo类中的iDCode属性变量名不一定要修改，因为我们说过，Spring配置文件的属性名仅对应于Bean实现类的get/setXxx()方法。但是如果进一步探讨引发这个配置错误的根源，我们就会归咎于Foo类中iDCode的变量名。原因很简单，因为我们在编写了Foo的iDCode变量名后，通过IDE的代码自动完成功能生成setIDCode()属性设置方法，然后想当然地在Spring配置文件中使用iDCode属性名进行配置，最终造成了Spring启动器的启动错误。
+
+以大写字母开头的变量名总显得比较另类，为了避免这类诡异的错误，用户可以遵照以下的编程经验：像QQ、MSN、ID等正常情况下以大写字母出现的专业术语，在Java中一律将其调整为小写形式，如qq、msn、id等，以保证命名的统一性（变量名都以小写字母开头），减少出现错误的概率。
+
+### 5.3.2 构造函数注入
+
+构造函数注入是除属性注入外的另一种常用的注入方式，它保证一些必要的属性在Bean实例化时就得到设置，确保Bean在实例化后就可以使用。
+
+#### 1. 按类型匹配入参
+
+如果任何可用的Car对象都必须提供brand和price的值，若使用属性注入方式，则只能人为地在配置时提供保证而无法在语法级提供保证，这时通过构造函数注入就可以很好地满足这一要求。使用构造函数注入的前提是Bean必须提供带参的构造函数。下面为Car提供一个可设置brand和price属性的构造函数。
+
+~~~java
+package com.smart.ditype
+public class Car {
+    ...
+    public Car(String brand, double price) {
+        this.brand = brand;
+        this.price = price;
+    }
+}
+~~~
+
+构造函数注入的配置方式和属性注入的配置方式有所不同，下面在Spring配置文件中使用构造函数注入的配置方式装配这个car Bean，如代码清单5-3所示：
+
+~~~xml
+<bean id="car1" class="com.smart.ditype.Car">
+	<constructor-arg type="java.lang.String"> <!--①-->
+    	<value>红旗CA72</value>
+    </constructor-arg>
+    <constructor-arg type="double"> <!--②-->
+    	<value>20000</value>
+    </constructor-arg>
+</bean>
+~~~
+
+在`<constructor-arg>`的元素中有一个type属性，它为Spring提供了判断配置项和构造函数入参对应关系的“信息”。细心的读者可能会提出以下疑问：配置文件中`<bean>`元素的`<constructor-arg>`声明顺序难道不能用于确定构造函数入参的顺序吗？在只有一个构造函数的情况下当然是可以的，但如果在Car中定义了多个具有相同入参的构造函数，这种顺序标识方法就失效了。此外，Spring的配置文件采用和元素标签顺序无关的策略，这种策略可以在一定程度上保证配置信息的确定性，避免一些似是而非的问题。因此，①和②处的`<constructor-arg>`位置并不会对最终配置效果产生影响。
+
+#### 2. 按索引匹配入参
