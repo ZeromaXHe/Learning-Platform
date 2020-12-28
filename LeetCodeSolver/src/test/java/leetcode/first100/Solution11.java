@@ -1,5 +1,6 @@
 package leetcode.first100;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 /**
@@ -153,14 +154,14 @@ public class Solution11 {
     @Test
     public void maxAreaTest() {
         // 49
-        System.out.println(maxArea(new int[]{1, 8, 6, 2, 5, 4, 8, 3, 7}));
+        Assert.assertEquals(49, maxArea(new int[]{1, 8, 6, 2, 5, 4, 8, 3, 7}));
         // 1
-        System.out.println(maxArea(new int[]{1, 1}));
+        Assert.assertEquals(1, maxArea(new int[]{1, 1}));
         // 16
-        System.out.println(maxArea(new int[]{4, 3, 2, 1, 4}));
+        Assert.assertEquals(16, maxArea(new int[]{4, 3, 2, 1, 4}));
         // 4
-        System.out.println(maxArea(new int[]{1, 2, 4, 3}));
+        Assert.assertEquals(4, maxArea(new int[]{1, 2, 4, 3}));
         // 42
-        System.out.println(maxArea(new int[]{4, 6, 4, 4, 6, 2, 6, 7, 11, 2}));
+        Assert.assertEquals(42, maxArea(new int[]{4, 6, 4, 4, 6, 2, 6, 7, 11, 2}));
     }
 }

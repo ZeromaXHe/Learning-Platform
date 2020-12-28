@@ -1,6 +1,7 @@
 package leetcode.from5601to5700;
 
 import com.zerox.util.Array2DUtils;
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -72,8 +73,8 @@ public class Solution5627 {
     @Test
     public void stoneGameVIITest() {
         // 6
-        System.out.println(stoneGameVII(new int[]{5, 3, 1, 4, 2}));
+        Assert.assertEquals(6, stoneGameVII(new int[]{5, 3, 1, 4, 2}));
         // 122
-        System.out.println(stoneGameVII(new int[]{7, 90, 5, 1, 100, 10, 10, 2}));
+        Assert.assertEquals(122, stoneGameVII(new int[]{7, 90, 5, 1, 100, 10, 10, 2}));
     }
 }

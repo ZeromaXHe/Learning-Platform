@@ -1,5 +1,6 @@
 package leetcode.from101to200;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 /**
@@ -176,12 +177,12 @@ public class Solution135 {
 //        System.out.println(sum);
 
         // 5
-        System.out.println(candy(new int[]{1, 0, 2}));
+        Assert.assertEquals(5, candy(new int[]{1, 0, 2}));
         // 4
-        System.out.println(candy(new int[]{1, 2, 2}));
+        Assert.assertEquals(4, candy(new int[]{1, 2, 2}));
         // 4
-        System.out.println(candy(new int[]{1, 2, 1}));
+        Assert.assertEquals(4, candy(new int[]{1, 2, 1}));
         // 35
-        System.out.println(candy(new int[]{1, 0, 2, 2, 3, 4, 3, 7, 0, 0, 1, 2, 3, 2, 1, 1, 4, 4, 2, 2}));
+        Assert.assertEquals(35, candy(new int[]{1, 0, 2, 2, 3, 4, 3, 7, 0, 0, 1, 2, 3, 2, 1, 1, 4, 4, 2, 2}));
     }
 }

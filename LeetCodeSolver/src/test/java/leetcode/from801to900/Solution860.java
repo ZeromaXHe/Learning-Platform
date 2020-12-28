@@ -1,5 +1,6 @@
 package leetcode.from801to900;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -100,6 +101,6 @@ public class Solution860 {
     public void lemonadeChangeTest() {
         // [5,5,10,20,5,5,5,5,5,5,5,5,5,10,5,5,20,5,20,5]
         // true
-        System.out.println(lemonadeChange(new int[]{5, 5, 10, 20, 5, 5, 5, 5, 5, 5, 5, 5, 5, 10, 5, 5, 20, 5, 20, 5}) + " = true");
+        Assert.assertTrue(lemonadeChange(new int[]{5, 5, 10, 20, 5, 5, 5, 5, 5, 5, 5, 5, 5, 10, 5, 5, 20, 5, 20, 5}));
     }
 }

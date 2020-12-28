@@ -1,5 +1,6 @@
 package leetcode.from101to200;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -190,6 +191,6 @@ public class Solution188 {
     public void maxProfit_greedyTest() {
         //1
         //[6,1,6,4,3,0,2]
-        System.out.println(maxProfit_greedy(1, new int[]{6, 1, 6, 4, 3, 0, 2}));
+        Assert.assertEquals(5, maxProfit_greedy(1, new int[]{6, 1, 6, 4, 3, 0, 2}));
     }
 }
