@@ -1,5 +1,8 @@
 package leetcode.from101to200;
 
+import org.junit.Test;
+
+import java.util.ArrayList;
 import java.util.Arrays;
 
 /**
@@ -91,5 +94,102 @@ public class Solution188 {
         return Arrays.stream(sell[n - 1])
                 .max()
                 .getAsInt();
+    }
+
+    /**
+     * 执行用时： 8 ms , 在所有 Java 提交中击败了 52.90% 的用户
+     * 内存消耗： 36.2 MB , 在所有 Java 提交中击败了 81.95% 的用户
+     * <p>
+     * 看题解区有个python实现的贪心算法，试着也实现一下。
+     *
+     * @param k
+     * @param prices
+     * @return
+     */
+    public int maxProfit_greedy(int k, int[] prices) {
+        int n = prices.length;
+        int sum = 0;
+        if (k == 0 || n == 0) {
+            return sum;
+        }
+        if (k >= n / 2) {
+            for (int i = 1; i < n; i++) {
+                if (prices[i] - prices[i - 1] > 0) {
+                    sum += prices[i] - prices[i - 1];
+                }
+            }
+            return sum;
+        }
+        ArrayList<Integer> up_num = new ArrayList<>(n);
+        ArrayList<Integer> down_num = new ArrayList<>(n);
+        int low = prices[0];
+        int high = -1;
+        for (int i = 1; i < n; i++) {
+            if (prices[i] > prices[i - 1]) {
+                if (i + 1 == n || prices[i + 1] <= prices[i]) {
+                    up_num.add(prices[i] - low);
+                    if (high >= 0) {
+                        down_num.add(high - low);
+                    }
+                    high = prices[i];
+                }
+            } else {
+                low = prices[i];
+            }
+        }
+        while (up_num.size() > k) {
+            int[] min_up = min(up_num);
+            int[] min_down = min(down_num);
+            if (min_up[0] <= min_down[0]) {
+                int index = min_up[1];
+                if (index == 0) {
+                    down_num.remove(0);
+                } else if (index == up_num.size() - 1) {
+                    down_num.remove(down_num.size() - 1);
+                } else {
+                    down_num.set(index - 1, down_num.get(index - 1) + down_num.get(index) - up_num.get(index));
+                    down_num.remove(index);
+                }
+                up_num.remove(index);
+            } else {
+                int index = min_down[1];
+                up_num.set(index + 1, up_num.get(index + 1) + up_num.get(index) - down_num.get(index));
+                up_num.remove(index);
+                down_num.remove(index);
+            }
+        }
+
+        return sum(up_num);
+    }
+
+    private int sum(ArrayList<Integer> arrayList) {
+        int sum = 0;
+        for (int i : arrayList) {
+            sum += i;
+        }
+        return sum;
+    }
+
+    /**
+     * @param arrayList
+     * @return 数组下标0的数为最小值，下标1的数为最小值所在位置
+     */
+    private int[] min(ArrayList<Integer> arrayList) {
+        int[] result = new int[2];
+        result[0] = arrayList.get(0);
+        for (int i = 1; i < arrayList.size(); i++) {
+            if (arrayList.get(i) < result[0]) {
+                result[0] = arrayList.get(i);
+                result[1] = i;
+            }
+        }
+        return result;
+    }
+
+    @Test
+    public void maxProfit_greedyTest() {
+        //1
+        //[6,1,6,4,3,0,2]
+        System.out.println(maxProfit_greedy(1, new int[]{6, 1, 6, 4, 3, 0, 2}));
     }
 }
