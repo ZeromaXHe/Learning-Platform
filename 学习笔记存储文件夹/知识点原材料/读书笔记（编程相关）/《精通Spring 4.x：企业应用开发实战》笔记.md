@@ -2006,3 +2006,580 @@ public class Car {
 在`<constructor-arg>`的元素中有一个type属性，它为Spring提供了判断配置项和构造函数入参对应关系的“信息”。细心的读者可能会提出以下疑问：配置文件中`<bean>`元素的`<constructor-arg>`声明顺序难道不能用于确定构造函数入参的顺序吗？在只有一个构造函数的情况下当然是可以的，但如果在Car中定义了多个具有相同入参的构造函数，这种顺序标识方法就失效了。此外，Spring的配置文件采用和元素标签顺序无关的策略，这种策略可以在一定程度上保证配置信息的确定性，避免一些似是而非的问题。因此，①和②处的`<constructor-arg>`位置并不会对最终配置效果产生影响。
 
 #### 2. 按索引匹配入参
+
+如果构造函数有两个类型相同的入参，那么仅通过type就无法确定对应关系了，这时需要通过入参索引的方式进行确定。
+
+> 提示：
+>
+> 我们知道，在属性注入时，Spring按JavaBean规范找到配置属性所对应的Setter方法，并使用Java反射机制调用Setter方法完成属性注入。但Java反射机制并不会记住构造函数的入参名，因此我们无法通过指定构造函数的入参名进行构造函数注入的配置，只能通过入参类型和索引信息间接确定构造函数配置项和入参的对应关系。
+
+为了更好地演示按索引匹配入参的配置方式，我们特意对Car构造函数进行了一下调整：
+
+~~~java
+// ①该构造函数第一、第二入参都是String类型
+public Car(String brand, String corp, double price) {
+    this.brand = brand;
+    this.corp = corp;
+    this.price = price;
+}
+~~~
+
+因为brand和corp的入参类型都是String，所以String无法确定type为String的`<constructor-arg>`到底对应的是brand还是corp。但是通过显式指定参数的索引能够消除这种不确定性。
+
+~~~xml
+<bean id="car2" class="com.smart.ditype.Car">
+    <!-- ①注意索引从0开始 -->
+    <constructor-arg index="0" value="红旗CA72"/>
+    <constructor-arg index="1" value="中国一汽"/>
+    <constructor-arg index="2" value="20000"/>
+</bean>
+~~~
+
+构造函数的第一个参数索引为0，第二个为1，以此类推。
+
+#### 3. 联合使用类型和索引匹配入参
+
+~~~java
+...
+public Car(String brand, String corp, double price) {
+    this.brand = brand;
+    this.corp = corp;
+    this.price = price;
+}
+public Car(String brand, String corp, int maxSpeed) {
+    this.brand = brand;
+    this.corp = corp;
+    this.maxSpeed = maxSpeed;
+}
+...
+~~~
+
+~~~xml
+<!-- ①对应Car(String brand, String corp, int maxSpeed)构造函数 -->
+<bean id="car3" class="com.smart.ditype.Car">
+    <constructor-arg index="0" type="java.lang.String">
+        <value>红旗CA72</value>
+    </constructor-arg>
+    <constructor-arg index="1" type="java.lang.String">
+        <value>中国一汽</value>
+    </constructor-arg>
+    <constructor-arg index="2" type="int">
+        <value>200</value>
+    </constructor-arg>
+</bean>
+~~~
+
+真正引起歧义的地方是第三个入参，因此仅需要明确指定第三个入参的类型就可以取消歧义。所以在代码清单5-6中，第一、第二个`<constructor-arg>`元素的type属性可以去除。
+
+对于因参数数目相同而类型不同引起的潜在配置歧义问题，Spring容器可以正确启动且不会给出报错信息，它将随机采用一个匹配的构造函数实例化Bean，而被选择的构造函数可能并不是用户所期望的那个。因此，必须特别谨慎，以避免潜在的错误。
+
+#### 4. 通过自身类型反射匹配入参
+
+当然，如果Bean构造函数入参的类型是可识别的（非基础数据类型且入参类型各异），由于Java反射机制可以获取构造函数入参的类型，即使构造函数注入的配置不提供类型和索引的信息，Spring依旧可以正确地完成构造函数的注入工作。下面Boss类构造函数的入参就是可辩别的。
+
+~~~java
+public Boss(String name, Car car, Office office){
+    this.name = name;
+    this.car = car;
+    this.office = office;
+}
+~~~
+
+~~~xml
+<bean id="boss" class="com.smart.ditype.Boss">
+	<!--①没有设置type和index属性，通过入参值的类型完成匹配映射-->
+    <constructor-arg>
+    	<value>John</value>
+    </constructor-arg>
+    <constructor-arg>
+    	<ref bean="car"/>
+    </constructor-arg>
+    <constructor-arg>
+    	<ref bean="office"/>
+    </constructor-arg>
+</bean>
+<bean id="car" class="com.smart.ditype.Car"/>
+<bean id="office" class="com.smart.ditype.Office"/>
+~~~
+
+但是为了避免潜在配置歧义引起的张冠李戴的情况，如果Bean存在多个构造函数，那么使用显式指定index和type属性不失为一种良好的配置习惯。
+
+#### 5. 循环依赖问题
+
+Spring容器能对构造函数配置的Bean进行实例化有一个前提，即Bean构造函数入参引用的对象必须已经准备就绪。由于这个机制的限制，如果两个Bean都采用构造函数注入，而且都通过构造函数入参引用对方，就会发生类似于线程死锁的循环依赖问题。来看一个发生循环依赖问题的例子：
+
+~~~java
+public class Car {
+    ...
+    // ①构造函数依赖于一个boss实例
+    public Car(String brand, Boss boss) {
+        this.brand = brand;
+        this.boss = boss;
+    }
+    ...
+}
+
+public class Boss {
+    ...
+    // ②构造函数依赖于一个car实例
+    public Boss(String name, Car car){
+        this.name = name;
+        this.car = car;
+    }
+    ...
+}
+~~~
+
+假设在Spring配置文件中按照以下构造函数注入方式进行配置：
+
+~~~xml
+<bean id="car" class="com.smart.cons.Car">
+	<constructor-arg index="0" value="红旗CA72"/>
+    <!--①引用②处的boss-->
+    <constructor-arg index="1" ref="boss"/>
+</bean>
+<bean id="boss" class="com.smart.cons.Boss">
+	<constructor-arg index="0" value="John"/>
+    <!--②引用①处的car-->
+    <constructor-arg index="1" ref="car"/>
+</bean>
+~~~
+
+当启动Spring IoC容器时，因为存在循环依赖问题，Spring容器将无法成功启动。如何解决这个问题呢？用户只需修改Bean的代码，将构造函数注入方式调整为属性注入方式就可以了。
+
+### 5.3.3 工厂方法注入
+
+工厂方法是在应用中被经常使用的设计模式，它也是控制反转和单实例设计思想的主要实现方法。由于Spring IoC容器以框架的方式提供工厂方法的功能，并以透明的方式开放给开发者，所以很少需要手工编写基于工厂方法的类。正是因为工厂方法已经成为底层设施的一部分，因此工厂方法对于实际编码的重要性就降低了。不过在一些遗留系统或第三方类库中，我们还会遇到工厂方法，这时可以使用Spring工厂方法注入的方式进行配置。
+
+#### 1. 非静态工厂方法
+
+有些工厂方法是非静态的，即必须实例化工厂类后才能调用工厂方法。下面为Car提供一个非静态的工厂类，如代码清单5-7所示。
+
+~~~java
+package com.smart.ditype;
+public class CarFactory {
+    // ①创建Car的工厂方法
+    public Car createHongQiCar() {
+        Car car = new Car();
+        car.setBrand("红旗CA72");
+        return car;
+    }
+}
+~~~
+
+工厂类负责创建一个或多个目标类实例，工厂类方法一般以接口或抽象类变量的形式返回目标类实例。工厂类对外屏蔽了目标类的实例化步骤，调用者甚至无须知道具体的目标类是什么。在代码清单5-7中，CarFactory工厂类仅负责创建Car类型的对象，下面的配置片段使用CarFactory为Car提供工厂方法的注入，如代码清单5-8所示。
+
+~~~xml
+...
+<!-- ①工厂类Bean -->
+<bean id="carFactory" class="com.smart.ditype.CarFactory"/>
+
+<!-- factory-bean 指定①处的工厂类Bean；factory-method 指定工厂类Bean创建该Bean的工厂方法 -->
+<bean id="car5" factory-bean="carFactory" factory-method="createHongQiCar"/>
+~~~
+
+由于CarFactory工厂类的工厂方法不是静态的，所以首先需要定义一个工厂类的Bean，然后通过factory-bean引用工厂类实例，最后通过factory-method指定对应的工厂类方法。
+
+#### 2. 静态工厂方法
+
+很多工厂类方法都是静态的，这意味着用户在无须创建工厂类实例的情况下就可以调用工厂类方法，因此，静态工厂方法比非静态工厂方法更易使用。下面对CarFactory进行改造，将其createHongQiCar()方法调整为静态的，如代码清单5-9所示。
+
+~~~java
+package com.smart.ditype;
+public class CarFactory {
+    // ①工厂类方法是静态的
+    public static Car createHongQiCar(){
+        ...
+    }
+}
+~~~
+
+当使用静态工厂类型的方法后，用户就无需在配置文件中定义工厂类的Bean，只需按以下方式进行配置即可：
+
+~~~xml
+<bean id="car6" class="com.smart.ditype.CarFactory" factory-method="createCar"/>
+~~~
+
+直接在bean中通过class属性指定工厂类，然后再通过factory-method指定对应的工厂方法。
+
+### 5.3.4 选择注入方式的考量
+
+Spring提供了3种可供选择的注入方式，在实际应用中，究竟应该选择哪种注入方式呢？对于这个问题，仁者见仁，智者见智，并没有统一的标准。下面是支持使用构造函数注入的理由：
+
+- 构造函数可以保证一些重要的属性在Bena实例化时就设置好，避免因为一些重要属性没有提供而导致一个无用Bean实例的情况。
+- 不需要为每个属性提供Setter方法，减少了类的方法个数。
+- 可以更好地封装类变量，不需要为每个属性指定Setter方法，避免外部错误的调用。
+
+更多的开发者可能倾向于使用属性注入方式，他们反对构造函数注入的理由如下：
+
+- 如果一个类的属性众多，那么构造函数的签名将变成一个庞然大物，可读性很差。
+- 灵活性不强，在有些属性是可选的情况下，如果通过构造函数注入，也需要为可选的参数提供一个null值。
+- 如果有多个构造函数，则需要考虑配置文件和具体构造函数匹配歧义的问题，配置上相对复杂。
+- 构造函数不利于类的继承和扩展，因为子类需要引用父类复杂的构造函数。
+- 构造函数注入有时会造成循环依赖的问题。
+
+其实构造函数注入和属性注入各有自己的应用场景，Spring并没有强制用户使用哪一种方式，用户完全可以根据个人偏好做出选择，在某些情况下使用构造函数注入，而在另一些情况下使用属性注入。对于一个全新开发的应用来说，我们不推荐使用工厂方法的注入方式，因为工厂方法需要额外的类和代码，这些功能和业务是没有关系的，既然Spring容器已经以一种更优雅的方式实现了传统工厂模式的所有功能，那么我们大可不必再去做这项重复性的工作。
+
+## 5.4 注入参数详解
+
+在Spring配置文件中，用户不但可以将String，int等字面值注入Bean中，此外还可以将集合、Map等类型的数据注入Bean中，此外还可以注入配置文件中其他定义的Bean。
+
+### 5.4.1 字面值
+
+所谓“字面值”一般是指可用字符串表示的值，这些值可以通过`<value>`元素标签进行注入。在默认情况下，基本数据类型及其封装类、String等类型都可以采取字面值注入的方式。Spring容器在内部为字面值提供了编辑器，它可以将以字符串表示的字面值转换为内部变量的相应类型。Spring允许用户注册自定义的编辑器，以处理其他类型属性注入时的转换工作（关于自定义编辑器的内容，请参见第6章）。
+
+在下面的示例中，我们为Car注入了两个属性值，并在Spring配置文件中使用字面值提供配置值，如代码清单5-10所示。
+
+~~~xml
+<bean id="car" class="com.smart.attr.Car">
+	<property name="maxSpeed">
+    	<value>200</value>
+    </property>
+    <property name="brand">
+    	<value><![CDATA[红旗&CA72]]></value>
+    </property>
+</bean>
+~~~
+
+由于①处的brand属性包含一个XML的特殊符号，因此我们特意在属性值外添加了一个XML特殊标签`<![CDTA[]]>`。`<![CDTA[]]>`的作用是让XML解析器将标签中的字符串当作普通的文本对待，以防止特殊字符串对XML格式造成破坏。
+
+XML中共有5个特殊的字符，分别是`&`、`<`、`>`、`"`、`'`。如果配置文件中的注入值包括这些特殊字符，就需要进行特别处理。有两种解决方法：其一，采用本例中的特殊标签`<![CDTA[]]>`，将包含特殊字符的字符串封装起来；其二，使用XML转移序列表示这些特殊字符，这5个特殊字符所对应的XML转义序列在表5-2中进行了说明。
+
+| 特殊符号 | 转义序列 |
+| -------- | -------- |
+| <        | `&lt;`   |
+| >        | `&gt;`   |
+| &        | `&amp;`  |
+| "        | `&quot;` |
+| '        | `&apos;` |
+
+如果使用XML转义序列，则可以使用以下配置替换代码清单5-10中的配置。
+
+~~~xml
+<property name="brand">
+	<value>红旗&amp;CA72</value>
+</property>
+~~~
+
+> 提示：
+>
+> 一般情况下，XML解析器会忽略标签内部字符串的前后空格，但Spring却不会忽略元素标签内部字符串的前后空格。Spring会将字符串连同其前后空格一起赋给brand属性。
+
+### 5.4.2 引用其他Bean
+
+Spring IoC容器中定义的Bean可以相互引用，IoC容器则充当“红娘”的角色。下面创建一个新的Boss类，Boss类中拥有一个Car类型的属性。
+
+~~~java
+package com.smart.attr;
+public class Boss {
+    private Car car;
+    // ①设置car属性
+    public void setCar(Car car) {
+        this.car = car;
+    }
+    ...
+}
+~~~
+
+boss的Bean通过`<ref>`元素引用car Bean，建立起boss对car的依赖。
+
+~~~xml
+<!-- ①car Bean -->
+<bean id="car" class="com.smart.attr.Car"/>
+<bean id="boss" class="com.smart.attr.Boss">
+	<property name="car">
+    	<!-- ②引用①处定义的car Bean -->
+        <ref bean="car"></ref>
+    </property>
+</bean>
+~~~
+
+`<ref>`元素可以通过以下3个属性引用容器中的其他Bean。
+
+- bean：通过该属性可以引用同一容器或父容器中的Bean，这是最常见的形式。
+- local：通过该属性只能引用同一配置文件中定义的Bean，它可以利用XML解析器自动检验引用的合法性，以便开发人员在编写配置时能够及时发现并纠正配置错误。
+- parent：引用父容器中的Bean，如`<ref parent="car">`的配置说明car的Bean是父容器中的Bean。
+
+下面是分别使用父、子容器加载beans1.xml和beans2.xml配置文件的代码：
+
+~~~java
+// ①父容器
+ClassPathXmlApplicationContext pFactory = new ClassPathXmlApplicationContext(new String[]{"com/smart/attr/beans1.xml"});
+// ②指定pFactory为该容器的父容器
+ApplicationContext factory = new ClassPathXmlApplicationContext(new String[]{"com/smart/attr/beans2.xml"}, pFactory);
+Boss boss = (Boss)factory.getBean("boss");
+System.out.println(boss.getCar().toString());
+~~~
+
+### 5.4.3 内部Bean
+
+如果car Bean只被boss Bean引用，而不被容器中任何其他的Bean引用，则可以将car以内部Bean的方式注入Boss中。
+
+~~~xml
+<bean id="boss" class="com.smart.attr.Boss">
+	<property name="car">
+    	<bean class="com.smart.attr.Car">
+        	<property name="maxSpeed" value="200"/>
+            <property name="price" value="2000.00"/>
+        </bean>
+    </property>
+</bean>
+~~~
+
+内部Bean和Java的匿名内部类相似，既没有名字，也不能被其他Bean引用，只能在声明处为外部Bean提供实例注入。
+
+内部Bean即使提供了id、name、scope属性，也会被忽略，scope默认为prototype类型。关于Bean的作用域，将在5.8节进行详细介绍。
+
+### 5.4.4 null值
+
+Spring会将`<value></value>`解析为空字符串。必须使用专用的`<null/>`元素标签，通过它可以为Bean的字符串或其他对象类型的属性注入null值。
+
+~~~xml
+<property name="brand"><null/></property>
+~~~
+
+上面的配置代码等同于调用car.setBrand(null)方法。
+
+### 5.4.5 级联属性
+
+和Struts、Hibernate等框架一样，Spring支持级联属性的配置。假设我们希望在定义Boss时直接为Car的属性提供注入值，则可以采取以下配置方式：
+
+~~~xml
+<bean id="boss3" class="com.smart.attr.Boss">
+	<!-- ①以圆点(.)的方式定义级别属性 -->
+    <property name="car.brand" value="吉利CT50"/>
+</bean>
+~~~
+
+按照上面的配置，Spring将调用`Boss.getCar().setBrand("吉利CT50")`方法进行属性的注入操作。这时必须对Boss类进行改造，为car属性声明一个初始化对象。
+
+~~~java
+public class Boss {
+    // ①声明初始化对象
+    private Car car = new Car();
+    public Car getCar() {
+        return car;
+    }
+    public void setCar(Car car) {
+        this.car = car;
+    }
+}
+~~~
+
+在①处为Boss的car属性提供了一个非空的Car实例。如果没有为car属性提供Car对象，那么Spring在设置级联属性时将抛出NullValueInNestedPathException异常。
+
+Spring没有对级联属性的层级数进行限制，只要配置的Bean拥有对应于级联属性的类结构，就可以配置任意层级的级联属性。
+
+### 5.4.6 集合类型属性
+
+java.util包中的集合类型是最常用的数据结构类型，主要包括List、Set、Map、Properties，Spring为这些集合类型属性提供了专属的配置标签。
+
+#### 1. List
+
+~~~java
+package com.smart.attr;
+...
+public class Boss {
+    private List favorites = new ArrayList();
+    public List getFavorites() {
+        return favorites;
+    }
+    public void setFavorites(List favorites) {
+        this.favorites = favorites;
+    }
+    ...
+}
+~~~
+
+~~~xml
+<bean id="boss1" class="com.smart.attr.Boss">
+	<property name="favorites">
+    	<list>
+        	<value>看报</value>
+            <value>赛车</value>
+            <value>高尔夫</value>
+        </list>
+    </property>
+</bean>
+~~~
+
+List属性即可以通过`<value>`注入字符串，也可以通过`<ref>`注入容器中其他的Bean。
+
+#### 2. Set
+
+如果Boss的Favorites属性是java.util.Set，则采用如下配置方式：
+
+~~~xml
+<bean id="boss1" class="com.smart.attr.Boss">
+	<property name="favorites">
+    	<set>
+        	<value>看报</value>
+            <value>赛车</value>
+            <value>高尔夫</value>
+        </set>
+    </property>
+</bean>
+~~~
+
+#### 3. Map
+
+~~~java
+public class Boss {
+    ...
+    private Map jobs = new HashMap();
+    public Map getJobs() {
+        return jobs;
+    }
+    public void setJobs(Map jobs) {
+        this.jobs = jobs;
+    }
+    ...
+}
+~~~
+
+~~~xml
+<bean id="boss1" class="com.smart.attr.Boss">
+	<property name="jobs">
+    	<map>
+        	<entry>
+                <key><value>AM</value></key>
+                <value>会见客户</value>
+            </entry>
+            <entry>
+                <key><value>PM</value></key>
+                <value>公司内部会议</value>
+            </entry>
+        </map>
+    </property>
+</bean>
+~~~
+
+假如某一Map元素的键和值都是对象，则可以采用以下配置方式：
+
+~~~xml
+<entry>
+    <key><ref bean="keyBean"/></key>
+    <ref bean="valueBean"/>
+</entry>
+~~~
+
+#### 4. Properties
+
+Properties类型其实可以看作Map类型的特例。Map元素的键和值可以是任何类型的对象，而Properties属性的键和值都只能是字符串。下面为Boss添加一个Properties类型的mails属性：
+
+~~~java
+public class Boss {
+    ...
+    private Properties mails = new Properties();
+    public Properties getMails(){
+        return mails;
+    }
+    public void setMails(Properties mails){
+        this.mails = mails;
+    }
+    ...
+}
+~~~
+
+下面的配置片段为mails提供了配置：
+
+~~~xml
+<bean id="boss1" class="com.smart.attr.Boss">
+	<property name="mails">
+    	<props>
+        	<prop key="jobMail">john-office@smart.com</prop>
+            <prop key="lifeMail">john-office@smart.com</prop>
+        </props>
+    </property>
+</bean>
+~~~
+
+因为Properties键值对只能是字符串，因此其配置比Map的配置要简单些，注意值的配置没有`<value>`子元素标签。
+
+#### 5. 强类型集合
+
+Java 5.0提供了强类型集合的新功能，允许为集合元素指定类型。如下面Boss类中jobTime属性就采用了强类型的Map类型，元素的键为String类型，而值为Integer类型。
+
+~~~java
+public class Boss {
+    ...
+    private Map<String, Integer> jobTime = new HashMap<String, Integer>();
+    public Map<String, Integer> getJobTime() {
+        return jobTime;
+    }
+    public void setJobTime(Map<String, Integer> jobTime) {
+        this.jobTime = jobTime;
+    }
+    ...
+}
+~~~
+
+在Spring中的配置和非强类型集合相同。
+
+但Spring容器在注入强类型集合时会判断元素的类型，将设置值转换为对应的数据类型。
+
+#### 6. 集合合并
+
+Spring支持集合合并的功能，允许子`<bean>`继承父`<bean>`的同名属性集合元素，并将子`<bean>`中配置的集合属性值和父`<bean>`中配置的同名属性值合并起来作为最终Bean的属性值，如代码清单5-12所示。
+
+~~~xml
+<bean id="parentBoss" abstract="true" class="com.smart.attr.Boss">
+	<!--①父<bean>-->
+    <property name="favorites">
+    	<set>
+        	<value>看报</value>
+            <value>赛车</value>
+            <value>高尔夫</value>
+        </set>
+    </property>
+</bean>
+<bean id="childBoss" parent="parentBoss">
+	<!--②指定父<bean>-->
+    <property name="favorites">
+    	<set merge="true">
+            <!--③和父<bean>中的同名集合属性合并-->
+        	<value>爬山</value>
+            <value>游泳</value>
+        </set>
+    </property>
+</bean>
+~~~
+
+在代码清单5-12中，③处通过`merge="true"`属性指示子`<bean>`和父`<bean>`中的同名属性值进行合并，即子Bean的favorites集合最终将拥有5个元素。如果设置为`merge="false"`，则不会和父`<bean>`中的同名集合属性进行合并，即子Bean的favorites属性集合只有两个元素。
+
+#### 7. 通过util命名空间配置集合类型的Bean
+
+如果希望配置一个集合类型的Bean，而非一个集合类型的属性，则可以通过util命名空间进行配置。首先需要在Spring配置文件头中引入util命名空间的声明。
+
+其次配置一个List类型的Bean，可以通过list-class显式指定List的实现类。
+
+~~~xml
+<util:list id="favoriteList1" list-class="java.util.LinkedList">
+	<value>看报</value>
+    <value>赛车</value>
+    <value>高尔夫</value>
+</util:list>
+~~~
+
+再次配置一个Set类型的Bean，可以通过set-class指定Set的实现类。
+
+~~~xml
+<util:set id="favoriteSet1">
+	<value>看报</value>
+    <value>赛车</value>
+    <value>高尔夫</value>
+</util:set>
+~~~
+
+最后配置一个Map类型的Bean，可以通过map-class指定Map的实现类。
+
+~~~xml
+<util:map id="emails1">
+	<entry key="AM" value="会见客户"/>
+    <entry key="PM" value="公司内部会议"/>
+</util:map>
+~~~
+
+此外，`<util:list>`和`<util:set>`支持value-type属性，指定集合中的值的类型；而`<util:map>`支持key-value和value-type属性，指定Map的键和值类型。
+
+### 5.4.7 简化配置方式
