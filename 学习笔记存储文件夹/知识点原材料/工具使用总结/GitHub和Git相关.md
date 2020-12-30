@@ -158,3 +158,66 @@ MPL是The Mozilla Public License的简写，是1998年初Netscape的 Mozilla小�
 ◆ MPL许可证第3条有专门的一款是关于对源代码修改进行描述的规定，就是要求所有再发布者都得有一个专门的文件就对源代码程序修改的时间和修改的方式有描述。
 
 英文原文：http://www.mozilla.org/MPL/MPL-1.1.html
+
+# 将本地Git仓库传到远程Git仓库
+
+GitHub的介绍：
+
+…or create a new repository on the command line
+~~~shell script
+echo "# LeetCodeSolver" >> README.md
+git init
+git add README.md
+git commit -m "first commit"
+git branch -M main
+git remote add origin https://github.com/ZeromaXHe/LeetCodeSolver.git
+git push -u origin main             
+~~~
+
+…or push an existing repository from the command line
+~~~shell script
+git remote add origin https://github.com/ZeromaXHe/LeetCodeSolver.git
+git branch -M main
+git push -u origin main
+~~~
+
+…or import code from another repository
+You can initialize this repository with code from a Subversion, Mercurial, or TFS project.
+
+# 将git上多模块的项目的子模块拆分为独立项目
+
+项目一开始把很多模块都放在一个git库里面。后续需要将某个目录单独出一个项目来开发，此时就可以利用这个subtree的功能分离里。使用subtree的方式可以将源码子目录作为一个新的仓库，并且需要保留和子目录相关的log记录。
+
+假设父目录为 folder-parent
+
+两个子模块为
+- module-a
+- module-b
+
+目录结构为
+- /folder-parent/module-a
+- /folder-parent/module-b
+
+## 拆分项目的方式
+
+git subtree split 的-P参数后面跟着拆分模块所在的相对路径
+
+~~~shell script
+# 进入父目录
+cd folder-parent 
+#为模块b的目录创建一个新的分支名为 module-b-branch
+git subtree split -P module-b -b module-b-branch 
+#退到和父目录同级的目录
+cd ..
+#为模块b新建一个和父目录同级的目录module-b-dir
+mkdir module-b-dir 
+#进入新建的目录
+cd module-b-dir
+#初始化git
+git init
+# 将分离出来的分支pull到新建的文件目录下
+git pull ../folder-parent module-b-branch 
+
+git remote add origin XXXXXXXXX.git
+git push -u origin master
+~~~
