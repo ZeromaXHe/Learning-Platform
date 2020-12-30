@@ -37,7 +37,7 @@ public class Solution1046 {
     /**
      * 执行用时： 2 ms , 在所有 Java 提交中击败了 41.83% 的用户
      * 内存消耗： 36.1 MB , 在所有 Java 提交中击败了 23.74% 的用户
-     * 
+     *
      * @param stones
      * @return
      */
