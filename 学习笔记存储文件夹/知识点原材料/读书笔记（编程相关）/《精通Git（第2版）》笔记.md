@@ -1950,7 +1950,203 @@ Submodule DbConnector c3f01dc..c87d55d:
 
 为了将子模块设置得更容易进入并修改，你需要做两件事。首先，进入每个子模块并检出其相应的工作分支。接着，若你做了更改就需要告诉 Git 它该做什么，然后运行 `git submodule update --remote` 来从上游拉取新工作。你可以选择将它们合并到你的本地工作中，也可以尝试将你的工作变基到新的更改上。
 
+首先，让我们进入子模块目录然后检出一个分支。
 
+~~~shell
+$ git checkout stable
+Switched to branch 'stable'
+~~~
+
+然后尝试用 “merge” 选项。为了手动指定它，我们只需给 `update` 添加 `--merge` 选项即可。这时我们将会看到服务器上的这个子模块有一个改动并且它被合并了进来。
+
+~~~shell
+$ git submodule update --remote --merge
+remote: Counting objects: 4, done.
+remote: Compressing objects: 100% (2/2), done.
+remote: Total 4 (delta 2), reused 4 (delta 2)
+Unpacking objects: 100% (4/4), done.
+From https://github.com/chaconinc/DbConnector
+   c87d55d..92c7337 stable -> origin/stable
+Updating c87d55d..92c7337
+Fast-forward
+ src/main.c | 1 +
+ 1 file changed, 1 insertion(+)
+Submodule path 'DbConnector': merged in
+'92c7337b30ef9e0893e758dac2459d07362ab5ea'
+~~~
+
+如果我们进入 DbConnector 目录，可以发现新的改动已经合并入本地 stable 分支。现在让我们看看当我们对库做一些本地的改动而同时其他人推送另外一个修改到上游时会发生什么。
+
+如果我们现在更新子模块，就会看到当我们在本地做了更改时上游也有一个改动，我们需要将它并入本地。
+
+如果你忘记 `--rebase` 或 `--merge`，Git 会将子模块更新为服务器上的状态。并且会将项目重置为一个游离的HEAD 状态。
+
+即便这真的发生了也不要紧，你只需回到目录中再次检出你的分支（即还包含着你的工作的分支）然后手动地合并或变基 `origin/stable`（或任何一个你想要的远程分支）就行了。
+
+如果你没有提交子模块的改动，那么运行一个子模块更新也不会出现问题，此时 Git 会只抓取更改而并不会覆盖子模块目录中未保存的工作。
+
+如果你做了一些与上游改动冲突的改动，当运行更新时 Git 会让你知道。
+
+你可以进入子模块目录中然后就像平时那样修复冲突。
+
+#### 发布子模块改动
+
+现在我们的子模块目录中有一些改动。其中有一些是我们通过更新从上游引入的，而另一些是本地生成的，由于我们还没有推送它们，所以对任何其他人都不可用。
+
+如果我们在主项目中提交并推送但并不推送子模块上的改动，其他尝试检出我们修改的人会遇到麻烦，因为他们无法得到依赖的子模块改动。那些改动只存在于我们本地的拷贝中。
+
+为了确保这不会发生，你可以让 Git 在推送到主项目前检查所有子模块是否已推送。`git push` 命令接受可以设置为 “check” 或 “on-demand” 的 `--recurse-submodules` 参数。如果任何提交的子模块改动没有推送那么 “check” 选项会直接使 `push` 操作失败。
+
+如你所见，它也给我们了一些有用的建议，指导接下来该如何做。最简单的选项是进入每一个子模块中然后手动推送到远程仓库，确保它们能被外部访问到，之后再次尝试这次推送。 
+
+另一个选项是使用 “on-demand” 值，它会尝试为你这样做。
+
+如你所见，Git 进入到 DbConnector 模块中然后在推送主项目前推送了它。如果那个子模块因为某些原因推送失败，主项目也会推送失败。
+
+#### 合并子模块改动
+
+如果你其他人同时改动了一个子模块引用，那么可能会遇到一些问题。也就是说，如果子模块的历史已经分叉并且在父项目中分别提交到了分叉的分支上，那么你需要做一些工作来修复它。
+
+如果一个提交是另一个的直接祖先（一个快进式合并），那么 Git会简单地选择之后的提交来合并，这样没什么问题。
+
+不过，Git 甚至不会尝试去进行一次简单的合并。
+
+所以本质上 Git 在这里指出了子模块历史中的两个分支记录点已经分叉并且需要合并。它将其解释为 “merge following commits not found”（未找到接下来需要合并的提交），虽然这有点令人困惑，不过之后我们会解释为什么是这样。
+
+为了解决这个问题，你需要弄清楚子模块应该处于哪种状态。奇怪的是，Git 并不会给你多少能帮你摆脱困境的信息，甚至连两边提交历史中的 SHA-1 值都没有。幸运的是，这很容易解决。如果你运行 `git diff`，就会得到试图合并的两个分支中记录的提交的 SHA-1 值。
+
+所以，在本例中，`eb41d76` 是我们的子模块中大家共有的提交，而 `c771610` 是上游拥有的提交。如果我们进入子模块目录中，它应该已经在`eb41d76` 上了，因为合并没有动过它。如果不是的话，无论什么原因，你都可以简单地创建并检出一个指向它的分支。
+
+来自另一边的提交的 SHA-1 值比较重要。它是需要你来合并解决的。你可以尝试直接通过 SHA-1 合并，也可以为它创建一个分支然后尝试合并。我们建议后者，哪怕只是为了一个更漂亮的合并提交信息。
+
+所以，我们将会进入子模块目录，基于 `git diff` 的第二个 SHA 创建一个分支然后手动合并。
+
+~~~shell
+$ cd DbConnector
+$ git rev-parse HEAD
+eb41d764bccf88be77aced643c13a7fa86714135
+$ git branch try-merge c771610
+(DbConnector) $ git merge try-merge
+Auto-merging src/main.c
+CONFLICT (content): Merge conflict in src/main.c
+Recorded preimage for 'src/main.c'
+Automatic merge failed; fix conflicts and then commit the result.
+~~~
+
+我们在这儿得到了一个真正的合并冲突，所以如果想要解决并提交它，那么只需简单地通过结果来更新主项目。
+
+~~~shell
+$ vim src/main.c ①
+$ git add src/main.c
+$ git commit -am 'merged our changes'
+Recorded resolution for 'src/main.c'.
+[master 9fd905e] merged our changes
+$ cd .. ②
+$ git diff ③
+diff --cc DbConnector
+index eb41d76,c771610..0000000
+--- a/DbConnector
++++ b/DbConnector
+@@@ -1,1 -1,1 +1,1 @@@
+- Subproject commit eb41d764bccf88be77aced643c13a7fa86714135
+ -Subproject commit c77161012afbbe1f58b5053316ead08f4b7e6d1d
+++Subproject commit 9fd905e5d7f45a0d4cbc43d1ee550f16a30e825a
+$ git add DbConnector ④
+$ git commit -m "Merge Tom's Changes" ⑤
+[master 10d2c60] Merge Tom's Changes
+~~~
+
+① 首先解决冲突
+
+② 然后返回到主项目目录中 
+
+③ 再次检查 SHA-1 值 
+
+④ 解决冲突的子模块记录
+
+⑤ 提交我们的合并 
+
+这可能会让你有点儿困惑，但它确实不难。
+
+有趣的是，Git 还能处理另一种情况。如果子模块目录中存在着这样一个合并提交，它的历史中包含了的两边的提交，那么 Git 会建议你将它作为一个可行的解决方案。它看到有人在子模块项目的某一点上合并了包含这两次提交的分支，所以你可能想要那个。
+
+这就是为什么前面的错误信息是 “merge following commits not found”，因为它不能**这样**做。它让人困惑是因为**谁能想到它会尝试这样做**？
+
+如果它找到了一个可以接受的合并提交，它会建议你更新索引，就像你运行了 `git add` 那样，这样会清除冲突然后提交。不过你可能不应该这样做。你 
+
+可以轻松地进入子模块目录，查看差异是什么，快进到这次提交，恰当地测试，然后提交它。
+
+~~~shell
+$ cd DbConnector/
+$ git merge 9fd905e
+Updating eb41d76..9fd905e
+Fast-forward
+$ cd ..
+$ git add DbConnector
+$ git commit -am 'Fast forwarded to a common submodule child'
+~~~
+
+这些命令完成了同一件事，但是通过这种方式你至少可以验证工作是否有效，以及当你在完成时可以确保子模块目录中有你的代码。 
+
+### 子模块技巧
+
+你可以做几件事情来让用子模块工作轻松一点儿。
+
+#### 子模块遍历
+
+有一个 `foreach` 子模块命令，它能在每一个子模块中运行任意命令。如果项目中包含了大量子模块，这会非常有用。
+
+#### 有用的别名
+
+你可能想为其中一些命令设置别名，因为它们可能会非常长而你又不能设置选项作为它们的默认选项。
+
+### 子模块的问题
+
+然而使用子模块还是有一些小问题。 
+
+例如在有子模块的项目中切换分支可能会造成麻烦。如果你创建一个新分支，在其中添加一个子模块，之后切换到没有该子模块的分支上时，你仍然会有一个还未跟踪的子模块目录。
+
+另一个主要的告诫是许多人遇到了将子目录转换为子模块的问题。如果你在项目中已经跟踪了一些文件，然后想要将它们移动到一个子模块中，那么请务必小心，否则 Git 会对你发脾气。假设项目内有一些文件在子目录中，你想要将其转换为一个子模块。如果删除子目录然后运行 `submodule add`，Git 会朝你大喊：
+
+~~~shell
+$ rm -Rf CryptoLibrary/
+$ git submodule add https://github.com/chaconinc/CryptoLibrary
+'CryptoLibrary' already exists in the index
+~~~
+
+你必须要先取消暂存 `CryptoLibrary` 目录。然后才可以添加子模块：
+
+~~~shell
+$ git rm -r CryptoLibrary
+$ git submodule add https://github.com/chaconinc/CryptoLibrary
+Cloning into 'CryptoLibrary'...
+remote: Counting objects: 11, done.
+remote: Compressing objects: 100% (10/10), done.
+remote: Total 11 (delta 0), reused 11 (delta 0)
+Unpacking objects: 100% (11/11), done.
+Checking connectivity... done.
+~~~
+
+现在假设你在一个分支下做了这样的工作。如果尝试切换回的分支中那些文件还在子目录而非子模块中时 - 你会得到这个错误：
+
+~~~shell
+$ git checkout master
+error: The following untracked working tree files would be overwritten by
+checkout:
+  CryptoLibrary/Makefile
+  CryptoLibrary/includes/crypto.h
+  ...
+Please move or remove them before you can switch branches.
+Aborting
+~~~
+
+你可以通过 `check -f` 来强制切换，但是要小心，如果其中还有未保存的修改，这个命令会把它们覆盖掉。
+
+当你切换回来之后，因为某些原因你得到了一个空的 `CryptoLibrary` 目录，并且 `git submodule update`也无法修复它。你需要进入到子模块目录中运行 `git checkout` . 来找回所有的文件。你也可以通过 `submodule foreach` 脚本来为多个子模块运行它。
+
+要特别注意的是，近来子模块会将它们的所有 Git 数据保存在顶级项目的 `.git` 目录中，所以不像旧版本的Git，摧毁一个子模块目录并不会丢失任何提交或分支。
+
+拥有了这些工具，使用子模块会成为可以在几个相关但却分离的项目上同时开发的相当简单有效的方法。 
 
 # 自定义Git
 
