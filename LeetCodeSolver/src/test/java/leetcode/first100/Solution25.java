@@ -34,8 +34,61 @@ public class Solution25 {
      * ListNode(int val) { this.val = val; }
      * ListNode(int val, ListNode next) { this.val = val; this.next = next; }
      * }
+     * 执行用时： 1 ms , 在所有 Java 提交中击败了 38.87% 的用户
+     * 内存消耗： 38.7 MB , 在所有 Java 提交中击败了 58.35% 的用户
      */
     public ListNode reverseKGroup(ListNode head, int k) {
+        if (head == null) {
+            return null;
+        }
+        if (k == 1) {
+            return head;
+        }
+        ListNode dummy = new ListNode();
+        ListNode pre = dummy;
+        ListNode kthPtr = head;
+        ListNode firstOfKth = kthPtr;
+        ListNode index = head;
+        ListNode post;
+        ListNode postPost;
+
+        while (kthPtr != null) {
+            int count = 0;
+            while (count < k) {
+                if (kthPtr.next == null && count != k - 1) {
+                    // 如果剩余节点不足k个
+                    pre.next = firstOfKth;
+                    return dummy.next;
+                }
+                kthPtr = kthPtr.next;
+                count++;
+            }
+            post = index.next;
+            postPost = post.next;
+            index.next = null;
+            while (postPost != kthPtr) {
+                post.next = index;
+                index = post;
+                post = postPost;
+                postPost = post.next;
+            }
+            post.next = index;
+            pre.next = post;
+            index = postPost;
+            pre = firstOfKth;
+            firstOfKth = kthPtr;
+        }
+        return dummy.next;
+    }
+
+    /**
+     * 解题思路不对，最后多余不足k的节点不需要颠倒顺序。
+     *
+     * @param head
+     * @param k
+     * @return
+     */
+    public ListNode reverseKGroup_wrongAnswer(ListNode head, int k) {
         if (head == null) {
             return null;
         }
@@ -78,7 +131,7 @@ public class Solution25 {
         if (count == k) {
             pre.next = index;
             index.next = post;
-        }else {
+        } else {
             pre.next = post;
             post.next = index;
         }
