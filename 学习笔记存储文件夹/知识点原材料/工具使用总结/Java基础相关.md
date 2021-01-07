@@ -37,3 +37,40 @@ public class IntClasses {
 1829164700
 ~~~
 通过结果可以知道 第1,2行输出永远相等,并且和第3行的输出不同.
+
+# str.matches(String regex) str中的\n无法被regex中的.匹配
+
+今天在做正则匹配的时候，遇到了一个问题
+~~~java
+System.out.println("\n".matches(".*"));
+~~~
+这个输出的结果会是false，因为直接使用String.matches(String regex)的话，源码就是对应的是：
+~~~java
+// String类源码
+public boolean matches(String regex) {
+    return Pattern.matches(regex, this);
+}
+~~~
+进一步点进去就是：
+~~~java
+// Pattern类源码
+public static boolean matches(String regex, CharSequence input) {
+    Pattern p = Pattern.compile(regex);
+    Matcher m = p.matcher(input);
+    return m.matches();
+}
+~~~
+这里原规则使用：
+~~~java
+Pattern pattern = Pattern.compile(regex);
+Matcher matcher = pattern.matcher(str);
+return matcher.matches();
+~~~
+正常情况下不会匹配\r\n，需要将`Pattern.compile(regex);`改为`Pattern.compile(regex,Pattern.CASE_INSENSITIVE | Pattern.DOTALL);`
+如下:
+~~~java
+Pattern pattern = Pattern.compile(regex,Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
+Matcher matcher = pattern.matcher(str);
+return matcher.matches();
+~~~
+测试后正常运行
