@@ -87,7 +87,7 @@ public class Solution188 {
                 // 如果不是第 i 天买入的，那么在第 i-1 天时，我们手上持有股票，对应状态 buy[i][j]。
                 buy[i][j] = Math.max(buy[i - 1][j], sell[i - 1][j] - prices[i]);
                 // 同理对于 sell[i][j]，如果是第 i 天卖出的，那么在第 i−1 天时，我们手上持有股票，对应状态 buy[i−1][j−1]，并且需要增加 prices[i] 的卖出收益；
-                // 如果不是第 ii 天卖出的，那么在第 i-1i−1 天时，我们手上不持有股票，对应状态 \textit{sell}[i-1][j]sell[i−1][j]。
+                // 如果不是第 i 天卖出的，那么在第 i−1 天时，我们手上不持有股票，对应状态 sell[i−1][j]。
                 sell[i][j] = Math.max(sell[i - 1][j], buy[i - 1][j - 1] + prices[i]);
             }
         }
