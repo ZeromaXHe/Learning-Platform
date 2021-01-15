@@ -64,9 +64,11 @@ public class Solution684 {
             }
             if (unionSet[firstRoot][1] > unionSet[secondRoot][1]) {
                 unionSet[secondRoot][0] = firstRoot;
+                // 这里有问题，应该unionSet[firstRoot][1]不做处理的
                 unionSet[firstRoot][1]++;
             } else {
                 unionSet[firstRoot][0] = secondRoot;
+                // 这里感觉有点问题，应该unionSet[secondRoot][1] = Math.max(unionSet[secondRoot][1], unionSet[firstRoot][0]+1)
                 unionSet[secondRoot][1]++;
             }
         }
