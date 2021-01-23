@@ -2583,3 +2583,57 @@ Spring支持集合合并的功能，允许子`<bean>`继承父`<bean>`的同名�
 此外，`<util:list>`和`<util:set>`支持value-type属性，指定集合中的值的类型；而`<util:map>`支持key-value和value-type属性，指定Map的键和值类型。
 
 ### 5.4.7 简化配置方式
+
+## 5.6 `<bean>`之间的关系
+
+### 5.6.2 依赖
+
+一般情况下，可以使用`<ref>`元素标签建立对其他Bean的依赖关系，Spring负责管理这些Bean的关系。当实例化一个Bean时，Spring保证该Bean所依赖的其他Bean已经初始化。
+
+Spring允许用户通过depends-on属性显式指定Bean前置依赖的Bean，前置依赖的Bean会在本Bean实例化之前创建好。
+
+如果前置依赖多个Bean，则可以通过逗号、空格或分号的方式创建Bean的名称。
+
+## 5.8 Bean作用域
+
+| 类型          | 说明                                                         |
+| ------------- | ------------------------------------------------------------ |
+| singleton     | 在Spring IoC容器中仅存在一个Bean实例，Bean以单实例的方式存在 |
+| prototype     | 每次从容器中调用Bean时，都返回一个新的实例，即每次调用getBean()时，相当于执行 new XxxBean()操作 |
+| request       | 每次HTTP请求都会创建一个新的Bean。该作用域仅适用于WebApplicationContext环境 |
+| session       | 同一个HTTP Session 共享一个Bean，不同的HTTP Session使用不同的Bean。该作用域仅适用于WebApplicationContext环境 |
+| globalSession | 同一个全局Session共享一个Bean，一般用于Portlet应用环境。该作用域仅适用于WebApplicationContext环境 |
+
+### 5.8.4 作用域依赖问题
+
+~~~xml
+① 声明aop schema
+<bean name="car" class="com.smart.scope.Car" scope="request">
+	<aop:scoped-proxy/> ② 创建代理
+</bean>
+<bean id="boss" class="com.smart.scope.Boss">
+	<property name="car" ref="car"/> ③ 引用web相关作用域的car Bean
+</bean>
+~~~
+
+在代码清单5-18中，car Bean是request作用域，它被singleton作用域的boss Bean引用。为了使boss能够从适当作用域中获取car Bean的引用，需要使用Spring AOP的语法为car Bean配置一个代理类，如②所示。为了能够在配置文件中使用AOP的配置标签，需要在文档声明头中定义aop命名空间。
+
+当boss Bean在Web环境下调用car Bean时，Spring AOP 将启用动态代理智能地判断boss Bean位于哪个HTTP请求线程中，并从对应的HTTP请求线程域中获取对应的car Bean。
+
+boss Bean的作用域时singleton，也就是说，在Spring容器中始终只有一个实例，而car Bean的作用域为request，所以每个调用到car Bean的HTTP请求都会创建一个car Bean。Spring通过动态代理技术，能够让boss Bean引用到对应HTTP请求的car Bean。
+
+反过来，在配置文件中添加`<aop:scoped-proxy/>`后，注入boss Bean中的car Bean已经不是原来的car Bean，而是car Bean的动态代理对象。这个动态代理是Car类的子类（或实现类，假设Car是接口），Spring在动态代理子类中加入一段逻辑，以判断当前的boss需要取得哪个HTTP请求相关的car Bean。
+
+> **提示**：
+>
+> 动态代理所添加的逻辑其实也很简单，即判断当前boss位于哪个线程中，然后根据这个线程找到对应的HttpRequest，再从HttpRequest域中获取对应的car。因为Web容器的特性，一般情况下，一个HTTP请求对应一个独立的线程。
+
+## 5.9 FactoryBean
+
+Spring提供了一个org.springframework.beans.factory.FactoryBean工厂类接口，用户可以通过实现该工厂类接口定制实例化Bean的逻辑。
+
+当调用getBean("car")时，Spring通过反射机制发现CarFactoryBean实现了FactoryBean的接口，这时Spring容器就调用接口方法CarFactoryBean#getObject()返回工厂类创建的对象。如果用户希望获取CarFactoryBean的实例，则需要在使用getBean(beanName)方法时显式地在beanName前加上“&”前缀，即getBean("&car")。
+
+## 5.10 基于注解的配置
+
+### 5.10.1 使用注解定义Bean
