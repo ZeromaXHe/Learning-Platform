@@ -2637,3 +2637,271 @@ Spring提供了一个org.springframework.beans.factory.FactoryBean工厂类接�
 ## 5.10 基于注解的配置
 
 ### 5.10.1 使用注解定义Bean
+
+除@Component外，Spring还提供了3个功能基本和@Component等效的注解，分别用于对DAO、Service及Web层的Controller进行注解。
+
+- @Repository：用于对DAO实现类进行标注。
+- @Service：用于对Service实现类进行标注。
+- @Controller：用于对Controller实现类进行标注。
+
+### 5.10.2 扫描注解定义的Bean
+
+~~~xml
+<context:component-scan base-package="com.smart.anno"/>
+~~~
+
+如果仅希望扫描特定的类而非基包下的所有类，那么可以使用resource-pattern属性过滤出特定的类，如下：
+
+~~~xml
+<context:component-scan base-package="com.smart" resource-pattern="anno/*.class"/>
+~~~
+
+这里将基类包设置为com.smart：默认情况下resource-pattern属性的值为“`**/*.class`”，即基类包里的所有类，将其设置为“`anno/*.class`”，则Spring仅会扫描基类包里anno子包中的类。
+
+~~~xml
+<context:component-scan base-package="com.smart">
+	<context:include-filter type="regex" expression="com\.smart\.anno.*"/>
+    <context:exclude-filter type="aspectj" expression="com.smart..*Controller+"/>
+</context:component-scan>
+~~~
+
+`<context:include-filter>`表示要包含的目标类，而`<context:exclude-filter>`表示要排除的目标类。一个`<context:component-scan>`下可以拥有若干个`<context:exclude-filter>`和`<context:include-filter>`元素。这两个过滤元素均支持多种类型的过滤表达式
+
+| 类别       | 示例                      | 说明                                                         |
+| ---------- | ------------------------- | ------------------------------------------------------------ |
+| annotation | `com.smart.XxxAnnotation` | 所有标注了XxxAnnotation的类。该类型采用目标类是否标注了某个注解进行过滤 |
+| assignable | `com.smart.XxxService`    | 所有继承或扩展XxxService的类。该类型采用目标类是否继承或扩展了某个特定类进行过滤 |
+| aspectj    | `com.smart..*Service+`    | 所有类名以Service结束的类及继承或扩展它们的类（参见第7章关于AspectJ的内容）。该类型采用AspectJ表达式进行过滤 |
+| regex      | `com\.smart\.anno\..*`    | 所有com.smart.anno类包下的类。该类型采用正则表达式根据目标类的类名进行过滤 |
+| custom     | `com.smart.XxxTypeFilter` | 采用XxxTypeFile代码方式实现的过滤原则，该类必须实现org.springframework.core.type.TypeFilter接口 |
+
+在所有这些过滤类型中，除custom类型外，aspectj的过滤表达能力是最强的，它可以轻易实现其他类型所能表达的过滤规则。
+
+`<context:component-scan/>`拥有一个容易被忽视的use-default-filter属性，其默认值为true，表示默认会对标注@Component、@Controller、@Service及@Repository的Bean进行扫描。`<context:component-scan/>`先根据`<exclude-filter/>`列出需要排除的黑名单，再通过`<include-filter/>`列出需要包含的白名单。
+
+由于use-default-filter属性默认值的作用，下面的配置片段不但会扫描@Controller的Bean，还会扫描@Component、@Service及@Repository的Bean。
+
+~~~xml
+<context:component-scan base-package="com.smart">
+	<context:include-filter type="annotation" expression="org.springframework.stereotype.Controller"/>
+</context:component-scan>
+~~~
+
+换言之，在以上配置中，加不加`<context:include-filter>`的效果都是一样的。如果想仅扫描@Controller的Bean，则必须将use-default-filter属性设置为false。
+
+~~~xml
+<context:component-scan base-package="com.smart" use-default-filter="false">
+	<context:include-filter type="annotation" expression="org.springframework.stereotype.Controller"/>
+</context:component-scan>
+~~~
+
+### 5.10.3 自动装配Bean
+
+#### 1.使用@Autowired进行自动注入
+
+#### 2.使用@Autowired的required属性
+
+#### 3.使用@Qualifier指定注入Bean的名称
+
+#### 4.对类方法进行标注
+
+@Autowired可以对类成员变量及方法的入参进行标注
+
+虽然Spring支持在属性和方法上标注自动注入注解@Autowired，但在实际项目开发中建议采用在方法上标注@Autowired注解，因为这样更加“面向对象”，也方便单元测试的编写。如果将注解标注在私有属性上，则在单元测试时就很难用编程的办法设置属性值。
+
+#### 5.对集合类进行标注
+
+如果对类中集合类的变量或方法入参进行@Autowired标注，那么Spring会将容器中类型匹配的所有Bean都自动注入进来。
+
+在 Spring4.0 中可以通过@Order注解或实现Ordered接口来决定Bean加载的顺序，值越小，优先被加载。
+
+#### 6.对延迟依赖注入的支持
+
+Spring 4.0 支持延迟依赖注入，即在Spring容器启动的时候，对于在Bean上标注@Lazy及@Autowired注解的属性，不会立即注入属性值，而是延迟到调用此属性的时候才会注入属性值。
+
+对Bean实施延迟依赖注入，要注意@Lazy注解必须同时标注在属性及目标Bean上，二者缺一，则延迟注入无效。
+
+#### 7.对标准注解的支持
+
+此外，Spring还支持JSR-250中定义的@Resource和JSR-330中定义的@Inject注解，这两个标准注解和@Autowired注解的功用类似，都是对类变更及方法入参提供自动注入功能。
+
+不管是@Resource还是@Inject注解，其功能都没有@Autowired丰富，因此，除非必要，大可不必在乎在两个注解。
+
+### 5.10.4 Bean作用范围及生命过程方法
+
+通过注解配置的Bean和通过`<bean>`配置的Bean一样，默认的作用范围都是singleton。Spring为注解配置提供了一个@Scope注解，可以通过它显式指定Bean的作用范围。
+
+Spring从2.5开始支持JSR-250中定义的@PostConstruct和@PreDestroy注解，在Spring中它们相当于init-method和destroy-method属性的功能，不过在使用注解时，可以在一个Bean中定义多个@PostConstruct和@PreDestroy方法。
+
+## 5.11 基于Java类的配置
+
+### 5.11.1 使用Java类提供Bean定义信息
+
+普通的POJO只要标注@Configuration注解，就可以为Spring容器提供Bean定义的信息，每个标注了@Bean的类方法都相当于提供了一个Bean的定义信息。
+
+~~~java
+package com.smart.conf;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+// ①将一个POJO标注为定义Bean的配置类
+@Configuration
+public class AppConf {
+    // ②以下两个方法定义了两个Bean，并提供了Bean的实例化逻辑
+    @Bean
+    public UserDao userDao(){
+        return new UserDao();
+    }
+    @Bean
+    public LogDao logDao(){
+        return new LogDao();
+    }
+    
+    // ③定义了logonService的Bean
+    @Bean
+    public LogonService logonService(){
+        LogonService logonService = new LogonService();
+        // ④ 将②和③处定义的Bean注入logonService Bean中
+        logonService.setLogDao(logDao());
+        logonService.setUserDao(userDao());
+        return logonService;
+    }
+}
+~~~
+
+在①处，在AppConf类的定义处标注了@Configuration注解，说明这个类可用于为Spring提供Bean的定义信息。该类的方法可标注@Bean注解，Bean的类型由方法返回值的类型决定，名称默认和方法名相同，也可以通过入参显式指定Bean名称，如@Bean(name="userDao")。@Bean所标注的方法体提供了Bean的实例化逻辑。
+
+以上配置和以下XML配置是等效的：
+
+~~~xml
+<bean id="userDao" class="com.smart.anno.UserDao"/>
+<bean id="logDao" class="com.smart.anno.LogDao"/>
+<bean id="logonService" class="com.smart.conf.logonService"
+      p:logDao-ref="userDao" p:userDao-ref="logDao"/>
+~~~
+
+基于Java类的配置方式和基于XML或基于注解的配置方式相比，前者通过代码编程的方式可以更加灵活地实现Bean的实例化及Bean之间的装配；后两者都是通过配置声明的方式，在灵活性上要稍逊一些，但在配置上要简单一些。
+
+
+
+由于@Configuration注解类本身已经标注了@Component注解，所以任何标注了@Configuration的类，本身也相当于标注了@Component，即它们可以像普通的Bean一样被注入其他Bean中。
+
+Spring会对配置类所有标注@Bean的方法进行“改造”（AOP增强），将对Bean生命周期管理的逻辑植入进来。
+
+在@Bean处，还可以标注@Scope注解以控制Bean的作用范围。
+
+### 5.11.2 使用基于Java类的配置信息启动Spring容器
+
+#### 1.直接通过@Configuration类启动Spring容器
+
+Spring提供了一个AnnotationConfigApplicationContext类，它能够直接通过标注@Configuration的Java类启动Spring容器
+
+~~~java
+package com.smart.conf;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+public class JavaConfigTest {
+    public static void main(String[] args){
+        // ①使用@Configuration类提供的Bean定义信息启动容器
+        ApplicationContext ctx = new AnnotationConfigApplicationContext(AppConf.class);
+        LogonService logonService = ctx.getBean(LogonService.class);
+        logonService.printHello();
+    }
+}
+~~~
+
+此外，AnnotationConfigApplicationContext还支持通过编码的方式加载多个@Configuration配置类，然后通过刷新容器应用这些配置类。
+
+~~~java
+package com.smart.conf;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+public class JavaConfigTest {
+    public static void main(String[] args){
+        ApplicationContext ctx = new AnnotationConfigApplicationContext();
+        
+        // ①注册多个@Configuration配置类
+        ctx.register(DaoConfig.class);
+        ctx.register(ServiceConfig.class);
+        
+        // ②刷新容器以应用这些注册的配置类
+        ctx.refresh();
+        LogonService logonService = ctx.getBean(LogonService.class);
+        logonService.printHello();
+    }
+}
+~~~
+
+可以通过代码一个一个注册配置类，也可以通过@Import将多个配置类组装到一个配置类中，这样仅需要注册这个组装好的配置类就可以启动容器。
+
+~~~java
+package com.smart.conf;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
+
+@Configuration
+@Import(DaoConfig.class)
+public class ServiceConfig {
+    @Bean
+    public LogonService logonService(){
+        LogonService logonService = new LogonService();
+        return logonService;
+    }
+}
+~~~
+
+#### 2.通过XML配置文件应用@Configuration的配置
+
+标注了@Configuration的配置类与标注了@Component的类一样也是一个Bean，它可以被Spring的`<context:component-scan>`扫描到。因此，如果希望将配置类组装到XML配置文件启动Spring容器，则仅需在XML中通过`<context:component-scan>`扫描到相应的配置类即可。
+
+#### 3.通过@Configuration配置类引用XML配置信息
+
+在@Configuration配置类中可以通过@ImportResource引入XML配置文件，在LogonAppConfig配置类中即可直接通过@Autowired引用XML配置文件中定义的Bean。
+
+~~~java
+package com.smart.conf;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.ImportResource;
+
+// ①通过@ImportResource引入XML配置文件
+@Configuration
+@ImportResource("classpath:com/smart/conf/beans3.xml")
+public class LogonAppConfig {
+    // ②自动注入XML文件中定义的Bean
+    @Bean
+    @Autowired
+    public LogonService logonService(UserDao userDao, LogDao logDao){
+        LogonService logonService = new LogonService();
+        logonService.setUserDao(userDao);
+        logonService.setLogDao(logDao);
+        return logonService;
+    }
+}
+~~~
+
+## 5.12 基于Groovy DSL 的配置
+
+## 5.13 通过编码方式动态添加Bean
+
+### 5.13.1 通过DefaultListableBeanFactory
+
+## 5.14 不同配置方式比较
+
+|                  | 基于XML配置                                                  | 基于注解配置                                                 | 基于Java类配置                                               | 基于Groovy DSL配置                                           |
+| ---------------- | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| Bean定义         | 在XML文件中通过`<bean>`元素定义Bean                          | 在Bean实现类处通过标注@Component或衍型类(@Repository、@Service及@Controller)定义Bean | 在标注了@Configuration的Java类中，通过在类方法上标注@Bean定义一个Bean。方法必须提供Bean的实例化逻辑 | 在Groovy文件中通过DSL定义Bean                                |
+| Bean名称         | 通过`<bean>`的id或name属性定义，默认名称为com.smart.UserDao#() | 通过注解的value属性定义。默认名称为小写字母开头的类名（不带包名） | 通过@Bean的name属性定义，如@Bean("userDao")。默认名称为方法名 | 通过Groovy的DSL定义Bean的名称（Bean的类型，Bean构建函数参数），如：`logonService(LogonService,userDao)` |
+| Bean注入         | 通过`<property>`子元素或通过p命名空间的动态属性              | 通过在成员变更或方法入参处标注@Autowired，按类型匹配自动注入。还可以配合使用@Qualifier按名称匹配方式注入 | 比较灵活，可以在方法处通过@Autowired使方法入参绑定Bean，然后在方法中通过代码进行注入；还可以通过调用配置类的@Bean方法进行注入 | 比较灵活，可以在方法处通过ref()方法进行注入，如ref("logDao") |
+| Bean生命过程方法 | 通过`<bean>`的init-method和destroy-method属性指定Bean实现类的方法名。最多只能指定一个初始化方法和销毁方法 | 通过在目标方法上标注@PostConstruct和@PreDestroy注解指定初始化或销毁方法，可以定义任意多个 | 通过@Bean的initMethod或destroyMethod指定一个初始化或销毁方法。<br/>对于初始化方法来说，可以直接在方法内通过代码的方式灵活定义初始化逻辑 | 通过bean->bean.initMethod或bean.destroyMethod指定一个初始化或销毁方法 |
+| Bean作用范围     | 通过`<bean>`的scope属性指定                                  | 通过在类定义处标注@Scope指定                                 | 通过在Bean方法定义处标注@Scope指定                           | 通过bean->bean.scope="prototype"指定                         |
+| Bean延迟初始化   | 通过`<bean>`的lazy-init属性指定，默认为default，继承于`<beans>`的default-lazy-init设置，该值默认为false | 通过在类定义处标注@Lazy指定                                  | 通过在Bean方法定义处标注@Lazy指定                            | 通过bean->bean.lazyInit=true指定                             |
+
+这4种配置文件很难说孰优孰劣，只能说它们都有自己的舞台和适用场景
+
+|          | 基于XML配置                                                  | 基于注解配置                                                 | 基于Java类配置                                               | 基于Groovy DSL配置                                           |
+| -------- | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| 使用场景 | （1）Bean实现类来源于第三方类库，如DataSource、JdbcTemplate等，因无法在类中标注注解，所以通过XML配置方式比较好。<br/>（2）命名空间的配置，如aop、context等，只能采用基于XML的配置 | Bean的实现类使当前项目开发的，可以直接在Java类中使用基于注解的配置 | 基于Java类配置的优势在于可以通过代码方式控制Bean初始化的整体逻辑。如果实例化Bean的逻辑比较复杂，则比较适合基于Java类配置的方式 | 基于Groovy DSL配置的优势在于可以通过Groovy脚本灵活控制Bean初始化的过程。如果实例化Bean的逻辑比较复杂，则比较适合基于Groovy DSL配置的方式。 |
+
+# 第6章 Spring容器高级主题
