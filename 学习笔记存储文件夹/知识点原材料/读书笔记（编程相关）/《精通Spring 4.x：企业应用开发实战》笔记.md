@@ -2905,3 +2905,179 @@ public class LogonAppConfig {
 | 使用场景 | （1）Bean实现类来源于第三方类库，如DataSource、JdbcTemplate等，因无法在类中标注注解，所以通过XML配置方式比较好。<br/>（2）命名空间的配置，如aop、context等，只能采用基于XML的配置 | Bean的实现类使当前项目开发的，可以直接在Java类中使用基于注解的配置 | 基于Java类配置的优势在于可以通过代码方式控制Bean初始化的整体逻辑。如果实例化Bean的逻辑比较复杂，则比较适合基于Java类配置的方式 | 基于Groovy DSL配置的优势在于可以通过Groovy脚本灵活控制Bean初始化的过程。如果实例化Bean的逻辑比较复杂，则比较适合基于Groovy DSL配置的方式。 |
 
 # 第6章 Spring容器高级主题
+
+## 6.1 Spring容器技术内幕
+
+### 6.1.1 内部工作机制
+
+Spring的AbstractApplicationContext是ApplicationContext的抽象实现类，该抽象类的refresh()方法定义了Spring容器在加载配置文件后的各项处理过程，这些处理过程清晰地刻画了Spring容器启动时所执行的各项操作。下面来看一下refresh()内部定义了哪些执行逻辑
+
+~~~java
+// ①初始化BeanFactory
+ConfigurableListableBeanFactory beanFactory = obtainFreshBeanFactory();
+...
+// ②调用工厂后处理器
+invokeBeanFactoryPostProcessors();
+// ③注册Bean后处理器
+registerBeanPostProcessors();
+// ④初始化消息源
+initMessageSource();
+// ⑤初始化应用上下文事件广播器
+initApplicationEventMulticaster();
+// ⑥初始化其他特殊的Bean；由具体子类实现
+onRefresh();
+// ⑦注册事件监听器
+registerListeners();
+// ⑧初始化所有单实例的Bean，使用懒加载模式的Bean除外
+finishBeanFactoryInitialization(beanFactory);
+// ⑨完成刷新并发布容器刷新事件
+finishRefresh();
+~~~
+
+（1）初始化BeanFactory：根据配置文件实例化BeanFactory，在obtainFreshBeanFactory()方法中，首先调用refreshBeanFactory()方法刷新BeanFactory，然后调用getBeanFactory()方法获取BeanFactory，这两个方法都是由具体子类实现的。在这一步里，Spring将配置文件的信息装入容器的Bean定义注册表（BeanDefinitionRegistry）中，但此时Bean还未初始化。
+
+（2）调用工厂后处理器：根据反射机制从BeanDefinitionRegistry中找出所有实现了BeanFactoryPostProcessor接口的Bean，并调用其postProcessBeanFactory()接口方法。
+
+（3）注册Bean后处理器：根据反射机制从BeanDefinitionRegistry中找出所有实现了BeanPostProcessor接口的Bean，并将它们注册到容器Bean后处理器的注册表中。
+
+（4）初始化消息源：初始化容器的国际化消息资源。
+
+（5）初始化应用上下文事件广播器。
+
+（6）初始化其他特殊的Bean：这是一个钩子方法，子类可以借助这个方法执行一些特殊的操作，如AbstractRefreshableWebApplicationContext就使用该方法执行初始化ThemeSource的操作。
+
+（7）注册事件监听器。
+
+（8）初始化所有单实例的Bean，使用懒加载模式的Bean除外：初始化Bean后，将它们放入Spring容器的缓存池中。
+
+（9）发布上下文刷新事件：创建上下文刷新事件，事件广播器负责将这些事件广播到每个注册的事件监听器中。
+
+~~~mermaid
+graph TB
+start(( ))--ResourceLoader装载配置文件-->Resource
+Resource--BeanDefinitionReader解析配置信息-->BeanDefinition[BeanDefinitionRegistry加工前的BeanDefinition]
+BeanDefinition--BeanFactoryPostProcessor对配置信息进行加工-->BeanDefinition2[BeanDefinitionRegistry加工后的BeanDefinition]
+BeanDefinition--BeanFactoryPostProcessor对配置信息进行加工-->PropertyEditor[PropertyEditorRegistry存放着自定义的PropertyEditor]
+BeanDefinition2--InstantiationStrategy实例化Bean对象-->未设置属性的Bean实例
+未设置属性的Bean实例--BeanWrapper设置Bean属性-->已设置属性的Bean实例
+PropertyEditor--BeanWrapper设置Bean属性-->已设置属性的Bean实例
+已设置属性的Bean实例--BeanPostProcessor对Bean进行加工-->准备完毕的Bean实例
+~~~
+
+上图描述了Spring容器从加载配置文件到创建出一个完整Bean的作业流程及参与的角色。
+
+（1）ResourceLoader从存储介质中加载Spring配置信息，并使用Resource表示这个配置文件资源。
+
+（2）BeanDefinitionReader读取Resource所指向的配置文件资源，然后解析配置文件。配置文件中的每个`<bean>`解析成一个BeanDefinition对象，并保存到BeanDefinitionRegistry中。
+
+（3）容器扫描BeanDefinitionRegistry中的BeanDefinition，使用Java反射机制自动识别出Bean工厂后处理器（实现BeanFactoryPostProcessor接口的Bean），然后调用这些Bean工厂后处理器对BeanDefinitionRegistry中的BeanDefinition进行加工处理。主要完成以下两项工作：
+
+① 对使用占位符的`<bean>`元素标签进行解析，得到最终的配置值。这意味着对一些半成品式的BeanDefinition对象进行加工处理并得到成品的BeanDefinition对象。
+
+② 对BeanDefinitionRegistry中的BeanDefinition进行扫描，通过Java反射机制找出所有属性编辑器的Bean（实现java.beans.PropertyEditor接口的Bean），并自动将它们注册到Spring容器的属性编辑器注册表中（PropertyEditorRegistry）。
+
+（4）Spring容器从BeanDefinitionRegistry中取出加工后的BeanDefinition，并调用InstantiationStrategy着手进行Bean实例化的工作。
+
+（5）在实例化Bean时，Spring容器使用BeanWrapper对Bean进行封装。BeanWrapper提供了很多以Java反射机制操作Bean的方法，它将结合该Bean的BeanDefinition及容器中的属性编辑器，完成Bean属性注入工作。
+
+（6）利用容器中注册的Bean的后处理器（实现BeanPostProcessor接口的Bean）对已经完成属性设置工作的Bean进行后续加工，直接装配出一个准备就绪的Bean。
+
+
+
+Spring组件按其所承担的角色可以划分为两类。
+
+（1）物料组件：Resource、BeanDefinition、PropertyEditor及最终的Bean等，它们是加工流程中被加工、被消费的组件，就像流水线上被加工的物料一样。
+
+（2）设备组件：ResourceLoader、BeanDefinitionReader、BeanFactoryPostProcessor、InstantiationStrategy及BeanWrapper等。它们就像流水线上不同环节的加工设备，对物料组件进行加工处理。
+
+### 6.1.2 BeanDefinition
+
+org.springframework.beans.factory.config.BeanDefinition是配置文件`<bean>`元素标签在容器中的内部表示。`<bean>`元素标签有class、scope、lazy-init等配置属性，BeanDefinition则提供了相应的beanClass、scope、lazyInit类属性，BeanDefinition就像`<bean>`的镜中人，二者是一一对应的。BeanDefinition类的继承结构如下
+
+~~~mermaid
+classDiagram
+	BeanDefinition <|.. AbstractBeanDefinition
+	AbstractBeanDefinition <|-- ChildBeanDefinition
+	AbstractBeanDefinition <|-- RootBeanDefinition
+~~~
+
+RootBeanDefinition是最常用的实现类，它对应一般性的`<bean>`元素标签。我们知道，在配置文件中可以定义父`<bean>`和子`<bean>`，父`<bean>`用RootBeanDefinition表示，子`<bean>`用ChildBeanDefinition表示，而没有父`<bean>`的`<bean>`则用RootBeanDefinition表示。AbstractBeanDefinition对二者共同的类信息进行抽象。
+
+Spring通过BeanDefinition将配置文件中的`<bean>`配置信息转换为容器的内部表示，并将这些BeanDefinition注册到BeanDefinitionRegistry中。Spring容器的BeanDefinitionRegistry就像Spring配置信息的内存数据库，后续操作直接从BeanDefinitionRegistry中读取配置信息。一般情况下，BeanDefinition只在容器启动时加载并解析，除非容器刷新或重启，这些信息不会发生变化。当然，如果用户有特殊的需求，也可以通过编程的方式在运行期调整BeanDefinition的定义。
+
+创建最终的BeanDefinition主要包括两个步骤。
+
+（1）利用BeanDefinitionReader读取承载配置信息的Resource，通过XML解析器解析配置信息的DOM对象，简单地为每个`<bean>`生成对应的BeanDefinition对象。但是这里生成的BeanDefinition可能是半成品，因为在配置文件中，可能通过占位符变量引用外部属性文件中的属性，这些占位符变量在这一步里还没有被解析出来。
+
+（2）利用容器注册的BeanFactoryPostProcessor对半成品的BeanDefinition进行加工处理，将以占位符表示的配置解析为最终的实际值，这样半成品的BeanDefinition就成为成品的BeanDefinition。
+
+### 6.1.3 InstantiationStrategy
+
+org.springframework.beans.factory.support.InstantiationStrategy负责根据BeanDefinition对象创建一个Bean实例。Spring之所以将实例化Bean的工作通过一个策略接口进行描述，是为了方便地采用不同的实例化策略，以满足不同的应用需求，如通过CGLib类库为Bean动态创建子类再进行实例化。InstantiationStrategy类的继承结构如下所示：
+
+~~~mermaid
+classDiagram
+	InstantiationStrategy <|.. SimpleInstantiationStrategy
+	SimpleInstantiationStrategy <|-- CglibSubclassingInstantiationStrategy
+~~~
+
+SimpleInstantiationStrategy是最常用的实例化策略，该策略利用Bean实现类的默认构造函数、带参构造函数或工厂方法创建Bean的实例。
+
+CglibSubclassingInstantiationStrategy扩展了SimpleInstantiationStrategy，为需要进行方法注入的Bean提供了支持。它利用CGLib类库为Bean动态生成子类，在子类中生成方法注入的逻辑，然后使用这个动态生成的子类创建Bean的实例。
+
+InstantiationStrategy仅负责实例化Bean的操作，相当于执行Java语言中new的功能，它并不会参与Bean属性的设置工作。所以由InstantiationStrategy返回的Bean实例实际上是一个半成品的Bean实例，属性填充的工作留待BeanWrapper来完成。
+
+### 6.1.4 BeanWrapper
+
+org.springframework.beans.BeanWrapper是Spring框架中重要的组件类。BeanWrapper相当于一个代理器，Spring委托BeanWrapper完成Bean属性的填充工作。在Bean实例被InstantiationStrategy创建出来之后，容器主控程序将Bean实例通过BeanWrapper包装起来，这是通过调用BeanWrapper#setWrappedInstance(Object obj)方法完成的。BeanWrapper类的继承结构如下：
+
+~~~mermaid
+classDiagram
+	PropertyAccessor <|-- ConfigurablePropertyAccessor
+	PropertyEditorRegistry <|-- ConfigurablePropertyAccessor
+	PropertyEditorRegistry <|.. PropertyEditorRegistrySupport
+	ConfigurablePropertyAccessor <|-- BeanWrapper
+	ConfigurablePropertyAccessor <|.. AbstractPropertyAccessor
+	PropertyEditorRegistrySupport <|-- AbstractPropertyAccessor
+	BeanWrapper <|.. BeanWrapperImpl
+	AbstractPropertyAccessor <|-- BeanWrapperImpl
+~~~
+
+BeanWrapper还有两个顶级类接口，分别是PropertyAccessor和PropertyEditorRegistry。PropertyAccessor接口定义了各种访问Bean属性的方法，如setPropertyValue(String, Object)、setPropertyValues(PropertyValues pvs)等；而PropertyEditorRegistry是属性编辑器的注册表。所以BeanWrapper实现类BeanWrapperImpl具有三重身份：
+
+- Bean包裹器
+- 属性访问器
+- 属性编辑器注册表
+
+一个BeanWrapperImpl实例内部封装了两类组件：被封装的待处理的Bean，以及一套用于设置Bean属性的属性编辑器。
+
+要顺利地填充Bean属性，除了目标Bean实例和属性编辑器外，还需要获取Bean对应地BeanDefinition，它从Spring容器的BeanDefinitionRegistry中直接获取。Spring主控程序从BeanDefinition中获取Bean属性的配置信息PropertyValue，并使用属性编辑器对PropertyValue进行转换以得到Bean的属性值。对Bean的其他属性重复这样的步骤，就可以完成Bean所有属性的注入工作。BeanWrapperImpl在内部使用Spring的BeanUtils工具类对Bean进行反射操作，设置属性。下一节将详细介绍属性编辑器的原理，并讲解如何通过配置的方式注册自定义的属性编辑器。
+
+## 6.2 属性编辑器
+
+BeanWrapper在填充Bean属性时如何将这个字面值正确地转换为对应地double或int等内部类型呢？这个转换器就是属性编辑器。
+
+任何实现java.beans.PropertyEditor接口的类都是属性编辑器。属性编辑器的主要功能就是将外部的设置值转换为JVM内部的对应类型，所以属性编辑器其实就是一个类型转换器。
+
+### 6.2.1 JavaBean的编辑器
+
+Sun所制定的JavaBean规范很大程度上是为IDE准备的
+
+JavaBean规范通过java.beans.PropertyEditor定义了设置JavaBean属性的方法，通过BeanInfo描述了JavaBean的哪些属性是可定制的，此外还描述了可定制属性与PropertyEditor的对应关系。
+
+BeanInfo与JavaBean之间的对应关系通过两者之间的命名规范确立。对应JavaBean的BeanInfo采用如下的命名规范：`<Bean>BeanInfo`。如ChartBean对应的BeanInfo为ChartBeanBeanInfo；Car对应的BeanInfo为CarBeanInfo。
+
+JavaBean规范提供了一个管理默认属性编辑器的管理器PropertyEditorManager，该管理器内保存着一些常见类型的属性编辑器。如果某个JavaBean的常见类型属性没有通过BeanInfo显式指定属性编辑器，那么IDE将自动使用PropertyEditorManager中注册的对应默认属性编辑器。
+
+#### 1.PropertyEditor
+
+PropertyEditor是属性编辑器的接口，它规定了将外部设置值转换为内部JavaBean属性值的转换接口方法。PropertyEditor主要的接口方法说明如下。
+
+- Object getValue(): 返回属性的当前值，基本类型被封装成对应的封装类实例。
+- void setValue(Object newValue): 设置属性的值，基本类型以封装类传入。
+- String getAsText(): 将属性对象用一个字符串表示，以便外部的属性编辑器能以可视化的方式显示。默认返回null，表示该属性不能以字符串表示。
+- void setAsText(String text): 用一个字符串去更新属性的内部值，这个字符串一般从外部属性编辑器传入。
+- String[] getTags(): 返回表示有效属性值的字符串数组（如boolean属性对应的有效Tag为true和false），以便属性编辑器能以下拉框的方式显示出来。默认返回null，表示没有匹配的字符串有限集合。
+- String getJavaInitializationString()：为属性提供一个表示初始值的字符串，属性编辑器以此值作为属性的默认值。
+
+#### 2.BeanInfo
