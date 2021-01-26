@@ -3081,3 +3081,270 @@ PropertyEditor是属性编辑器的接口，它规定了将外部设置值转换
 - String getJavaInitializationString()：为属性提供一个表示初始值的字符串，属性编辑器以此值作为属性的默认值。
 
 #### 2.BeanInfo
+
+# 第7章 Spring AOP基础
+
+## 7.1 AOP概述
+
+### 7.1.1 AOP到底是什么
+
+AOP是Aspect Oriented Programing的简称，最初被译为“面向方面编程”，这个翻译向来为人所诟病，但是由于陷入为主的效应，受众广泛，所以这个翻译依然被很多人使用。但我们更倾向于用“面向切面编程”的译法，因为它更加达意。
+
+### 7.1.2 AOP术语
+
+#### 1.连接点（Joinpoint）
+
+特定点是程序执行的某个特定位置，如类开始初始化前、类初始化后、类的某个方法调用前/调用后、方法抛出异常后。一个类或一段程序代码拥有一些具有边界性质的特定点，这些代码中的特定点就被称为“连接点”。Spring仅支持方法的连接点，即仅能在方法调用前、方法调用后、方法抛出异常时及方法调用前后这些程序执行织入增强。连接点就是AOP向目标类打入楔子的候选锚点。
+
+连接点由两个信息确定：一是用方法表示的程序执行点；二是用相对位置表示的方位。如在Test.foo()方法执行前的连接点，执行点为Test.foo()，方位为该方法执行前的位置。Spring使用切点对执行点进行定位，而方位则在增强类型中定义。
+
+#### 2.切点（Pointcut）
+
+每个程序类都拥有多个连续点，如一个拥有两个方法的类，这两个方法都是连接点，即连接点是程序类中客观存在的事物。但在为数众多的连接点中，如何定位某些感兴趣的连接点呢？AOP通过“切点”定位特定的连接点。借助数据库查询的概念来理解切点和连接点的关系再合适不过了：连接点相当于数据库中的记录，而切点相当于查询条件。切点和连接点不是一对一的关系，一个切点可以匹配多个连接点。
+
+在Spring中，切点通过org.springframework.aop.Pointcut接口进行描述，它使用类和方法作为连接点的查询条件，Spring AOP的规则解析引擎负责解析切点所设定的查询条件，找到对应的连接点。确切地说，应该是执行点而非连接点，因为连接点是方法执行前、执行后等包括方位信息的具体程序执行点，而切点只定位到某个方法上，所以如果希望定位到具体的连接点上，还需要提供方位信息。
+
+#### 3.增强（Advice）
+
+增强是织入目标类连接点上的一段程序代码。在Spring中，增强除用于描述一段程序代码外，还拥有另一个和连接点相关的信息，这便是执行点的方位。结合执行点的方位信息和切点信息，就可以找到特定的连接。正因为增强既包含用于添加到目标连接点上的一段执行逻辑，又包含用于定位连接点的方位信息，所以Spring所提供的增强接口都是带方位名的，如BeforeAdvice、AfterReturnAdvice、ThrowsAdvice等。BeforeAdvice表示方法调用前的位置，而AfterReturningAdvice表示访问返回后的位置。所以只有结合切点和增强，才能确定特定的连接点并实施增强逻辑。
+
+#### 4.目标对象（Target）
+
+增强逻辑的织入目标类。如果没有AOP，那么目标业务类需要自己实现所有的逻辑。在AOP的帮助下，服务只实现哪些非横切逻辑的程序逻辑，而性能监视和事务管理这些横切逻辑则可以使用AOP动态织入特定的连接点上。
+
+#### 5.引介（Introduction）
+
+引介是一种特殊的增强，它为类添加一些属性和方法。这样，即使一个业务类原本没有实现某个接口，通过AOP的引介功能，也可以动态地为该业务类添加接口的实现逻辑，让业务类成为这个接口的实现类。
+
+#### 6.织入（Weaving）
+
+织入是将增强添加到目标类的具体连接点上的过程。AOP就像一台织布机，将目标类、增强或者引介天衣无缝地编织到一起。我们不能不说“织入”这个词太精辟了。根据不同的实现技术，AOP有3种织入方式。
+
+（1）编译期织入，这要求使用特殊的Java编译器。
+
+（2）类装载期织入，这要求使用特殊的类装载器。
+
+（3）动态代理织入，在运行期为目标类添加增强生成子类的方式。
+
+Spring采用动态代理织入，而AspectJ采用编译期织入和类装载期织入。
+
+#### 7.代理（Proxy）
+
+一个类被AOP织入增强后，就产生了一个结果类，它是融合了原类和增强逻辑的代理类。根据不同的代理方式，代理类既可能是和原类具有相同接口的类，也可能就是原类的子类，所以可以采用与调用原类相同的方式调用代理类。
+
+#### 8.切面（Aspect）
+
+切面由切点和增强（引介）组成，它既包括横切逻辑的定义，也包括连接点的定义。SpringAOP就是负责实施切面的框架，它将切面所定义的横切逻辑织入切面所指定的连接点中。
+
+AOP的工作重心在于如何将增强应用于目标对象的连接点上。这里包括两项工作：第一，如何通过切点和增强定位到连接点上；第二，如何在增强中编写切面的代码。
+
+### 7.1.3 AOP的实现者
+
+#### 4.Spring AOP
+
+Spring AOP使用纯Java实现，它不需要专门的编译过程，也不需要特殊的类装载器，它在运行期通过代理方式向目标类织入增强代码。Spring 并不尝试提供最完整的AOP实现，相反，它侧重于提供一种和Spring IoC容器整合的AOP实现，用以解决企业级开发中的常见问题。在Spring中可以无缝地将Spring AOP、IoC和AspectJ整合在一起。
+
+## 7.2 基础知识
+
+Spring AOP使用动态代理技术在运行期织入增强的代码，为了揭示Spring AOP底层的工作机理，有必要学习涉及的Java知识。Spring AOP使用了两种代理机制：一种是基于JDK的动态代理；另一种是基于CGLib的动态代理。之所以需要两种代理机制，很大程度上是因为JDK本身只提供接口的代理，而不支持类的代理。
+
+### 7.2.1 带有横切逻辑的实例
+
+下面通过具体化代码实现7.1节所介绍的例子的性能监视横切逻辑，并提供动态代理技术对此进行改造。在调用每一个目标类方法时启动方法的性能监视，在目标类方法调用完成时记录方法的花费时间，如代码清单7-2所示。
+
+~~~java
+package com.smart.proxy;
+public class ForumServiceImpl implements ForumService {
+    public void removeTopic(int topicId) {
+        // ①-1 开始对该方法进行性能监视
+        PerformanceMonitor.begin("com.smart.proxy.ForumServiceImpl.removeTopic");
+        System.out.println("模拟删除Topic记录："+topicId);
+        try {
+            Thread.currentThread().sleep(20);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        
+        // ①-2 结束对该方法的性能监视
+        PerformanceMonitor.end();
+    }
+    
+    public void removeForum(int forumId) {
+        // ②-1 开始对该方法进行性能监视
+        PerformanceMonitor.begin("com.smart.proxy.ForumServiceImpl.removeForum");
+        System.out.println("模拟删除Forum记录："+forumId);
+        try {
+            Thread.currentThread().sleep(40);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        
+        // ②-2 结束对该方法的性能监视
+        PerformanceMonitor.end();
+    }
+}
+~~~
+
+在代码清单7-2中，PerformanceMonitor相关的代码就是具有横切逻辑特征的代码，每个Service类和每个业务方法体的前后都执行相同的代码逻辑：方法调用前启动PerformanceMonitor；方法调用后通知PerformanceMonitor结束性能监视并记录性能监视结果。
+
+PerformanceMonitor是性能监视的实现类，下面给出一个非常简单的实现版本，如代码清单7-3所示。
+
+~~~java
+package com.smart.proxy;
+public class PerformanceMonitor {
+    // ①通过一个ThreadLocal保存与调用线程相关的性能监视信息
+    private static ThreadLocal<MethodPerformance> performanceRecord = new ThreadLocal<MethodPerformancce>();
+    
+    // ②启动对某一目标方法的性能监视
+    public static void begin(String method) {
+        System.out.println("begin monitor...");
+        MethodPerformance mp = new MethodPerformance(method);
+        performanceRecord.set(mp);
+    }
+    public static void end() {
+        System.out.println("end monitor...");
+        MethodPerformance mp = performanceRecord.get();
+        
+        // ③打印出方法性能监视的结果信息
+        mp.printPerformance();
+    }
+}
+~~~
+
+ThreadLocal是将非线程安全类改造为线程安全类的“法宝”（11.2节将详细介绍）。PerformanceMonitor提供了两个方法：通过调用begin(String method)方法开始对某个目标类方法的监视，其中method为目标类方法的全限定名；而通过调用end()方法结束对目标类方法的监视，并给出性能监视信息。这两个方法必须配套使用。
+
+用于记录性能监视信息的MethodPerformance类的代码如代码清单7-4所示。
+
+~~~java
+package com.smart.proxy;
+public class MethodPerformance {
+    private long begin;
+    private long end;
+    private String serviceMethod;
+    public MethodPerformance(String serviceMethod) {
+        this.serviceMethod = serviceMethod;
+        this.begin = System.currentTimeMillis(); // ①记录目标类方法开始执行点的系统时间
+    }
+    public void printPerformance() {
+        end = System.currentTimeMillis(); // ②获取目标类方法执行完成后的系统时间，进而计算出目标类方法的执行时间
+        long elapse = end - begin;
+        System.out.println(serviceMethod + "花费" + elapse + "毫秒。"); // ③报告目标类方法的执行时间
+    }
+}
+~~~
+
+这些非业务逻辑的性能监视代码破坏了ForumServiceImpl业务逻辑的纯粹性。我们希望通过代理的方式将业务类方法中开启和结束性能监视的横切代码从业务类中完全移除，并通过JDK或CGLib动态代理技术将横切代码动态织入目标方法的相应位置。
+
+### 7.2.2 JDK动态代理
+
+自Java 1.3以后，Java提供了动态代理技术，运行开发者在运行期创建接口的代理实例。在Sun刚推出动态代理时，还很难想象它有多大的实际用途，现在终于发现动态代理是实现AOP的绝好底层技术。
+
+JDK的动态代理主要涉及java.lang.reflect包中的两个类：Proxy和InvocationHandler。其中，InvocationHandler是一个接口，可以通过实现该接口定义横切逻辑，并通过反射机制调用目标类的代码，动态地将横切逻辑和业务逻辑编织在一起。
+
+而Proxy利用Invocation动态创建一个符合某一接口的实例，生成目标类的代理对象。这样的描述一定很抽象，我们马上着手使用Proxy和InvocationHandler对7.2.1节中的性能监视代码进行革新。
+
+首先从业务类ForumServiceImpl中移除性能监视的横切代码，使ForumServiceImpl只负责具体的业务逻辑。
+
+原来的性能监视代码被移除了，只保留了真正的业务逻辑。
+
+从业务类中移除性能监视横切代码后，必须为它找到一个安身之所，InvocationHandler就是横切代码的“安家乐园”。将性能监视横切代码安置在PerformanceHandler中，如代码清单7-6所示。
+
+~~~java
+package com.smart.proxy;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+
+public class PerformanceHandler implements InvocationHandler { // ①实现InvocationHandler
+    private Object target;
+    public PerformanceHandler(Object object) { // ②target为目标业务类
+        this.target = target;
+    }
+    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable { //③
+        PerformanceMonitor.begin(target.getClass().getName()+"."+method.getName()); //③-1
+        Object obj = method.invoke(target, args); //③-2 通过反射方法调用业务类的目标方法
+        PerformanceMonitor.end(); //③-1
+        return obj;
+    }
+}
+~~~
+
+③处invoke()方法中粗体所示部分的代码为性能监视的横切代码，我们发现，横切代码只出现一次，而不是像原来那样散落各处。③-2处的method.invoke()语句通过Java反射机制间接调用目标对象的方法，这样InvocationHandler的invoke()方法就将横切逻辑代码(③-1)和业务类方法的业务逻辑代码（③-2）编织到一起，所以，可以将InvocationHandler看成一个编织器。下面对这段代码作进一步的说明。
+
+首先实现InvocationHandler接口，该接口定义了一个invoke(Object proxy, Method method, Object[] args)方法，其中，proxy是最终生成的代理实例，一般不会用到；method是被代理目标实例的某个具体方法，通过它可以发起目标实例方法的反射调用；args是被代理实例某个方法的入参，在方法反射调用时使用。
+
+其次，在构造函数里通过target传入希望被代理的目标对象，如②处所示；在InvocationHandler接口方法invoke(Object proxy, Method method, Object[] args)里，将目标实例传递给method.invoke()方法，并调用目标实例的方法，如③处所示。
+
+下面通过Proxy结合PerformanceHandler创建ForumService接口的代理实例，如代码清单7-7所示。
+
+~~~java
+package com.smart.proxy;
+import java.lang.reflect.Proxy;
+import org.testng.annotations.*;
+public class ForumServiceTest {
+    @Test
+    public void proxy() {
+        //①希望被代理的目标业务类
+        ForumService target = new ForumServiceImpl(); 
+        //②将目标业务类和横切代码编织到一起
+        PerformanceHandler handler = new PerformanceHandler(target); 
+        //③根据编织了目标业务类逻辑和性能监视横切逻辑的InvocationHandler实例创建代理实例
+        ForumService proxy = (ForumService) Proxy.newProxyInstance(target.getClass().getClassLoader(),
+                                                                  target.getClass().getInterfaces(),
+                                                                  handler); 
+        //④调用代理实例
+        proxy.removeForum(10);
+        proxy.removeTopic(1012);
+    }
+}
+~~~
+
+上面的代码完成了业务类代码和横切代码的编织工作并生成了代理实例。在②处，让PerformanceHandler将性能监视横切逻辑编织到ForumService实例中，然后在③处，通过Proxy的newProxyInstance()静态方法为编织了业务类逻辑和性能监视逻辑的handler创建一个符合ForumService接口的代理实例。该方法的第一个入参为类加载器；第二个入参为创建代理实例所需实现的一组接口；第三个入参是整合了业务逻辑和横切逻辑的编织器对象。
+
+### 7.2.3 CGLib动态代理
+
+# 第8章 基于@AspectJ和Schema的AOP
+
+## 8.4 @AspectJ语法基础
+
+@AspectJ使用Java 5.0注解和正规的AspectJ的切点表达式语言描述切面 ，由于Spring只支持方法的连接点，所以Spring仅支持部分AspectJ的切点语言。本节将学习AspectJ切点表达式语言，以AspectJ5.0版本为准。
+
+### 8.4.1 切点表达式函数
+
+AspectJ 5.0的切点表达式由关键字和操作参数组成，如切点表达式`execution(* greetTo(..))`，execution为关键字，而`* greetTo(..)`为操作参数。在这里，execution代表目标类执行某一方法，而“`* greetTo(..)`”描述目标方法的匹配模式串，二者联合起来表示目标类greetTo()方法的连接点。为了描述方便，将execution()称为函数，而将匹配串“`* greetTo(..)`”称为函数的入参。
+
+Spring支持9个@AspectJ切点表达式函数，它们用不同的方式描述目标类的连接点。根据描述对象的不同，可以大致分为4种类型。
+
+- 方法切点函数：通过描述目标类方法的信息定义连接点。
+- 方法入参切点函数：通过描述目标类方法入参的信息定义连接点。
+- 目标类切点函数：通过描述目标类类型的信息定义连接点。
+- 代理类切点函数：通过描述目标类的代理类的信息定义连接点。
+
+| 类别             | 函数         | 入参           | 说明                                                         |
+| ---------------- | ------------ | -------------- | ------------------------------------------------------------ |
+| 方法切点函数     | execution()  | 方法匹配模式串 | 表示满足某一匹配模式的所有目标类方法连接点。如`execution(* greetTo(..))`表示所有目标类种的greetTo()方法 |
+|                  | @execution() | 方法注解类名   | 表示标注了特定注解的目标类方法连接点。如`@annotation(com.smart.anno.NeedTest)`表示任何标注了@NeedTest注解的目标类方法 |
+| 方法入参切点函数 | args()       | 类名           | 通过判别目标类方法运行时入参对象的类型定义指定连接点。如args(com.smart.Waiter)表示所有有且仅有一个按类型匹配于Waiter入参的方法 |
+|                  | @args()      | 类型注解类名   | 通过判别目标类方法运行时入参对象的类是否标注特定注解来指定连接点。如@args(com.smart.Monitorable)表示任何这样的一个目标方法：它有一个入参且入参对象的类标注@Monitorable注解 |
+| 目标类切点函数   | within()     | 类名匹配串     | 表示特定域下的所有连接点。如`within(com.smart.service.*)`表示com.smart.service包中的所有连接点，即包中所有类的所有方法：而`within(com.smart.service.*Service)`表示在com.smart.service包中所有以Service结尾的类的所有连接点 |
+|                  | target()     | 类名           | 假如目标类按类型匹配于指定类，则目标类的所有连接点匹配这个切点。如通过target(com.smart.Waiter)定义的切点、Waiter即Waiter实现类NaiveWaiter中的所有连接点都匹配该切点 |
+|                  | @within()    | 类型注解类名   | 假如目标类按类型匹配于某个类A，且类A标注了特定注解，则目标类的所有连接点匹配这个切点。如@within(com.smart.Monitorable)定义的切点，假如Waiter类标注了@Monitorable注解，则Waiter及Waiter实现类NaiveWaiter的所有连接点都匹配这个切点 |
+|                  | @target()    | 类型注解类名   | 假如目标类标注了特定注解，则目标类的所有连接点都匹配该切点。如`@target(com.smart.Monitorable)`，假如NaiveWaiter标注了@Monitorable，则NaiveWaiter的所有连接点都匹配这个切点 |
+| 代理类切点函数   | this()       | 类名           | 代理类按类型匹配于指定类，则被代理的目标类的所有连接点都匹配该切点。这个函数比较难以理解，这里暂不举例，留待后面详解 |
+
+@AspectJ还有call()、initialization()、preinitialization()、staticinitialization()、get()、set()、handler()、adviceexecution()、withincode()、cflow()、cflowbelow()、if()、@this()及@withincode()等函数，这些函数在Spring中不能使用，否则会抛出IllegalArgumentException异常。在不特别声明的情况下，本书所讲的@AspectJ函数均指前表所列的9个函数。
+
+### 8.4.2 在函数入参中使用通配符
+
+有些函数的入参可以接收通配符，@AspectJ支持3种通配符。
+
+- `*`：匹配任意字符，但它只能匹配上下文中的一个元素。
+- `..`：匹配任意字符，可以匹配上下文中的多个元素，但在表示类时，必须和`*`联合使用，而在表示入参时则单独使用。
+- `+`：表示按类型匹配指示类的所有类，必须跟在类名后面，如com.smart.Car+。继承或扩展指定类的所有类，同时还包括指定类本身。
+
+@AspectJ函数按其是否支持通配符及支持的程度，可以为以下3类。
+
+- 支持所有通配符：execution()和within()，如`within(com.smart.*)`、`within(com.smart.service..*.*Service+)`等。
+- 仅支持“+”通配符：args()、this()和target()，如args(com.smart.Waiter+)、target(java.util.List+)等。虽然这3个函数可以支持“+”通配符，但其意义不大，因为对于这些函数来说，使用和不使用“+”都是一样的，如target(com.smart.Waiter+)和target(com.smart.aspectj.Waiter)是等价的。
+- 不支持通配符：@args()、@within()、@target()和@Annotation()。
+
+此外，args()、this()、target()、@args()、@within()、@target()和@annotation()这7个函数除了可以指定类名外，也可以指定变量名，并将目标对象中的变量绑定到增强的方法中。关于参数绑定的内容将在8.6节介绍，而函数的其他内容将在8.5节详解。
