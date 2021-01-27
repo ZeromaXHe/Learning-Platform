@@ -3302,6 +3302,163 @@ public class ForumServiceTest {
 
 ### 7.2.3 CGLib动态代理
 
+使用JDK创建代理有一个限制，即它只能为接口创建代理实例，这一点可以从Proxy的接口方法newProxyInstance(ClassLoader loader, Class[] interfaces, InvocationHandler h)中看得很清楚：第二个入参interfaces就是需要代理实例实现的接口列表。虽然面向接口编程的思想被很多大师级人物（包括Rod Johnson）所推崇，但在实际开发中，许多开发者也对此深感困惑：难道对一个简单业务表的操作也要老老实实地创建5个类（领域对象类、DAO接口、DAO实现类、Service接口、Service实现类）吗？难道不能直接通过实现类构建程序吗？对于这个问题，很难给出一个孰优孰劣的准确判断，但仍有很多不使用接口的项目也取得了非常好的效果。
+
+对于没有通过接口定义业务方法的类，如何动态创建代理实例呢？JDK动态代理技术显然已经黔驴技穷，CGLib作为一个替代者，填补了这项空缺。
+
+CGLib采用底层的字节码技术，可以为一个类创建子类，在子类中采用方法拦截的技术拦截所有父类方法的调用并顺势织入横切逻辑。下面采用CGLib技术编写一个可以为任何类创建织入性能监视横切逻辑代理对象的代理创建器，如代码清单7-8所示。
+
+~~~java
+package com.smart.proxy;
+import java.lang.reflect.Method;
+import net.sf.cglib.proxy.Enhancer;
+import net.sf.cglib.proxy.MethodInterceptor;
+import net.sf.cglib.proxy.MethodProxy;
+
+public class CglibProxy implements MethodInterceptor {
+    private Enhancer enhancer = new Enhancer();
+    public Object getProxy(Class clazz) {
+        enhancer.setSuperclass(clazz); //①设置需要创建子类的类
+        enhancer.setCallback(this);
+        return enhancer.create(); //②通过字节码技术动态创建子类实例
+    }
+    public Object intercept(Object obj, Method method, Object[] args, MethodProxy proxy) throws Throwable { //③拦截父类所有方法的调用
+        PerformanceMonitor.begin(obj.getClass().getName() + "." + method.getName()); //③-1
+        Object result = proxy.invokeSuper(obj, args); //③-2 通过代理类调用父类中的方法
+        PerformanceMonitor.end(); //③-1
+        return result;
+    }
+}
+~~~
+
+在上面的代码中，用户可以通过getProxy(Class clazz)方法为一个类创建动态代理对象，该代理对象通过扩展clazz实现代理。在这个代理对象中，织入性能监视的横切逻辑。intercept(Object obj, Method method, Object[] args, MtehodProxy proxy)是CGLib定义的Interceptor接口方法，它拦截所有目标类方法的调用。其中，obj表示目标类的实例；method为目标类方法的反射对象；args为方法的动态入参；proxy为代理类实例。
+
+值得一提的是，由于CGLib采用动态创建子类的方式生成代理对象，所以不能对目标类中的final或private方法进行代理。
+
+### 7.2.5 代理知识小结
+
+Spring AOP的底层就是通过使用JDK或CGLib动态代理技术为目标Bean织入横切逻辑的。这里对动态创建代理对象作一个小结。
+
+虽然通过PerformanceHandler或CglibProxy实现了性能监视横切逻辑的动态织入，但这种实现方式存在3个明显需要改进的地方。
+
+- （1）目标类的所有方法都添加了性能监视横切逻辑，而有时这并不是我们所期望的，我们可能只希望对业务类中的某些特定方法添加横切逻辑。 
+- （2）通过硬编码的方式指定了织入横切逻辑的织入点，即在目标类业务方法的开始和结束前织入代码。
+- （3）手工编写代理实例的创建过程，在为不同类创建代理时，需要分别编写相应的创建代码，无法做到通用。
+
+以上3个问题在AOP中占用重要的地位，因为Spring AOP的主要工作就是围绕以上3点展开的：Spring AOP通过Pointcut（切点）指定在哪些类的哪些方法上织入横切逻辑，通过Advice（增强）描述横切逻辑和方法的具体织入点（方法前、方法后、方法的两端等）。此外，Spring通过Advisor（切面）将Pointcut和Advice组装起来。有了Advisor的信息，Spring就可以利用JDK或CGLib动态代理技术采用统一的方式为目标Bean创建织入切面的代理对象了。
+
+JDK动态代理所创建的代理对象，在Java 1.3下，性能差强人意。虽然在高版本的JDK中动态代理对象的性能得到了很大的提高，但有研究表明，CGLib所创建的动态代理对象的性能依旧比JDK所创建的动态代理对象的性能高不少（大概10倍）。但CGLib在创建代理对象时所花费的时间却比JDK动态代理多（大概8倍）。对于singleton的代理对象或者具有实例池的代理，因为无需频繁地创建代理对象，所以比较适合采用CGLib动态代理技术；反之则适合采用JDK动态代理技术。
+
+## 7.3 创建增强类
+
+Spring使用增强类定义横切逻辑，同时由于Spring只支持方法连接点，增强还包括在方法地哪一点加入横切代码的方位信息，所以增强既包含横切逻辑，又包含部分连接点的信息。
+
+### 7.3.1 增强类型
+
+AOP联盟为增强定义了org.aopalliance.aop.Advice接口，Spring支持5种类型的增强，先来了解一下增强接口继承关系图
+
+~~~mermaid
+classDiagram
+	class Advice {
+		<<aopalliance>>
+	}
+	class ThrowsAdvice{
+		<<spring>>
+	}
+	class BeforeAdvice{
+		<<spring>>
+	}
+	class MethodBeforeAdvice {
+		<<spring>>
+	}
+	class Interceptor {
+		<<aopalliance>>
+	}
+	class MethodInterceptor {
+		<<aopalliance>>
+	}
+	class IntroductionInterceptor {
+		<<aopalliance>>
+	}
+	class AfterReturningAdvice {
+		<<spring>>
+	}
+	class DynamicIntroductionAdvice {
+		<<spring>>
+	}
+	Advice <|-- ThrowsAdvice
+	Advice <|-- BeforeAdvice
+	BeforeAdvice <|-- MethodBeforeAdvice
+	Advice <|-- Interceptor
+	Interceptor <|-- MethodInterceptor
+	MethodInterceptor <|-- IntroductionInterceptor
+	Advice <|-- AfterReturningAdvice
+	Advice <|-- DynamicIntroductionAdvice
+	DynamicIntroductionAdvice <|-- IntroductionInterceptor
+~~~
+
+带`<<spring>>`标识的接口是Spring所定义的扩展增强接口；带`<<aopalliance>>`标识的接口则是AOP联盟定义的接口。按照增强在目标类方法中的连接点位置，可以分为以下5类。
+
+- 前置增强：org.springframework.aop.BeforeAdvice代表前置增强。因为Spring只支持方法级的增强，所以MethodBeforeAdvice是目前可用的前置增强，表示在目标方法执行前实施增强，而BeforeAdvice是为了将来版本扩展需要而定义的。
+- 后置增强：org.springframework.aop.AfterReturningAdvice代表后置增强，表示在目标方法执行后实施增强。
+- 环绕增强：org.aopalliance.intercept.MethodInterceptor代表环绕增强，表示在目标方法执行前后实施增强。
+- 异常抛出增强：org.springframework.aop.ThrowsAdvice代表抛出异常增强，表示在目标方法抛出异常后实施增强。
+- 引介增强：org.springframework.aop.IntroductionInterceptor代表引介增强，表示在目标类中添加一些新的方法和属性。
+
+这些增强接口都有一些方法，通过实现这些接口方法，并在接口方法中定义横切逻辑，就可以将它们织入目标类方法的相应连接点位置。
+
+### 7.3.2 前置增强
+
+#### 2.解剖ProxyFactory
+
+在BeforeAdviceTest中，使用org.springframework.aop.framework.ProxyFactory代理工厂将GreetingBeforeAdvice的增强织入目标类NaiveWaiter中。回想一下，前面介绍的JDK和CGLib动态代理技术是否有一些相似之处？不错，ProxyFactory内部就是使用JDK或CGLib动态代理技术将增强应用到目标类中的。
+
+Spring定义了org.springframework.aop.framework.AopProxy接口，并提供了两个final类型的实现类。
+
+~~~mermaid
+classDiagram
+	AopProxy <|-- Cglib2AopProxy
+	AopProxy <|-- JdkDynamicAopProxy
+~~~
+
+其中，Cglib2AopProxy使用CGLib动态代理技术创建代理，而JdkDynamicAopProxy使用JDK动态代理技术创建代理。如果通过ProxyFactory的setInterfaces(Class[] interfaces)方法指定目标接口进行代理，则ProxyFactory使用JdkDynamicAopProxy；如果是针对类的代理，则使用Cglib2AopProxy。此外，还可以通过ProxyFactory的`setOptimize(true)`方法让ProxyFactory启动优化代理方式，这样，针对接口的代理也会使用Cglib2AopProxy。值得注意的一点是，在使用CGLib动态代理技术时，必须引入CGLib类库。
+
+读者可能已经注意到，ProxyFactory通过addAdvice(Advice)方法添加一个增强，用户可以使用该方法添加多个增强。多个增强形成一个增强链，它们的调用顺序和添加顺序一致，可以通过addAdvice(int, Advice)方法将增强添加到增强链的具体位置（第一个位置为0）。
+
+#### 3.在Spring中配置
+
+使用ProxyFactory比直接使用CGLib或JDK动态代理技术创建代理省了很多事，如大家预想的一样，可以通过Spring的配置以“很Spring的方式”声明一个代理，如代码清单7-14所示。
+
+~~~xml
+<bean id="greetingAdvice" class="com.smart.advice.GreetingBeforeAdvice"/>
+<bean id="target" class="com.smart.advice.NaiveWaiter"/>
+<bean id="waiter" class="org.springframework.aop.framework.ProxyFactoryBean"
+      p:proxyInterfaces="com.smart.advice.Waiter" ③指定代理的接口，如果是多个接口，请使用list元素
+      p:interceptorNames="greetingAdvice"
+      p:target-ref="target"/>
+~~~
+
+ProxyFactoryBean是FactoryBean接口的实现类，5.9节专门介绍了FactoryBean的功用，它负责实例化一个Bean。ProxyFactoryBean负责为其他Bean创建代理实例，它在内部使用ProxyFactory来完成这项工作。下面进一步了解一下ProxyFactoryBean的几个常用的可配置属性。
+
+- target：代理的目标对象
+- proxyInterfaces：代理所要实现的接口，可以是多个接口。该属性还有一个别名属性interfaces。
+- interceptorNames：需要织入目标对象的Bean列表，采用Bean的名称指定。这些Bean必须是实现了org.aopalliance.intercept.MethodInterceptor或org.springframework.aop.Advisor的Bean，配置中的顺序对应调用的顺序。
+- singleton：返回的代理是否是单实例，默认为单实例。
+- optimize：当设置为true时，强制使用CGLib动态代理。对于singleton的代理，我们推荐使用CGLib；对于其他作用域类型的代理，最好使用JDK动态代理。原因是虽然CGLib创建代理时速度慢，但其创建出的代理对象运行效率较高；而使用JDK创建代理的表现正好相反。
+- proxyTargetClass：是否对类进行代理（而不是对接口进行代理）。当设置为true时，使用CGLib动态代理。
+
+将proxyTargetClass设置为true后，无须再设置proxyInterfaces属性，即使设置也会被ProxyFactoryBean忽略。
+
+### 7.3.6 引介增强
+
+引介增强是一种比较特殊的增强类型，它不是在目标方法周围织入增强，而是为目标类创建新的方法和属性，所以引介增强的连接点是类级别的，而非方法级别的。通过引介增强，可以为目标类添加一个接口的实现，即原来目标类未实现某个接口，通过引介增强可以为目标类创建实现某接口的代理。这种功能富有吸引力，因为它能够在横向上定义接口的实现方法，思考问题的角度发生了很大的变化。
+
+Spring定义了引介增强接口IntroductionInterceptor，该接口没有定义任何方法，Spring为该接口提供了DelegatingIntroductionInterceptor实现类。一般情况下，通过扩展该实现类定义自己的引介增强类。
+
+## 7.4 创建切面
+
+Spring通过org.springframework.aop.Pointcut接口描述切点，Pointcut由ClassFilter和MathodMatcher构成，它通过ClassFilter定位到某些特定类上，通过MethodMatcher定位到某些特定方法上，这样Pointcut就拥有了描述某些类的某些特定方法的能力。可以简单地用SQL复合查询条件来理解Pointcut的功用。
+
 # 第8章 基于@AspectJ和Schema的AOP
 
 ## 8.4 @AspectJ语法基础
