@@ -14,6 +14,89 @@
 
 # 第二部分 自动内存管理
 
+# 第2章 Java内存区域与内存溢出异常
+
+## 2.4 实战：OutOfMemoryError异常
+
+在《Java虚拟机规范》的规定里，除了程序计数器外，虚拟机内存的其他几个运行时区域都有发生OutOfMemoryError（下文称OOM）异常的可能，本节将通过若干实例来验证异常实际发生的代码场景（代码清单2-3～2-9），并且将初步介绍若干最基本的与自动内存管理子系统相关的HotSpot虚拟机参数。
+
+本节实战的目的有两个：第一，通过代码验证《Java虚拟机规范》中描述的各个运行时区域储存的内容；第二，希望读者在工作中遇到实际的内存溢出异常时，能根据异常的提示信息迅速得知是哪个区域的内存溢出，知道怎样的代码可能会导致这些区域内存溢出，以及出现这些异常后该如何处理。
+
+### 2.4.1 Java堆溢出
+
+Java堆用于储存对象实例，我们只要不断地创建对象，并且保证GC Roots到对象之间有可达路径来避免垃圾回收机制清除这些对象，那么随着对象数量的增加，总容量触及最大堆的容量限制后就会产生内存溢出异常。 
+
+通过参数`-XX:+HeapDumpOnOutOf-MemoryError`可以让虚拟机在出现内存溢出异常的时候Dump出当前的内存堆转储快照以便进行事后分析。
+
+Java堆内存的OutOfMemoryError异常是实际应用中最常见的内存溢出异常情况。出现Java堆内存溢出时，异常堆栈信息“java.lang.OutOfMemoryError”会跟随进一步提示“Java heap space”。 要解决这个内存区域的异常，常规的处理方法是首先通过内存映像分析工具（如Eclipse Memory Analyzer）对Dump出来的堆转储快照进行分析。第一步首先应确认内存中导致OOM的对象是否是必要的，也就是要先分清楚到底是出现了内存泄漏（Memory Leak）还是内存溢出（Memory Overflow）。
+
+如果是内存泄漏，可进一步通过工具查看泄漏对象到GC Roots的引用链，找到泄漏对象是通过怎样的引用路径、与哪些GC Roots相关联，才导致垃圾收集器无法回收它们，根据泄漏对象的类型信息 以及它到GC Roots引用链的信息，一般可以比较准确地定位到这些对象创建的位置，进而找出产生内存泄漏的代码的具体位置。
+
+如果不是内存泄漏，换句话说就是内存中的对象确实都是必须存活的，那就应当检查Java虚拟机的堆参数（-Xmx与-Xms）设置，与机器的内存对比，看看是否还有向上调整的空间。再从代码上检查 是否存在某些对象生命周期过长、持有状态时间过长、存储结构设计不合理等情况，尽量减少程序运行期的内存消耗。 
+
+以上是处理Java堆内存问题的简略思路，处理这些问题所需要的知识、工具与经验是后面三章的 主题，后面我们将会针对具体的虚拟机实现、具体的垃圾收集器和具体的案例来进行分析，这里就先暂不展开。 
+
+### 2.4.2 虚拟机栈和本地方法栈溢出
+
+由于HotSpot虚拟机中并不区分虚拟机栈和本地方法栈，因此对于HotSpot来说，-Xoss参数（设置 本地方法栈大小）虽然存在，但实际上是没有任何效果的，栈容量只能由-Xss参数来设定。关于虚拟机栈和本地方法栈，在《Java虚拟机规范》中描述了两种异常： 
+
+1）如果线程请求的栈深度大于虚拟机所允许的最大深度，将抛出StackOverflowError异常。 
+
+2）如果虚拟机的栈内存允许动态扩展，当扩展栈容量无法申请到足够的内存时，将抛出 OutOfMemoryError异常。
+
+《Java虚拟机规范》明确允许Java虚拟机实现自行选择是否支持栈的动态扩展，而HotSpot虚拟机的选择是不支持扩展，所以除非在创建线程申请内存时就因无法获得足够内存而出现 OutOfMemoryError异常，否则在线程运行时是不会因为扩展而导致内存溢出的，只会因为栈容量无法 容纳新的栈帧而导致StackOverflowError异常。 
+
+为了验证这点，我们可以做两个实验，先将实验范围限制在单线程中操作，尝试下面两种行为是 否能让HotSpot虚拟机产生OutOfMemoryError异常： 
+
+- 使用-Xss参数减少栈内存容量。 
+  结果：抛出StackOverflowError异常，异常出现时输出的堆栈深度相应缩小。 
+- 定义了大量的本地变量，增大此方法帧中本地变量表的长度。 
+  结果：抛出StackOverflowError异常，异常出现时输出的堆栈深度相应缩小。
+
+### 2.4.3 方法区和运行时常量池溢出
+
+由于运行时常量池是方法区的一部分，所以这两个区域的溢出测试可以放到一起进行。前面曾经提到HotSpot从JDK 7开始逐步“去永久代”的计划，并在JDK 8中完全使用元空间来代替永久代的背景故事，在此我们就以测试代码来观察一下，使用“永久代”还是“元空间”来实现方法区，对程序有什么实际的影响。 
+
+String::intern()是一个本地方法，它的作用是如果字符串常量池中已经包含一个等于此String对象的字符串，则返回代表池中这个字符串的String对象的引用；否则，会将此String对象包含的字符串添加 到常量池中，并且返回此String对象的引用。在JDK 6或更早之前的HotSpot虚拟机中，常量池都是分配在永久代中，我们可以通过-XX：PermSize和-XX：MaxPermSize限制永久代的大小，即可间接限制其中常量池的容量，具体实现如代码清单2-7所示，请读者测试时首先以JDK 6来运行代码。
+
+~~~java
+/**
+ * VM Args: =XX:PermSize=6M -XX:MaxPerSize=6M
+ */
+public class RuntimeConstantPoolOOM {
+    public static void main(String[] args) {
+        // 使用Set保持着常量池引用，避免Full GC回收常量池行为
+        Set<String> set = new HashSet<String>();
+        // 在short范围内足以让6MB的PermSize产生OOM了
+        short i=0;
+        while(true){
+            set.add(String.valueOf(i++).intern());
+        }
+    }
+}
+~~~
+
+从运行结果中可以看到，运行时常量池溢出时，在OutOfMemoryError异常后面跟随的提示信息是“PermGen space”，说明运行时常量池的确是属于方法区（即JDK 6的HotSpot虚拟机中的永久代）的一部分。
+
+而使用JDK 7或更高版本的JDK来运行这段程序并不会得到相同的结果，无论是在JDK 7中继续使用-XX：MaxPermSize参数或者在JDK 8及以上版本使用-XX：MaxMeta-spaceSize参数把方法区容量同样限制在6MB，也都不会重现JDK 6中的溢出异常，循环将一直进行下去，永不停歇。出现这种变 化，是因为自JDK 7起，原本存放在永久代的字符串常量池被移至Java堆之中，所以在JDK 7及以上版本，限制方法区的容量对该测试用例来说是毫无意义的。这时候使用-Xmx参数限制最大堆到6MB就能够看到以下两种运行结果之一，具体取决于哪里的对象分配时产生了溢出。
+
+~~~
+// OOM异常一： 
+Exception in thread "main" java.lang.OutOfMemoryError: Java heap space 
+    at java.base/java.lang.Integer.toString(Integer.java:440) 
+    at java.base/java.lang.String.valueOf(String.java:3058) 
+    at RuntimeConstantPoolOOM.main(RuntimeConstantPoolOOM.java:12) 
+// OOM异常二： 
+Exception in thread "main" java.lang.OutOfMemoryError: Java heap space 
+    at java.base/java.util.HashMap.resize(HashMap.java:699) 
+    at java.base/java.util.HashMap.putVal(HashMap.java:658) 
+    at java.base/java.util.HashMap.put(HashMap.java:607) 
+    at java.base/java.util.HashSet.add(HashSet.java:220) 
+    at RuntimeConstantPoolOOM.main(RuntimeConstantPoolOOM.java from InputFile-Object:14)
+~~~
+
+
+
 # 第3章 垃圾收集器与内存分配策略
 
 ## 3.5 经典垃圾收集器
@@ -128,4 +211,276 @@ Shenandoah收集器的工作过程大致可以划分为以下九个阶段（此�
 以上对Shenandoah收集器这九个阶段的工作过程的描述可能拆分得略为琐碎，读者只要抓住其中三个最重要的并发阶段（并发标记、并发回收、并发引用更新），就能比较容易理清Shenandoah是如何运作的了
 
 学习了Shenandoah收集器的工作过程，我们再来聊一下Shenandoah用以支持并行整理的核心概念——Brooks Pointer。“Brooks”是一个人的名字。1984年，Rodney A.Brooks在论文《Trading Data Space for Reduced Time and Code Space in Real-Time Garbage Collection on Stock Hardware》中提出了使用转发 指针（Forwarding Pointer，也常被称为Indirection Pointer）来实现对象移动与用户程序并发的一种解决方案。此前，要做类似的并发操作，通常是在被移动对象原有的内存上设置保护陷阱（Memory Protection Trap），一旦用户程序访问到归属于旧对象的内存空间就会产生自陷中段，进入预设好的异常处理器中，再由其中的代码逻辑把访问转发到复制后的新对象上。虽然确实能够实现对象移动与用户线程并发，但是如果没有操作系统层面的直接支持，这种方案将导致用户态频繁切换到核心态，代价是非常大的，不能频繁使用。
+
+# 第4章 虚拟机性能监控、故障处理工具
+
+## 4.1 概述
+
+给一个系统定位问题的时候，知识、经验是关键基础，数据是依据，工具是运用知识处理数据的手段。这里说的数据包括但不限于异常堆栈、虚拟机运行日志、垃圾收集器日志、线程快照（threaddump/javacore文件）、堆转储快照（heapdump/hprof文件）等。恰当地使用虚拟机故障处理、分析的工具可以提升我们分析数据、定位并解决问题的效率，但我们在学习工具前，也应当意识到工具永远都是知识技能的一层包装，没有什么工具是“秘密武器”，拥有了就能“包治百病”。
+
+## 4.2 基础故障处理工具
+
+并非所有程序员都了解过JDK的bin目录下其他各种小工具的作用。随着JDK版本的更迭，这些小工具的数量和功能也在不知不觉地增加与增强。除了编译和运行Java程序外，打包、部署、签名、调试、监控、运维等各种场景都可能会用到它们。
+
+在本章，笔者将介绍这些工具中的一部分，主要是用于监视虚拟机运行状态和进行故障处理的工具。这些故障处理工具并不单纯是被Oracle公司作为“礼物”附赠给JDK的使用者，根据软件可用性和授权的不同，可以把它们划分成三类：
+
+- 商业授权工具：主要是JMC(Java Mission Control)及它要用到的JFR(Java Flight Recorder)，JMC这个原本来自于JRockit的运维监控套件从JDK 7 Update 40开始就被集成到Oracle JDK中，JDK 11之前都无须独立下载，但是在商业环境中使用它则是要付费的。
+- 正式支持工具：这一类工具属于被长期支持的工具，不同平台、不同版本的JDK之间，这类工具可能会略有差异，但是不会出现某一个工具突然消失的情况。
+- 实验性工具：这一类工具在它们的使用说明中被声明为“没有技术支持，并且是实验性质的”（Unsupported and Experimental）产品，日后可能会转正，也可能会在某个JDK版本中无声无息地消失。但事实上它们通常都非常稳定而且功能强大，也能在处理应用程序性能问题、定位故障时发挥很大作用。
+
+读者如果比较细心的话，还可能会注意到这些工具程序大多数体积都异常小，各个工具的体积基本上都稳定在21KB左右。并非JDK开发团队刻意把它们制作得如此精炼、统一，而是因为这些命令行工具大多仅是一层薄包装而已，真正的功能代码是实现在JDK的工具类库中的。如果读者使用的是Linux版本的JDK，还可以发现这些工具中不少是由Shell脚本直接写成，可以用文本编辑器打开并编辑修改它们。
+
+JDK开发团队选择采用Java语言本身来实现这些故障处理工具是有特别用意的：当应用程序部署到生产环境后，无论是人工物理接触到服务器还是远程Telnet到服务器上都可能会受到限制。借助这些工具类库里面的接口和实现代码，开发者可以选择直接在应用程序中提供功能强大的监控分析功能。
+
+本章所讲解的工具大多基于Windows平台下的JDK进行演示，如果读者选用的JDK版本、操作系统不同，那么工具不仅可能数量上有所差别，同一个工具所支持的功能范围和效果都可能会不一样。本章提及的工具，如无特别说明，是JDK 5中就已经存在的，但为了避免运行环境带来的差异和兼容性问题，建议读者使用更高版本的JDK来验证本章介绍的内容。通常高版本JDK的工具有可能向下兼容运行于低版本JDK的虚拟机上的程序，反之则一般不行。 
+
+> **注意**
+>
+> 如果读者在工作中需要监控运行于JDK 5的虚拟机之上的程序，在程序启动时请添加参数“-Dcom.sun.management.jmxremote”开启JMX管理功能，否则由于大部分工具都是基于或者要用到 JMX（包括下一节的可视化工具），它们都将无法使用，如果被监控程序运行于JDK 6或以上版本的虚拟机之上，那JMX管理默认是开启的，虚拟机启动时无须再添加任何参数。
+
+### 4.2.1 jps：虚拟机进程状况工具
+
+JDK的很多小工具的名字都参考了UNIX命令的命名方式，jps（JVM Process Status Tool）是其中的典型。除了名字像UNIX的ps命令之外，它的功能也和ps命令类似：可以列出正在运行的虚拟机进程，并显示虚拟机执行主类（Main Class，main()函数所在的类）名称以及这些进程的本地虚拟机唯一 ID（LVMID，Local Virtual Machine Identifier）。虽然功能比较单一，但它绝对是使用频率最高的JDK 命令行工具，因为其他的JDK工具大多需要输入它查询到的LVMID来确定要监控的是哪一个虚拟机进程。对于本地虚拟机进程来说，LVMID与操作系统的进程ID（PID，Process Identifier）是一致的，使用Windows的任务管理器或者UNIX的ps命令也可以查询到虚拟机进程的LVMID，但如果同时启动了多个虚拟机进程，无法根据进程名称定位时，那就必须依赖jps命令显示主类的功能才能区分了。 
+
+jps命令格式：
+
+~~~shell
+jps [options] [hostid]
+~~~
+
+jps还可以通过RMI协议查询开启了RMI服务的远程虚拟机进程状态，参数hostid为RMI注册表中注册的主机名。jps的其他常用选项见表4-1。 
+
+| 选项 | 作用                                                 |
+| ---- | ---------------------------------------------------- |
+| -q   | 只输出LVMID，省略主类的名称                          |
+| -m   | 输出虚拟机进程启动时传递给主类main()函数的参数       |
+| -l   | 输出主类的全名，如果进程执行的是JAR包，则输出JAR路径 |
+| -v   | 输出虚拟机进程启动时的JVM参数                        |
+
+### 4.2.2 jstat：虚拟机统计信息监视工具
+
+jstat（JVM Statistics Monitoring Tool）是用于监视虚拟机各种运行状态信息的命令行工具。它可以显示本地或者远程[1]虚拟机进程中的类加载、内存、垃圾收集、即时编译等运行时数据，在没有 GUI图形界面、只提供了纯文本控制台环境的服务器上，它将是运行期定位虚拟机性能问题的常用工具。
+
+jstat命令格式为：
+
+~~~shell
+jstat [option vmid [interval[s|ms] [count]]]
+~~~
+
+对于命令格式中的VMID与LVMID需要特别说明一下：如果是本地虚拟机进程，VMID 与 LVMID 是一致的；如果是远程虚拟机进程，那VMID的格式应当是： 
+
+~~~
+[protocol:][//]lvmid[@hostname[:port]/servername]
+~~~
+
+参数interval和count代表查询间隔和次数，如果省略这2个参数，说明只查询一次。假设需要每250 毫秒查询一次进程2764垃圾收集状况，一共查询20次，那命令应当是： 
+
+~~~
+jstat -gc 2764 250 20
+~~~
+
+选项option代表用户希望查询的虚拟机信息，主要分为三类：类加载、垃圾收集、运行期编译状况。详细请参考表4-2中的描述。 
+
+| 选项              | 作用                                                         |
+| ----------------- | ------------------------------------------------------------ |
+| -class            | 监视类加载、卸载数量、总空间以及类装载所耗费的时间           |
+| -gc               | 监视Java堆状况，包括Eden区、2个Survivor区、老年代、永久代等的容量，已用空间，垃圾收集时间合计等信息 |
+| -gccapacity       | 监视内容与-gc基本相同，但输出主要关注Java堆各个区域使用到的最大、最小空间 |
+| -gcutil           | 监视内容与-gc基本相同，但输出主要关注已使用空间占总空间的百分比 |
+| -gccause          | 与-gcutil功能一样，但是会额外输出导致上一次垃圾收集产生的原因 |
+| -gcnew            | 监视新生代垃圾收集状况                                       |
+| -gcnewcapacity    | 监视内容与-gcnew基本相同，输出主要关注使用到的最大、最小空间 |
+| -gcold            | 监视老年代垃圾收集状况                                       |
+| -gcoldcapacity    | 监视内容与-gcold基本相同，输出主要关注使用到的最大、最小空间 |
+| -gcpermcapacity   | 输出永久代使用到的最大、最小空间                             |
+| -compiler         | 输出即时编译器编译过的方法、耗时等信息                       |
+| -printcompilation | 输出已经被即时编译的方法                                     |
+
+jstat监视选项众多，囿于版面原因无法逐一演示，这里仅举一个在命令行下监视一台刚刚启动的 GlassFish v3服务器的内存状况的例子，用以演示如何查看监视结果。监视参数与输出结果如代码清单 4-1所示。 
+
+~~~
+jstat -gcutil 2764 
+S0		S1		E		O		P		YGC		YGCT	FGC		FGCT	GCT 
+0.00	0.00	6.20	41.42	47.20	16		0.105	3		0.472	0.577
+~~~
+
+查询结果表明：这台服务器的新生代Eden区（E，表示Eden）使用了6.2%的空间，2个Survivor区（S0、S1，表示Survivor0、Survivor1）里面都是空的，老年代（O，表示Old）和永久代（P，表示 Permanent）则分别使用了41.42%和47.20%的空间。程序运行以来共发生Minor GC（YGC，表示Young GC）16次，总耗时0.105秒；发生Full GC（FGC，表示Full GC）3次，总耗时（FGCT，表示Full GC Time）为0.472秒；所有GC总耗时（GCT，表示GC Time）为0.577秒。
+
+使用jstat工具在纯文本状态下监视虚拟机状态的变化，在用户体验上也许不如后文将会提到的 JMC、VisualVM等可视化的监视工具直接以图表展现那样直观，但在实际生产环境中不一定可以使用图形界面，而且多数服务器管理员也都已经习惯了在文本控制台工作，直接在控制台中使用jstat命令依然是一种常用的监控方式。  
+
+### 4.2.3 jinfo：Java配置信息工具
+
+jinfo（Configuration Info for Java）的作用是实时查看和调整虚拟机各项参数。使用jps命令的-v参数可以查看虚拟机启动时显式指定的参数列表，但如果想知道未被显式指定的参数的系统默认值，除 了去找资料外，就只能使用jinfo的-flag选项进行查询了（如果只限于JDK 6或以上版本的话，使用java -XX：+PrintFlagsFinal查看参数默认值也是一个很好的选择）。jinfo还可以使用-sysprops选项把虚拟机进程的System.getProperties()的内容打印出来。这个命令在JDK 5时期已经随着Linux版的JDK发布，当 时只提供了信息查询的功能，JDK 6之后，jinfo在Windows和Linux平台都有提供，并且加入了在运行期 修改部分参数值的能力（可以使用-flag[+|-]name或者-flag name=value在运行期修改一部分运行期可写的虚拟机参数值）。在JDK 6中，jinfo对于Windows平台功能仍然有较大限制，只提供了最基本的-flag选项。
+
+jinfo命令格式：
+
+~~~
+jinfo [option] pid
+~~~
+
+执行样例：查询CMSInitiatingOccupancyFraction参数值
+
+~~~
+jinfo -flag CMSInitiatingOccupancyFraction 1444
+-XX:CMSInitiatingOccupancyFraction=85
+~~~
+
+### 4.2.4 jmap：Java内存映像工具
+
+jmap（Memory Map for Java）命令用于生成堆转储快照（一般称为heapdump或dump文件）。如果不使用jmap命令，要想获取Java堆转储快照也还有一些比较“暴力”的手段：譬如在第2章中用过的`-XX:+HeapDumpOnOutOfMemoryError`参数，可以让虚拟机在内存溢出异常出现之后自动生成堆转储快照文件，通过`-XX:+HeapDumpOnCtrlBreak`参数则可以使用[Ctrl]+[Break]键让虚拟机生成堆转储快照文件，又或者在Linux系统下通过Kill-3命令发送进程退出信号“恐吓”一下虚拟机，也能顺利拿到堆转储快照。
+
+jmap的作用并不仅仅是为了获取堆转储快照，它还可以查询finalize执行队列、Java堆和方法区的详细信息，如空间使用率、当前用的是哪种收集器等。和jinfo命令一样，jmap有部分功能在Windows平台下是受限的，除了生成堆转储快照的-dump选项和用于查看每个类的实例、空间占用统计的-histo选项在所有操作系统中都可以使用之外，其余选项都只能在Linux/Solaris中使用。 
+
+jmap命令格式： 
+
+~~~
+jmap [option] vmid
+~~~
+
+option选项的合法值与具体含义如表4-3所示。 
+
+| 选项           | 作用                                                         |
+| -------------- | ------------------------------------------------------------ |
+| -dump          | 生成Java堆转储快照。格式为`-dump:[live,]format=b,file=<filename>`，其中live子参数说明是否只dump出存活的对象 |
+| -finalizerinfo | 显示在F-Queue中等待Finalizer线程执行finalize方法的对象。只在Linux/Solaris平台下有效 |
+| -heap          | 显示Java堆详细信息，如使用哪种回收器、参数配置、分代状况等。只在Linux/Solaris平台下有效 |
+| -histo         | 显示堆中对象统计信息，包括类、实例数量、合计容量             |
+| -permstat      | 以ClassLoader为统计口径显示永久代内存状态。只在Linux/Solaris平台下有效 |
+| -F             | 当虚拟机进程对-dump选项没有响应时，可使用这个选项强制生成dump快照。只在Linux/Solaris平台下有效 |
+
+### 4.2.5 jhat：虚拟机堆转储快照分析工具
+
+JDK提供jhat（JVM Heap Analysis Tool）命令与jmap搭配使用，来分析jmap生成的堆转储快照。jhat内置了一个微型的HTTP/Web服务器，生成堆转储快照的分析结果后，可以在浏览器中查看。不过实事求是地说，在实际工作中，除非手上真的没有别的工具可用，否则多数人是不会直接使用jhat命令来分析堆转储快照文件的，主要原因有两个方面。一是一般不会在部署应用程序的服务器上直接分析堆转储快照，即使可以这样做，也会尽量将堆转储快照文件复制到其他机器上进行分析，因为分析工作是一个耗时而且极为耗费硬件资源的过程，既然都要在其他机器上进行，就没有必要再受命令行工具的限制了。另外一个原因是jhat的分析功能相对来说比较简陋，后文将会介绍到的VisualVM，以及专业用于分析堆转储快照文件的Eclipse Memory Analyzer、IBM HeapAnalyzer 等工具，都能实现比jhat更强大专业的分析功能。
+
+分析结果默认以包为单位进行分组显示，分析内存泄漏问题主要会使用到其中的“Heap Histogram”（与jmap-histo功能一样）与OQL页签的功能，前者可以找内存中总容量最大的对象，后者是标准的对象查询语言，使用类似SQL的语法对内存中的对象进行查询统计。
+
+### 4.2.6 jstack：Java堆栈跟踪工具
+
+jstack（Stack Trace for Java）命令用于生成虚拟机当前时刻的线程快照（一般称为threaddump或者 javacore文件）。线程快照就是当前虚拟机内每一条线程正在执行的方法堆栈的集合，生成线程快照的目的通常是定位线程出现长时间停顿的原因，如线程间死锁、死循环、请求外部资源导致的长时间挂起等，都是导致线程长时间停顿的常见原因。线程出现停顿时通过jstack来查看各个线程的调用堆栈，就可以获知没有响应的线程到底在后台做些什么事情，或者等待着什么资源。
+
+jstack命令格式：
+
+~~~
+jstack [option] vmid
+~~~
+
+option选项的合法值与具体含义如表4-4所示
+
+| 选项 | 作用                                         |
+| ---- | -------------------------------------------- |
+| -F   | 当正常输出的请求不被响应时，强制输出线程堆栈 |
+| -l   | 除堆栈外，显示关于锁的附加信息               |
+| -m   | 如果调用到本地方法的话，可以显示C/C++的堆栈  |
+
+从JDK 5起，java.lang.Thread类新增了一个getAllStackTraces()方法用于获取虚拟机中所有线程的 StackTraceElement对象。使用这个方法可以通过简单的几行代码完成jstack的大部分功能，在实际项目中不妨调用这个方法做个管理员页面，可以随时使用浏览器来查看线程堆栈
+
+### 4.2.7 基础工具总结
+
+- 基础工具：用于支持基本的程序创建和运行
+
+  | 名称         | 主要作用                                                  |
+  | ------------ | --------------------------------------------------------- |
+  | appletviewer | 在不使用Web浏览器的情况下运行和调试Applet，JDK 11中被移除 |
+  | extcheck     | 检查JAR冲突的工具，从JDK 9中被移除                        |
+  | jar          | 创建和管理JAR文件                                         |
+  | java         | Java运行工具，用于运行Class文件或JAR文件                  |
+  | javac        | 用于Java编程语言的编译器                                  |
+  | javadoc      | Java的API文档生成器                                       |
+  | javah        | C语言头文件和Stub函数生成器，用于编写JNI方法              |
+  | javap        | Java字节码分析工具                                        |
+  | jlink        | 将Module和它的依赖打包成一个运行时镜像文件                |
+  | jdb          | 基于JPDA协议的调试器，以类似于GDB的方式进行调试Java代码   |
+  | jdeps        | Java类依赖性分析器                                        |
+  | jdeprscan    | 用于搜索JAR包中使用了“deprecated”的类，从JDK 9开始提供    |
+
+- 安全：用于程序签名、设置安全测试等
+
+  | 名称       | 主要作用                                                     |
+  | ---------- | ------------------------------------------------------------ |
+  | keytool    | 管理密钥库和证书。主要用于获取或缓存Kerberos协议的票据授权票据。允许用户查看本地凭据缓存和密钥表中的条目（用于Kerberos协议） |
+  | jarsigner  | 生成并验证JAR签名                                            |
+  | policytool | 管理策略文件的GUI工具，用于管理用户策略文件(.java.policy)，在JDK 10中被移除 |
+
+- 国际化：用于创建本地语言文件
+
+  | 名称         | 主要作用                                                     |
+  | ------------ | ------------------------------------------------------------ |
+  | native2ascii | 本地编码到ASCII编码的转换器（Native-to-ASCII Converter），用于“任意受支持的字符编码”和与之对应的“ASCII编码和Unicode转义”之间的相互转换 |
+
+- 远程方法调用：用于跨Web或网络的服务交互
+
+  | 名称        | 主要作用                                                     |
+  | ----------- | ------------------------------------------------------------ |
+  | rmic        | Java RMI编译器，为使用JRMP或IIOP协议的远程对象生成Stub、Skeleton和Tie类，也用于生成OMG IDL |
+  | rmiregistry | 远程对象注册表服务，用于在当前主机的指定端口上创建并启动一个远程对象注册表 |
+  | rmid        | 启动激活系统守护进程，允许在虚拟机中注册或激活对象           |
+  | serialver   | 生成并返回指定类的序列化版本ID                               |
+
+- Java IDL与RMI-IIOP：在JDK 11中结束了十余年的CORBA支持，这些工具不再提供
+
+  | 名称       | 主要作用                                                     |
+  | ---------- | ------------------------------------------------------------ |
+  | tnameserv  | 提供对命名服务的访问                                         |
+  | idlj       | IDL转Java编译器（IDL-to-Java Compiler），生成映射OMG IDL接口的Java源文件，并启用以Java编程语言编写的使用CORBA功能的应用程序的Java源文件。IDL意即接口定义语言（Interface Definition Language） |
+  | orbd       | 对象请求代理守护进程（Object Request Broker Daemon），提供从客户端查找和调用CORBA环境服务端上的持久化对象的功能。使用ORBD代替瞬态命名服务tnameserv。ORBD包括瞬态命名服务和持久命名服务。ORBD工具集成了服务器管理器、互操作命名服务和引导名称服务器的功能。当客户端想进行服务器时定位、注册和激活功能时，可以与servertool一起使用 |
+  | servertool | 为应用程序注册、注销、启动和关闭服务器提供易用的接口         |
+
+- 部署工具：用于程序打包、发布和部署
+
+  | 名称         | 主要作用                                                     |
+  | ------------ | ------------------------------------------------------------ |
+  | javapackager | 打包、签名Java和JavaFX应用程序，在JDK 11中被移除             |
+  | pack200      | 使用Java GZIP压缩器将JAR文件转换为压缩的Pack200文件。压缩的压缩文件是高度压缩的JAR，可以直接部署，节省带宽并减少下载时间 |
+  | unpack200    | 将Pack200生成的打包文件解压提供为JAR文件                     |
+
+- Java Web Start
+
+  | 名称   | 主要作用                                                 |
+  | ------ | -------------------------------------------------------- |
+  | javaws | 启动Java Web Start并设置各种选项的工具。在JDK 11中被移除 |
+
+- 性能监控和故障处理：用于监控分析Java虚拟机运行信息，排查问题
+
+  | 名称      | 主要作用                                                     |
+  | --------- | ------------------------------------------------------------ |
+  | jps       | JVM Process Status Tool，显示指定系统内所有的HotSpot虚拟机进程 |
+  | jstat     | JVM Statistics Monitoring Tool，用于收集Hotspot虚拟机各方面的运行数据 |
+  | jstatd    | JVM Statistics Monitoring Tool Daemon，jstat的守护程序，启动一个RMI服务器应用程序，用于监视测试的HotSpot虚拟机的创建和终止，并提供一个界面，允许远程监控工具附加到在本地系统上运行的虚拟机。在JDK 9中集成到了JHSDB中 |
+  | jinfo     | Configuration Info for Java，显示虚拟机配置信息。在JDK 9中集成到了JHSDB中 |
+  | jmap      | Memory Map for Java，生成虚拟机的内存转储快照（heapdump文件）。在JDK 9中集成到了JHSDB中 |
+  | jhat      | JVM Heap Analysis Tool，用于分析堆转储快照，它会建立一个HTTP/Web服务器，让用户可以在浏览器上查看分析结果。在JDK 9中被JHSDB代替 |
+  | jstack    | Stack Trace for Java，显示虚拟机的线程快照。在JDK 9中集成到了JHSDB中 |
+  | jhsdb     | Java HotSpot Debugger，一个基于Serviceability Agent 的HotSpot进程调试器，从JDK 9开始提供 |
+  | jsadebugd | Java Serviceability Agent Debug Daemon，适用于Java的可维护性代理调试守护程序，主要用于附加到指定的Java进程、核心文件，或充当一个调试服务器 |
+  | jcmd      | JVM Command，虚拟机诊断命令工具，就诊断命令请求发送到正在运行的Java虚拟机。从JDK 7开始提供 |
+  | jconsole  | Java Console，用于监控Java虚拟机的使用JMX规范的图形工具。它可以监控本地和远程Java虚拟机，还可以监控和管理应用程序 |
+  | jmc       | Java Mission Control，包含用于监控和管理Java应用程序的工具，而不会引入与这些工具相关联的性能开销。开发者可以使用jmc命令来创建JMC工具，从JDK 7 Update 40开始集成到OracleJDK中 |
+  | jvisualvm | Java VisualVM，一种图形化工具，可在Java虚拟机中运行时提供有关基于Java技术的应用程序（Java应用程序）的详细信息。Java VisualVM提供内存和CPU分析、堆转储分析、内存泄漏检测、MBean访问和垃圾收集。从JDK 6 Update 7开始提供；从JDK 9 开始不再打包入JDK中，但仍保持更新发展，可以独立下载 |
+
+- WebService工具：与CORBA一起在JDK 11中被移除
+
+  | 名称      | 主要作用                                                     |
+  | --------- | ------------------------------------------------------------ |
+  | schemagen | 用于XML绑定的Schema生成器，用于生成XML Schema文件            |
+  | wsgen     | XML Web Service 2.0 的Java API，生成用于JAX-WS Web Service的JAX-WS便携式产物 |
+  | wsimport  | XML Web Service 2.0 的Java API，主要用于根据服务端发布的WSDL文件生成客户端 |
+  | xjc       | 主要用于根据XML Schema文件生成对应的Java类                   |
+
+- REPL和脚本工具
+
+  | 名称       | 主要作用                                                     |
+  | ---------- | ------------------------------------------------------------ |
+  | jshell     | 基于Java的Shell REPL（Read-Eval-Print Loop）交互工具         |
+  | jjs        | 对Nashorn引擎的调用入口。Nashorn是基于Java实现的一个轻量级高性能JavaScript运行环境 |
+  | jrunscript | Java命令行脚本外壳工具（Command Line Script Shell），主要用于解释执行JavaScript、Groovy、Ruby等脚本语言 |
+
+## 4.3 可视化故障处理工具
+
+
+
+# 第5章 调优案例分析与实战
+
+## 5.2 案例分析
+
+### 5.2.1 大内存硬件上的程序部署策略
 
