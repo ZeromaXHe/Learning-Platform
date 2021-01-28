@@ -3457,9 +3457,165 @@ Spring定义了引介增强接口IntroductionInterceptor，该接口没有定义
 
 ## 7.4 创建切面
 
-Spring通过org.springframework.aop.Pointcut接口描述切点，Pointcut由ClassFilter和MathodMatcher构成，它通过ClassFilter定位到某些特定类上，通过MethodMatcher定位到某些特定方法上，这样Pointcut就拥有了描述某些类的某些特定方法的能力。可以简单地用SQL复合查询条件来理解Pointcut的功用。
+Spring通过org.springframework.aop.Pointcut接口描述切点，Pointcut由ClassFilter和MathodMatcher构成，它通过ClassFilter定位到某些特定类上，通过MethodMatcher定位到某些特定方法上，这样Pointcut就拥有了描述某些类的某些特定方法的能力。可以简单地用SQL复合查询条件来理解Pointcut的功用。Pointcut类关系图如下所示
+
+~~~mermaid
+classDiagram
+	class Pointcut {
+		+getClassFilter()
+		+getMethodMatcher()
+	}
+	class ClassFilter {
+		+matches(Class clazz) boolean
+	}
+	class MethodMatcher {
+		+matches(Method m, Class targetClass) boolean
+		+isRuntime() boolean
+		+matches(Method m, Class targetClass, Object[] args) boolean
+	}
+	Pointcut ..> ClassFilter
+	Pointcut ..> MethodMatcher
+~~~
+
+可以看到ClassFilter只定义了一个方法matches(Class clazz)，其参数代表一个被测类，该方法判别被检测的类是否匹配过滤条件。
+
+Spring支持两种方法匹配器：静态方法匹配器和动态方法匹配器。所谓静态方法匹配器，仅对方法名签名（包括方法名和入参类型及顺序）进行匹配；而动态方法匹配器会在运行期检查方法入参的值。静态匹配仅会判别一次，而动态匹配因为每次调用方法的入参都可能不一样，所以每次调用方法都必须判断，因此，动态匹配对性能的影响很大。一般情况下，动态匹配不常使用。方法匹配器的类型由isRuntime()方法的返回值决定，返回false表示是静态方法匹配器，返回true表示是动态方法匹配器。
+
+此外，Spring2.0还支持注解切点和表达式切点，前者通过Java5.0的注解定义切点，而后者通过字符串表达式定义切点，二者都使用AspectJ的切点表达式语言。
+
+### 7.4.1 切点类型
+
+Spring提供了6种类型的切点，下面分别对它们的用途进行介绍。
+
+- 静态方法切点：org.springframework.aop.support.StaticMethodMatcherPointcut是静态方法切点的抽象基类，默认情况下它匹配所有的类。StaticMethodMatcherPointcut包括两个主要的子类，分别是NameMatchMethodPointcut和AbstractRegexpMethodPointcut，前者提供简单字符串匹配方法签名，而后者使用正则表达式匹配方法签名。
+- 动态方法切点：org.springframework.aop.support.DynamicMethodMatcherPointcut是动态方法切点的抽象基类，默认情况下它匹配所有的类。
+- 注解切点：org.springframework.aop.support.annotation.AnnotationMatchingPointcut实现类表示注解切点。使用AnnotationMatchingPointcut支持在Bean中直接通过Java 5.0注解标签定义的切点。
+- 表达式切点：org.springframework.aop.support.ExpressionPointcut接口主要是为了支持AspectJ切点表达式语法而定义的接口。
+- 流程切点：org.springframework.aop.support.ControlFlowPointcut实现类表示控制流程切点。ControlFlowPointcut是一种特殊的切点，它根据程序执行堆栈的信息查看目标方法是否由某一个方法直接或间接发起调用，以此判断是否为匹配的连接点。
+- 复合切点：org.springframework.aop.support.ComposablePointcut实现类是为创建多个切点而提供的方便操作类。它所有的方法都返回ComposablePointcut类，这样就可以使用链接表达式对切点进行操作，形如：`Pointcut pc = new ComposablePointcut().union(classFilter).intersection(methodMatcher).intersection(pointcut)`。
+
+本章仅对其中的4类切点进行讲解，注解切点和表达式切点将在下一章讲解。
+
+### 7.4.2 切面类型
+
+由于增强既包含横切代码，又包含部分连接点信息（方法前、方法后主方位信息），所以可以仅通过增强类生成一个切面。但切点仅代表目标类连接点的部分信息（类和方法的定位），所以仅有切点无法制作出一个切面，必须结合增强才能制作出切面。Spring使用org.springframework.aop.Advisor接口表示切面的概念，一个切面同时包含横切代码和连接点信息。切面可以分为3类：一般切面、切点切面和引介切面，可以通过Spring所定义的切面接口清楚地了解切面的分类。
+
+- Advisor：代表一般切面，仅包含了一个Advice。因为Advice包含了横切代码和连接点信息，所以Advice本身就是一个简单的切面，只不过它代表的横切的连接点是所有目标类的所有方法，因为这个横切面太宽泛，所以一般不会直接使用。
+- PointcutAdvisor：代表具有切点的切面，包含Advice和Pointcut两个类，这样就可以通过类、方法名及方法方位等信息灵活地定义切面的连接点，提供更具适用性的切面。
+- IntroductionAdvisor：代表引介切面。7.3.6节介绍了引介增强类型，引介切面是对应引介增强的特殊的切面，它应用于类层面上，所以引介切点使用ClassFilter进行定义。
+
+~~~mermaid
+classDiagram
+	class Advisor {
+		+getAdvice() Advice
+		+isPerInstance() boolean
+	}
+	class PointcutAdvisor {
+		+getPointcut() Pointcut
+	}
+	class IntroductionAdvisor {
+		+getClassFilter() ClassFilter
+	}
+	Advice <.. Advisor
+	Advisor <|-- PointcutAdvisor
+	Advisor <|-- IntroductionAdvisor
+	PointcutAdvisor ..> Pointcut
+	IntroductionAdvisor ..> ClassFilter
+~~~
+
+下面再来看一下PointcutAdvisor的主要实现类体系
+
+~~~mermaid
+classDiagram
+	PointcutAdvisor <|.. AbstractPointcutAdvisor
+	AbstractPointcutAdvisor <|-- AbstractGenericPointcutAdvisor
+	AbstractPointcutAdvisor <|-- AspectJPointcutAdvisor
+	AbstractPointcutAdvisor <|-- StaticMethodMatcherPointcutAdvisor
+	AbstractGenericPointcutAdvisor <|-- DefaultPointcutAdvisor
+	AbstractGenericPointcutAdvisor <|-- NameMatchMethodPointcutAdvisor
+	AbstractGenericPointcutAdvisor <|-- RegexpMethodPointcutAdvisor
+	AbstractGenericPointcutAdvisor <|-- AspectJExpressionPointcutAdvisor
+~~~
+
+PointcutAdvisor主要有6个具体的实现类，分别介绍如下。
+
+- DefaultPointcutAdvisor：最常用的切面类型，它可以通过任意Pointcut和Advice定义一个切面，唯一不支持的是引介的切面类型，一般可以通过扩展该类实现自定义的切面。
+- NameMatchMethodPointcutAdvisor：通过该类可以定义按方法名定义切点的切面。
+- RegexpMethodPointcutAdvisor：对于按正则表达式匹配方法名进行切点定义的切面，可以通过扩展该实现类进行操作。RegexpMethodPointcutAdvisor允许用户以正则表达式串定义方法匹配的切点，其内部通过JdkRegexpMethodPointcut构造出正则表达式方法名切点。
+- StaticMethodMatcherPointcutAdvisor：静态方法匹配器切点定义的切面，默认情况下匹配所有的目标类。
+- AspectJExpressionPointcutAdvisor：用于AspectJ切点表达式定义切点的切面。
+- AspectJPointcutAdvisor：用于AspectJ语法定义切点的切面。
+
+这些Advisor的实现类都可以在Pointcut中找到对应物，实际上，它们都是通过扩展对应的Pointcut实现类并实现PointcutAdvisor接口进行定义的。如StaticMethodMatcherPointcutAdvisor扩展StaticMethodMatcherPointcut类并实现PointcutAdvisor接口。此外，Advisor都实现了org.springframework.core.Ordered接口，Spring将根据Advisor定义的顺序决定织入切面的顺序。
+
+## 7.5 自动创建代理
+
+在前面所有的例子中，都通过ProxyFactoryBean创建织入切面的代理，每个需要被代理的Bean都需要使用一个ProxyFactoryBean进行配置，虽然可以使用父子`<bean>`进行改造，但还是很麻烦。对于小型系统，可以将就使用，但对于由拥有众多需要代理Bean的系统，原来的配置显然不尽如人意。
+
+幸运的是，Spring提供了自动代理机制，让容器自动生成代理，把开发人员从烦琐的配置工作中解放出来。在内部，Spring使用BeanPostProcessor自动完成这项工作。
+
+### 7.5.1 实现类介绍
+
+这些基于BeanPostProcessor的自动代理创建器的实现类，将根据一些规则自动在容器实例化Bean时为匹配的Bean生成代理实例。这些代理创建器可以分为3类。
+
+- 基于Bean配置名规则的自动代理创建器：允许为一组特定配置名的Bean的自动创建代理实例的代理创建器，实现类为BeanNameAutoProxyCreator。
+- 基于Advisor匹配机制的自动代理创建器：它会对容器中所有的Advisor进行扫描，自动将这些切面应用到匹配的Bean中（为目标Bean创建代理实例），实现类为DefaultAdvisorAutoProxyCreator。
+- 基于Bean中AspectJ注解标签的自动代理创建器：为包含AspectJ注解的Bean自动创建代理实例，实现类为AnnotationAwareAspectJAutoProxyCreator。
+
+~~~mermaid
+classDiagram
+	ProxyConfig <|-- AbstractAutoProxyCreator
+	BeanPostProcessor <|-- InstantiationAwareBeanPostProcessor
+	InstantiationAwareBeanPostProcessor <|.. AbstractAutoProxyCreator
+	AbstractAutoProxyCreator <|-- AbstractAdvisorAutoProxyCreator
+	AbstractAdvisorAutoProxyCreator <|-- AspectJAwareAdvisorAutoProxyCreator
+	AspectJAwareAdvisorAutoProxyCreator <|-- AnnotationAwareAspectJAutoProxyCreator
+	AbstractAutoProxyCreator <|-- BeanNameAutoProxyCreator
+	BeanNameAutoProxyCreator <|-- DefaultAdvisorAutoProxyCreator
+~~~
+
+可以清楚地看到所有的自动代理创建器类都实现了BeanPostProcessor，在容器实例化Bean时，BeanPostProcessor将对它进行加工处理，所以，自动代理创建器有机会对满足匹配规则的Bean自动创建代理对象。
 
 # 第8章 基于@AspectJ和Schema的AOP
+
+## 8.3 着手使用@AspectJ
+
+### 8.3.3 如何通过配置使用@AspectJ切面
+
+虽然可以通过编程的方式织入切面，但在一般情况下，都是Spring的配置完成切面织入工作的。
+
+~~~xml
+<!-- ①目标Bean -->
+<bean id="waiter" class="com.smart.NaiveWaiter" />
+<!-- ②使用了@AspectJ注解的切面类 -->
+<bean class="com.smart.aspectj.example.PreGreetingAspect" />
+<!-- ③自动代理创建器，自动将@AspectJ注解切面类织入目标Bean中 -->
+<bean class="org.springframework.aop.aspectj.annotation.AnnotationAwareAspectJAutoProxyCreator"/>
+~~~
+
+7.5.1节介绍了几个自动代理创建器，其中AnnotationAwareAspectJAutoProxyCreator能够将@AspectJ注解切面类自动织入目标Bean中。在这里，PreGreetingAspect是使用@AspectJ注解描述的切面类，而NaiveWaiter是匹配切点的目标类。
+
+如果使用基于Schema的aop命名空间进行配置，那么事情就更简单了，如下：
+
+~~~xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:aop="http://www.springframework.org/schema/aop" ①
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+                           http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+                           http://www.springframework.org/schema/aop ②
+                           http://www.springframework.org/schema/aop/spring-aop-4.0.xsd">
+	<!-- ③基于@AspectJ切面的驱动器 -->
+    <aop:aspectj-autoproxy/>
+    <bean id="waiter" class="com.smart.NaiveWaiter"/>
+    <bean class="com.smart.aspectj.example.PreGreetingAspect"/>
+</beans>
+~~~
+
+首先在配置文件中引入aop命名空间，如①和②处所示；然后通过aop命名空间的`<aop:aspectj-autoproxy/>`自动为Spring容器中那些匹配@AspectJ切面的Bean创建代理，完成切面织入。当然，Spring在内部依旧采用AnnotationAwareAspectJAutoProxyCreator进行自动代理的创建工作，但具体的实现细节已经被`<aop:aspectj-autoproxy/>`隐藏起来。
+
+`<aop:aspectj-autoproxy/>`有一个proxy-target-class属性，默认为false，表示使用JDK动态代理技术织入增强；当配置为`<aop:aspectj-autoproxy proxy-target-class="true"/>`时，表示使用CGLib动态代理技术织入增强。不过即使proxy-target-class设置为false，如果目标类没有声明接口，则Spring将自动使用CGLib动态代理。
 
 ## 8.4 @AspectJ语法基础
 
@@ -3505,3 +3661,141 @@ Spring支持9个@AspectJ切点表达式函数，它们用不同的方式描述�
 - 不支持通配符：@args()、@within()、@target()和@Annotation()。
 
 此外，args()、this()、target()、@args()、@within()、@target()和@annotation()这7个函数除了可以指定类名外，也可以指定变量名，并将目标对象中的变量绑定到增强的方法中。关于参数绑定的内容将在8.6节介绍，而函数的其他内容将在8.5节详解。
+
+### 8.4.3 逻辑运算符
+
+切点表达式由切点函数组成，切点函数之间还可以进行逻辑运算，组成复合切点。Spring支持以下切点运算符。
+
+- &&：与操作符，相当于切点的交集运算。如果Spring的XML配置文件中使用切点表达式，由于&是XML特殊字符，所以使用转义字符`&amp;&amp;`表示。为了使用方便，Spring提供了一个等效的运算符“and”。如`within(com.smart..*) and args(String)`表示在com.smart包下所有类（当前包及子孙包）拥有一个String入参的方法。
+- ||：或操作符，相当于切点的并集运算，or是等效的操作符。如`within(com.smart..*) || args(String)`表示在com.smart包下所有的方法，或者所有拥有一个String入参的方法。
+- ！：非操作符，相当于切点的反集运算，not是等效的操作符。如`!within(com.smart..*)`表示所有不在com.smart包下的方法。
+
+在标准的@AspectJ中并不提供and、or和not操作符，它们是Spring为了在XML配置文件中方便定义切点表达式而特意添加的等价操作符。有意思的是，和一般的语法表达不一样，在Spring中使用and、or和not操作符时，允许不在前后添加空格，如`within(com.smart..*)andnotargs(String)`和`within(com.smart..*) and not args(String)`拥有相同的效果。虽然Spring接受这种表示方式，但为了保证程序的可读性，最好还是采用传统的习惯，在操作符的前后添加空格。
+
+> **提示**
+>
+> 如果not位于切点表达式的开头，则必须在开头添加一个空格，否则将产生解析错误。这应该是Spring解析的一个Bug，在表达式开头添加空格后则可以通过解析。
+
+### 8.4.4 不同增强类型
+
+第7章使用不同的接口描述各种增强类型，@AspectJ也为各种增强类型提供了不同的注解类，它们位于`org.aspectj.lang.annotation.*`包中。这些注解类拥有若干个成员，可以通过这些成员完成定义切点信息、绑定连接点参数等操作。此外，这些注解的存留期限都是RetentionPolicy.RUNTIME，标注目标都是ElementType.METHOD。下面逐一学习@AspectJ所提供的几个增强注解。
+
+#### 1.@Before
+
+前置增强，相当于BeforeAdvice。Before注解类拥有两个成员。
+
+- value：该成员用于定义切点。
+- argNames：由于无法通过Java反射机制获取方法入参名，所以如果在Java编译时未启用调试信息，或者需要在运行期解析切点，就必须通过这个成员指定注解所标注增强方法的参数名（注意二者名字必须完全相同），多个参数名用逗号分隔。
+
+#### 2.@AfterReturning
+
+后置增强，相当于AfterReturningAdvice。AfterReturning注解类拥有4个成员。
+
+- value：该成员用于定义切点。
+- pointcut：表示切点的信息。如果显式指定pointcut值，那么它将覆盖value的设置值，可以将pointcut成员看作value的同义词。
+- returning：将目标对象方法的返回值绑定给增强的方法。
+- argNames：如前所述。
+
+#### 3.@Around
+
+环绕增强，相当于MethodInterceptor。Around注解类拥有两个成员。
+
+- value：该成员用于定义切点。
+- argNames：如前所述。
+
+#### 4.@AfterThrowing
+
+抛出增强，相当于ThrowsAdvice。AfterThrowing注解类拥有4个成员。
+
+- value：该成员用于定义切点。
+- pointcut：表示切点的信息。如果显式指定pointcut值，那么它将覆盖value的设置值。可以将pointcut成员作为value的同义词。
+- throwing：将抛出的异常绑定到增强方法中。
+- argNames：如前所述。
+
+#### 5.@After
+
+Final增强，不管是抛出异常还是正常退出，该增强都会得到执行。该增强没有对应的增强接口，可以把它看成ThrowsAdvice和AfterReturningAdvice的混合物，一般用于释放资源，相当于try{}finally{}的控制流。After注解类拥有两个成员。
+
+- value：该成员用于定义切点。
+- argNames：如前所述。
+
+#### 6.@DeclareParents
+
+引介增强，相当于IntroductionInterceptor。DeclareParents注解类拥有两个成员。
+
+- value：该成员用于定义切点，它表示在哪个目标类上添加引介增强。
+- defaultImpl：默认的接口实现类。
+
+## 8.5 切点函数详解
+
+### 8.5.1 @annotation()
+
+@annotation表示标注了某个注解的所有方法。
+
+### 8.5.2 execution()
+
+execution()是最常用的切点函数，其语法如下：
+
+~~~
+execution(<修饰符模式>?<返回类型模式><方法名模式>(<参数模式>)<异常模式>?)
+~~~
+
+除了返回类型模式、方法名模式和参数模式外，其他项都是可选的。与其直接讲解该方法的使用规则，还不如通过一个个具体的例子来理解。下面给出各种使用execution()函数的实例。
+
+#### 1.通过方法签名定义切点
+
+- `execution(public * *(..))`：匹配所有目标类的public方法，但不匹配SmartSeller和protected void showGoods()方法。第一个`*`代表返回类型；第二个`*`代表方法名；而`..`代表任意入参的方法。
+- `execution(* *To(..))`：匹配目标类所有以To为后缀的方法，它匹配NaiveWaiter类和NaughtyWaiter的greetTo()和serveTo()方法。第一个`*`代表返回类型；而`*To`代表任意以To为后缀的方法。
+
+#### 2.通过类定义切点
+
+- `execution(* com.smart.Waiter.*(..))`：匹配Waiter接口的所有方法，它匹配NaiveWaiter和NaughtyWaiter类的greetTo()和serveTo()方法。第一个`*`代表返回任意类型：`com.smart.Waiter.*`代表Waiter接口中的所有方法。
+- `execution(* com.smart.Waiter+.*(..))`：匹配Waiter接口及其所有实现类的方法，它不但匹配NaiveWaiter和NaughtyWaiter类的greetTo()和serveTo()这两个Waiter接口定义的方法，同时还匹配NaiveWaiter#smile()和NaughtyWaiter#joke()这两个不在Waiter接口中定义的方法。
+
+#### 3.通过类包定义切点
+
+在类名模式串中，“`.*`”表示包下的所有类，而“`..*`”表示包、子孙包下的所有类。
+
+- `execution(* com.smart.*(..))`：匹配com.smart包下所有类的所有方法。
+- `execution(* com.smart..*(..))`：匹配com.smart包、子孙包下所有类的所有方法。当“`..`”出现在类名中时，后面必须跟“`*`”，表示包、子孙包下所有类。
+- `execution(* com..*.*Dao.find*(..))`：匹配包名前缀为com的任何包下类名后缀为Dao的方法，方法名必须以find为前缀。
+
+#### 4.通过方法入参定义切点
+
+切点表达式中的方法入参部分比较复杂，可以使用“`*`”和“`..`”通配符。其中，“`*`”表示任意类型的参数；而“`..`”表示任意类型的参数且参数个数不限。
+
+- `execution(* joke(String,int))`：匹配joke(String, int)方法，且joke()方法的第一个入参是String，第二个入参是int。如果方法中的入参类型是java.lang包下的类，则可以直接使用类名；否则必须使用全限定类名。如joke(java.util.List, int)。
+- `execution(* joke(String,*))`：匹配目标类中的joke()方法，该方法的第一个入参为String，第二个入参可以是任意类型，如joke(String s1, String s2)和joke(String s1, double d2)都匹配，但joke(String s1,double d2, String s3)不匹配。
+- `execution(* joke(String,..))`：匹配目标类中的joke()方法，该方法的第一个入参为String，后面可以有任意个入参且入参类型不限。
+- `execution(* joke(Object+))`：匹配目标类中的joke()方法，方法拥有一个入参，且入参是Object类型或该类的子类。如果定义的切点是`execution(* joke(Object))`，则只匹配joke(Object object)，而不匹配joke(String cc)或joke(Client c)。
+
+### 8.5.3 args()和@args()
+
+args()函数的入参是类名，而@args()函数的入参必须是注解类的类名。虽然args()允许在类名后使用“+”通配符，但该通配符在此处没有意义，添加和不添加效果都一样。
+
+#### 1.args()
+
+该函数接受一个类名，表示目标类方法入参对象是指定类（包含子类）时，切点匹配，如下面的例子：
+
+~~~
+args(com.smart.Waiter)
+~~~
+
+表示运行时入参是Waiter类型的方法，它和`execution(* *(com.smart.Waiter))`的区别在于后者是针对类方法的签名而言的，而前者则针对运行时的入参类型而言。如args(com.smart.Waiter)既匹配addWaiter(Waiter waiter)，又匹配addNaiveWaiter(NaiveWaiter naiveWaiter)；而`execution(* *(com.smart.Waiter))`只匹配addWaiter(Waiter waiter)。实际上，args(com.smart.Waiter)等价于`execution(* *(com.smart.Waiter+))`,当然也等价于`args(com.smart.Waiter+)`。
+
+#### 2.@args()
+
+该函数接收一个注解类的类名，当方法的运行时入参对象标注了指定的注解时，匹配切点。这个切点函数的匹配规则不太容易理解，通过下图8-4对此进行详细讲解。
+
+~~~mermaid
+graph BT
+	m[标注了M注解]-->T2((T2))
+	T3((T3)) --> T2
+	切面-->T2
+	切面-->T3
+	方法签名入参类型为fun.T1_t. --> T1
+	T2 --> T1((T1))
+	T1 --> T0((T0))
+~~~
+
+T0、T1、T2、T3具有上图8-4所示的继承关系，假设目标类方法的签名为fun(T1 t)，它的入参为T1，而切面的切点定义为@args(M)，T2类标注了@M。当fun(T1 t)的传入对象是T2或T3时，方法匹配@args(M)声明所定义的切点。
