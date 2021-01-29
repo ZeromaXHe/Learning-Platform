@@ -3799,3 +3799,353 @@ graph BT
 ~~~
 
 T0、T1、T2、T3具有上图8-4所示的继承关系，假设目标类方法的签名为fun(T1 t)，它的入参为T1，而切面的切点定义为@args(M)，T2类标注了@M。当fun(T1 t)的传入对象是T2或T3时，方法匹配@args(M)声明所定义的切点。
+
+假设方法签名是fun(T1 t)，入参为T1，而标注@M的类是T0，当funt(T1 t)传入T1、T2、T3的实例时，均不匹配切点@args(M)。
+
+在类的继承树中，①处为方法签名中入参类型在类继承树中的位置，称之为入参类型点；而②处为标注了@M注解的类在类继承树中的位置，称之为注解点。判断方法在运行时是否匹配@args(M)切点，可以根据①和②在类继承树中的相同位置来判别。
+
+（1）如果在类继承树中注解点②高于入参类型点①，则该目标方法不可能匹配切点@args(M)。
+
+（2）如果在类继承树中注解点②低于入参类型点①，则注解点所在类及其子孙类作为方法入参时，该方法匹配切点@args(M)。
+
+### 8.5.4 within()
+
+通过类匹配模式串声明切点，within()函数定义的连接点是针对目标类而言的，而非针对运行期对象的类型而言，这一点和execution()是相同的。但和execution()函数不同的是，within()所指定的连接点最小范围只能是类，而execution()所指定的连接点可以大到包，小到方法入参。所以从某种意义上说，execution()函数的功能涵盖了within()函数的功能。within()函数的语法如下：
+
+~~~
+within(<类匹配模式>)
+~~~
+
+形如within(com.smart.NaiveWaiter)，是within()函数所能表达的最小粒度。如果试图用within()匹配方法级别的连接点，如`within(com.smart.NaiveWaiter.greet*)`，那么将会产生解析错误。
+
+## 8.7 基于Schema配置切面
+
+如果读者的项目不能使用Java 5.0，那么就无法使用基于@AspectJ注解的切面。但是使用AspectJ切点表达式的大门依旧向我们敞开着，因为Spring提供了基于Schema配置的方法，它完全可以替代基于@AspectJ注解声明切面的方式。
+
+这是很容易理解的，因为基于@AspectJ注解的切面，本质上是将切点、增强类型的信息使用注解进行描述，现在把这两个信息移到Schema的XML配置文件中，只是配置信息所在的地方不一样，表达的信息可以完全相同。XML和注解，做的事同一件事，只是方法形式不同而已。
+
+使用基于Schema的切面定义后，切点、增强类型的注解信息从切面类中剥离出来，原来的切面类也就蜕变为真正意义的POJO。
+
+### 8.7.1 一个简单切面的配置
+
+首先来配置一个基于Schema的切面，它使用了aop命名空间。为了更准确地了解整个配置文件的全貌，给出一个结构上完整的切面示例，如代码清单8-15所示。
+
+~~~xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+                           http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+                           http://www.springframework.org/schema/aop
+                           http://www.springframework.org/schema/aop/spring-beans-4.0.xsd">
+	<aop:config proxy-target-class="true">
+    	<aop:aspect ref="adviceMethods"> <!-- ① 引用④处的adviceMethods -->
+            <aop:before pointcut="target(com.smart.NaiveWaiter) and execution(* greetTo(..))" ② 声明切点表达式
+                        method="preGreeting"/> <!-- ③ 增强方法使用adviceMethods Bean中的preGreeting方法 -->
+        </aop:aspect>
+    </aop:config>
+    
+    <bean id="adviceMethods" class="com.smart.schema.AdviceMethods" /> <!-- ④增强方法所在的Bean -->
+    <bean id="naiveWaiter" class="com.smart.NaiveWaiter" />
+    <bean id="naughtyWaiter" class="com.smart.NaughtyWaiter" />
+</beans>
+~~~
+
+使用一个`<aop:aspect>`元素标签定义切面，其内部可以定义多个增强。在`<aop:config>`元素中可以定义多个切面。在①处，切面引用了adviceMethods Bean，该Bean是增强方法所在的类。提供`<aop:before>`声明了一个前置增强，并通过pointcut属性定义切点表达式，切点表达式的语法和@AspectJ中所用的语法完全相同，由于&&在XML中使用不便，所以一般用and操作符代替之。③处通过method属性指定增强的方法，该方法应该是adviceMethods Bean中的方法。
+
+`<aop:config>`拥有一个proxy-target-class属性，当设置为true时，表示其中声明的切面均使用CGLib动态代理技术；当设置为false时，使用Java动态代理技术。一个配置文件可以同时定义多个`<aop:config>`，不同的`<aop:config>`可以采取不同的代理技术。
+
+AdviceMethods时增强方法所在的类，它是一个普通的Java类，没有任何特殊的地方。
+
+通过以下代码测试这个使用Schema配置的切面：
+
+~~~java
+String configPath = "com/smart/schema/beans.xml";
+ApplicationContext ctx = new ClassPathXmlApplicationContext(configPath);
+Waiter naiveWaiter = (Waiter)ctx.getBean("naiveWaiter");
+Waiter naughtyWaiter = (Waiter)ctx.getBean("naughtyWaiter");
+naiveWaiter.greetTo("john");
+naughtWaiter.greetTo("Tom");
+~~~
+
+### 8.7.2 配置命名切点
+
+在代码清单8-15的②处通过pointcut属性声明的切点是匿名切点，不能被其他增强或其他切面引用。Spring提供了命名切点的配置方式，如代码清单8-16所示。
+
+~~~xml
+<aop:config proxy-target-class="true">
+	<aop:aspect ref="adviceMethods">
+    	<aop:pointcut id="greetToPointcut" ①定义切点，该切点命名为greetToPointcut
+                      expression="target(com.smart.NaiveWaiter) and execution(* greetTo(..))" />
+        <aop:before method="preGreeting" point-ref="greetToPointcut"/> <!-- ②引用切点 -->
+    </aop:aspect>
+</aop:config>
+~~~
+
+在①处，使用`<aop:pointcut>`定义了一个切点，并通过id属性进行了命名；在②处，通过pointcut-ref引用这个命名的切点。和`<aop:before>`一样，除引介增强外，其他任何增强类型的元素都拥有pointcut、pointcut-ref即method这3个属性。
+
+`<aop:pointcut>`如果位于`<aop:aspect>`元素中，则命中切点只能被当前`<aop:aspect>`内定义的元素访问到。为了能被整个`<aop:config>`元素中定义的所有增强访问，必须在`<aop:config>`元素下定义切点。
+
+~~~xml
+<aop:config proxy-target-class="true">
+    <aop:pointcut id="greetToPointcut" ①当前aop:config下的所有增强均可以访问该切点
+                  expression="target(com.smart.NaiveWaiter) and execution(* greetTo(..))" />
+    <aop:before method="preGreeting" point-ref="greetToPointcut"/> <!-- ②引用切点 -->
+    <aop:aspect ref="adviceMethods">
+        <aop:before method="preGreeting" pointcut-ref="greetToPointcut" /> ②
+    </aop:aspect>
+    <aop:aspect ref="adviceMethods">
+        <aop:after method="postGreeting" pointcut-ref="greetToPointcut" /> ③
+    </aop:aspect>
+</aop:config>
+~~~
+
+在①处定义的命名切点分别被②和③处不同的切面增强所访问。如果在`<aop:config>`元素下直接定义`<aop:pointcut>`，则必须保证`<aop:pointcut>`在`<aop:aspect>`之前定义。在`<aop:config>`元素下还可以定义`<aop:advisor>`（后面介绍），三者在`<aop:config>`中的配置有先后顺序的要求：首先是`<aop:pointcut>`，然后是`<aop:advisor>`，最后是`<aop:aspect>`。而在`<aop:aspect>`中定义的`<aop:pointcut>`则没有先后顺序的要求，可以在任何位置定义。可以通过spring-aop-4.0.xsd Schema样式定义文件了解关于config元素的配置规则。
+
+> **实战经验**
+>
+> Schema样式定义文件比DTD样式定义文件具有更强的文档样式定义能力。但由于Schema样式定义文件使用基于XML的文档样式描述语言定义文档格式，所以样式定义文件本身的内容比较复杂，可读性不高。为了快速理解Spring所提供的Schema样式定义文件（如spring-aop-4.0.xsd等）所描述的文档规则，可以借助一些可视化工具。Altova XMLSpy就是这样一款Schema可视化工具。
+
+### 8.7.3 各种增强类型的配置
+
+基于Schema定义的切面和基于@AspectJ定义的切面内容大抵一致，只是在表现形式上存在差异罢了。在上一节中介绍了前置增强，本节来学习如何通过Schema配置其余的增强类型。
+
+#### 1.后置增强
+
+通过`<aop:after-returning>`配置后置增强。
+
+~~~xml
+<aop:config proxy-target-class="true">
+	<aop:aspect ref="adviceMethods">
+    	<aop:after-returning methods="afterReturning"
+                             pointcut="target(com.smart.SmartSeller)" returning="retVal"/>
+    </aop:aspect>
+</aop:config>
+~~~
+
+returning属性必须和增强方法的入参名一致。下面是后置增强对应的方法：
+
+~~~java
+package com.smart.schema;
+public class AdviceMethods {
+    public void afterReturning(int retVal) { // ①增强方法，retVal和配置文件中的returning属性值相同
+        ...
+    }
+}
+~~~
+
+如果增强方法不希望接收返回值，将配置处的`<aop:after-returning>`的returning属性和增强方法的对应入参去除即可。
+
+#### 2.环绕增强
+
+通过`<aop:around>`配置环绕增强。
+
+~~~xml
+<aop:config proxy-target-class="true">
+	<aop:aspect ref="adviceMathods">
+    	<aop:around method="aroundMethod"
+                    pointcut="execution(* serveTo(..) and within(com.smart.Waiter))"/>
+    </aop:aspect>
+</aop:config>
+~~~
+
+和前面介绍的一样，环绕增强对应的方法，可以将第一个入参声明为ProceedingJoinPoint。
+
+~~~java
+package com.smart.schema;
+import org.aspectj.lang.ProceedingJoinPoint;
+public class AdviceMethods {
+    public void aroundMethod(ProceedingJoinPoint pjp) { // ①环绕增强的方法，pjp可以访问到环绕增强的连接点信息
+        ...
+    }
+}
+~~~
+
+#### 3.抛出异常增强
+
+通过`<aop:after-throwing>`匹配抛出异常的增强。
+
+~~~xml
+<aop:config proxy-target-class="true">
+	<aop:aspectj ref="adviceMethods">
+    	<aop:after-throwing method="afterThrowingMethod"
+                            pointcut="target(com.smart.SmartSeller) and execution(* checkBill(..))"
+                            throwing="iae"/>
+        <!-- ①通过iae查找增强方法对应名字的入参，进而获取需要增强的连接点的匹配异常类型为IllegalArgumentException -->
+    </aop:aspectj>
+</aop:config>
+~~~
+
+通过throwing属性声明需要绑定的异常对象，指定的异常名必须和增强方法对应的入参名一致。
+
+~~~java
+package com.smart.schema;
+public class AdviceMethods {
+    public void afterThrowingMethod(IllegalArgumentException iae){
+        ...
+    }
+}
+~~~
+
+#### 4.Final增强
+
+通过`<aop:after>`配置Final增强。
+
+~~~xml
+<aop:config proxy-target-class="true">
+	<aop:aspect ref="adviceMethods">
+    	<aop:after method="afterMethod"
+                   pointcut="execution(* com..*.Waiter.greetTo(..))"/>
+    </aop:aspect>
+</aop:config>
+~~~
+
+对应的Final增强方法如下：
+
+~~~java
+package com.smart.schema;
+public class AdviceMethods {
+    public void afterMethod() {
+        ...
+    }
+}
+~~~
+
+#### 5.引介增强
+
+通过`<aop:declare-parents>`配置引介增强。引介增强和其他类型的增强不同，它没有method、pointcut和pointcut-ref属性。
+
+~~~xml
+<aop:config proxy-target-class="true">
+	<aop:aspect ref="adviceMethods">
+    	<aop:declare-parents implement-interface="com.smart.Seller" ①要引介实现的接口
+                             default-impl="com.smart.SmartSeller" ②默认的实现类
+                             types-matching="com.smart.Waiter+" /> ③哪些类需要引介接口的实现
+    </aop:aspect>
+</aop:config>
+~~~
+
+`<aop:declare-parents>`通过implement-interface属性声明要实现的接口，通过default-impl属性指定默认的接口实现类，通过types-matching属性以AspectJ切点表达式语法指定哪些Bean需要引介Seller接口的实现。可以通过以下代码查看到NaiveWaiter已经实施了引介增强：
+
+~~~java
+ApplicationContext ctx = new ClassPathXmlApplication(configPath);
+Waiter naiveWaiter = (Waiter) ctx.getBean("naiveWaiter");
+((Seller)naiveWaiter).sell("Beer","John"); // ①强制类型转换成功
+~~~
+
+需要注意的是，虽然`<aop:declare-parents>`没有method属性指定增强方法所在的Bean，但`<aop:aspect ref="adviceMethods">`中的ref属性依然要指定一个增强Bean。
+
+### 8.7.4 绑定连接点信息
+
+基于Schema配置的增强方法绑定连接点信息和基于@AspectJ绑定连接点信息所使用的方式没有什么区别。
+
+- 第一，所有增强类型对应的方法的第一个入参都可以声明为JoinPoint（环绕增强可以声明为ProceedingJoinPoint）访问连接点信息。
+- 第二，`<aop:after-returning>`（后置增强）可以通过returning属性绑定连接点方法的返回值，`<aop:after-throwing>`（抛出异常增强）可以通过throwing属性绑定连接点方法所抛出的异常。
+- 第三，所有增强类型都可以通过可绑定参数的切点函数绑定连接点方法的入参。
+
+第一、第二种绑定参数的访问已经在上一节进行了介绍，下面通过一个实例来了解第三种绑定参数的方法，如代码清单8-17所示。
+
+~~~xml
+<aop:config proxy-target-class="true">
+	<aop:aspect ref="adviceMethods">
+        <aop:before method="bindParams" ①
+                    pointcut="target(com.smart.NaiveWaiter) and args(name, num,..)"/> ②
+    </aop:aspect>
+</aop:config>
+~~~
+
+在②处，在切点表达式中通过args(name,num,..)绑定了连接点的两个参数。
+
+### 8.7.5 Advisor配置
+
+在第7章中学习了Advisor的知识，它是Spring中切面概念的对应物，是切点和增强的复合体，不过它仅包含一个切点和一个增强。在AspectJ中没有对应的等价物，在aop Schema配置样式中，可以通过`<aop:advisor>`配置一个Advisor。通过advice-ref属性引用基于接口定义的增强，通过pointcut定义切点表达式，或者通过pointcut-ref引用一个命名的切点。来看下面的例子：
+
+~~~xml
+<aop:config proxy-target-class="true">
+	<aop:advisor advice-ref="testAdvice" ① 引用③处的增强
+                 pointcut="execution(* com..*.Waiter.greetTo(..))"/> ② 切点表达式
+</aop:config>
+<bean id="testAdvice"
+      class="com.smart.schema.TestBeforeAdvice"/> ③ 前置增强
+~~~
+
+## 8.8 混合切面类型
+
+现在我们已经掌握了4种定义切面的方式：
+
+（1）基于@AspectJ注解的方式。
+
+（2）基于`<aop:aspect>`的方式。
+
+（3）基于`<aop:advisor>`的方式。
+
+（4）基于Advisor类的方式。
+
+如果项目采用Java 5.0，则可以优先考虑使用@AspectJ；如果项目只能使用低版本的JDK，则可以考虑使用`<aop:aspect>`；如果正在升级一个基于低版本的JDK的项目，则可以考虑使用`<aop:advisor>`复用已经存在的Advice类；如果项目只能使用低版本的Spring，那么就只能使用Advisor了。此外，值得注意的是，一些切面只能使用基于API的Advisor方式进行构建，如基于ControlFlowPointcut的流程切面。
+
+### 8.8.1 混合使用各种切面类型
+
+Spring虽然提供了4种定义切面的方式，但其底层的实现技术却是一样的，那就是基于CGLib和JDK动态代理，所以在同一个Spring项目中可以混合使用Spring所提供的各种切面定义方式，如代码清单8-19所示。
+
+~~~xml
+<bean id="controlFlowAdvisor" ① 使用Advisor API方式实现的流程控制切面
+      class="org.springframework.aop.support.DefaultPointcutAdvisor">
+	<property name="pointcut">
+    	<bean class="org.springframework.aop.support.ControlFlowPointcut">
+            <constructor-arg type="java.lang.Class" value="com.smart.advisor.WaiterDelegate"/>
+            <constructor-arg type="java.lang.String" value="service"/>
+        </bean>
+    </property>
+    <property>
+    	<bean class="com.smart.advisor.GreetingBeforeAdvice"/>
+    </property>
+</bean>
+
+<aop:aspectj-autoproxy/> ② 使用@AspectJ方式定义的切面
+
+<bean class="com.smart.aspectj.example.PreGreetingAspect"/>
+
+<aop:config proxy-target-class="true"> ③ 使用基于Schema配置方式定义的切面
+    <aop:advisor advice-ref="testAdvice" 
+                 pointcut="execution(* com..*.Waiter.greetTo(..))"/> ④ 使用aop:advisor配置方式定义的切面
+    <aop:aspect ref="adviceMethods"> ⑤ 使用aop:aspect配置方式定义的切面
+        <aop:before pointcut="target(com.smart.NaiveWaiter) and execution(* greetTo(..))"
+                    method="preGreeting"/>
+    </aop:aspect>
+</aop:config>
+<bean id="adviceMethods" class="com.smart.schema.AdviceMethods"/> ⑥ POJO的增强类
+<bean id="testAdvice" class="com.smart.schema.TestBeforeAdvice"/> ⑦ 基于特定增强接口的增强类
+~~~
+
+虽然Spring可以混合使用各种切面类型达到统一的效果，但在一般情况下并不会在一个项目中同时使用。毕竟项目开发不是时装表演，也不是多军种联合演习，我们应该尽量根据项目的实际需要采用单一的实现方式，以保证技术的单一性。
+
+### 8.8.2 各种切面类型总结
+
+|                                | @AspectJ                                                     | `<aop:aspect>`                                               | Advisor                              | `<aop:advisor>`                                      |
+| ------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------ | ---------------------------------------------------- |
+| 前置增强                       | @Before                                                      | `<aop:before>`                                               | MethodBeforeAdvice                   | 同Advisor                                            |
+| 后置增强                       | @AfterReturning                                              | `<aop:after-returning>`                                      | AfterReturningAdvice                 | 同Advisor                                            |
+| 环绕增强                       | @Around                                                      | `<aop:arounf>`                                               | MethodInterceptor                    | 同Advisor                                            |
+| 抛出异常增强                   | @AfterThrowing                                               | `<aop:after-throwing>`                                       | ThrowsAdvice                         | 同Advisor                                            |
+| final增强                      | @After                                                       | `<aop:after>`                                                | 无对应接口                           | 同Advisor                                            |
+| 引介增强                       | @DeclareParents                                              | `<aop:declare-parents>`                                      | IntroductionInterceptor              | 同Advisor                                            |
+| 切点定义                       | 支持AspectJ切点表达式语法，可以通过@Pointcut注解定义切点     | 支持AspectJ切点表达式语法，可以通过`<aop:pointcut>`定义命名切点 | 直接通过基于Pointcut的实现类定义切点 | 基本上和`<aop:aspect>`相同，不过切点函数不能绑定参数 |
+| 连接点方法入参绑定             | （1）使用JoinPoint、ProceedingJoinPoint连接点对象；<br />（2）使用切点函数指定参数名绑定 | 同@AspectJ`<aop:after-returning>`                            | 通过增强接口方法入参绑定             | 同Advisor                                            |
+| 连接点方法返回值或抛出异常绑定 | （1）在后置增强中，使用@AfterReturning 的 returning成员绑定方法返回值；<br />（2）在抛出异常增强中，使用@AfterThrowing 的 throwing成员绑定方法抛出的异常 | （1）在后置增强中，使用`<aop:after-returning>`的returning属性绑定方法返回值；<br />（2）在抛出异常增强中，使用`<aop:after-throwing>`的throwing属性绑定方法抛出的异常 | 通过增强接口方法入参绑定             | 同Advisor                                            |
+
+可以看出，`<aop:advisor>`其实是`<aop:aspect>`和Advisor的“混血儿”，它的切点表示方式和`<aop:aspect>`相同，增强定义方式则和Advisor相同。连接点方法入参和绑定方式和Advisor一样，通过增强接口方法入参进行调用，所以`<aop:advisor>`在切点表达式中不能使用切点函数绑定连接点方法入参，否则会产生错误。
+
+在内部，Spring使用AspectJExpressionPointcut为@AspectJ、`<aop:aspect>`及`<aop:advisor>`提供具体的切点实现。
+
+# 第9章 Spring SpEL
+
+## 9.1 JVM动态语言
+
+Java是一门强类型的静态语言，所有代码在运行之前都必须进行严格的类型检查并编译成JVM字节码；因此虽然在安全、性能方面得到了保障，但牺牲了灵活性。这个特征就决定了Java在语言层面无法直接进行表达式语句的动态解析。而动态语言恰恰相反，其显著的特点是在程序运行时可以改变程序结构或变量类型。典型的动态语言有Ruby、Python、JavaScript、Perl等。这些动态语言能够被广泛应用于许多领域，得益于其动态、简单、灵活等特性。因为它们无须编译，即可被解释执行。它们可以在运行时动态改变表达式语句，非常适合编写复杂的动态表达式。
+
+虽然目前在JVM中支持很多脚本语言（如JavaScript、Jruby、Jython等），但在使用的时候，还是需要对其进行相应的封装。对于仅仅需要一些简单的表达式需求的场景，使用脚本语言显得有些“笨重”，这也就是下文要重点介绍SpEL表达式的原因。
+
+## 9.2 SpEL表达式概述
+
+Spring动态语言（简称SpEL）是一个支持运行时查询和操作对象图的强大的动态语言。其语法类似于EL表达式，具有诸如显式方法调用和基本字符串模板函数等特性。
