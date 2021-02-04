@@ -279,7 +279,32 @@ $$
 | 下括号                                                       | `\underbrace{a+b+\cdots+z}`                                  | $\underbrace{a+b+\cdots+z}$                                  |
 |                                                              | `\begin{matrix} \underbrace{ a+b+\cdots+z } \\ 26\end{matrix}` | $\begin{matrix} \underbrace{ a+b+\cdots+z } \\ 26\end{matrix}$ |
 
+## 分数、矩阵和多行列式
 
+| 功能                                                  | 语法                                                         | 效果                                                         |
+| :---------------------------------------------------- | :----------------------------------------------------------- | :----------------------------------------------------------- |
+| 分数                                                  | `\frac{2}{4}=0.5`                                            | $\frac{2}{4}=0.5$                                            |
+| 小型分数                                              | `\tfrac{2}{4} = 0.5`                                         | $\tfrac{2}{4} = 0.5$                                         |
+| 大型分数（嵌套）                                      | `\cfrac{2}{c + \cfrac{2}{d + \cfrac{2}{4}}} =a`              | $\cfrac{2}{c + \cfrac{2}{d + \cfrac{2}{4}}} =a$              |
+| 大型分数（不嵌套）                                    | `\dfrac{2}{4} = 0.5 \qquad \dfrac{2}{c + \dfrac{2}{d +\dfrac{2}{4}}} = a` | $\dfrac{2}{4} = 0.5 \qquad \dfrac{2}{c + \dfrac{2}{d +\dfrac{2}{4}}} = a$ |
+| [二项式](http://zh.wikipedia.org/wiki/二项式)系数     | `\dbinom{n}{r}=\binom{n}{n-r}=C^n_r=C^n_{n-r}`               | $\dbinom{n}{r}=\binom{n}{n-r}=C^n_r=C^n_{n-r}$               |
+| 小型[二项式](http://zh.wikipedia.org/wiki/二项式)系数 | `\tbinom{n}{r}=\tbinom{n}{n-r}=C^n_r=C^n_{n-r}`              | $\tbinom{n}{r}=\tbinom{n}{n-r}=C^n_r=C^n_{n-r}$              |
+| 大型[二项式](http://zh.wikipedia.org/wiki/二项式)系数 | `\binom{n}{r}=\dbinom{n}{n-r}=C^n_r=C^n_{n-r}`               | $\binom{n}{r}=\dbinom{n}{n-r}=C^n_r=C^n_{n-r}$               |
+| 矩阵                                                  | `\begin{matrix} x & y \\ z & v \end{matrix} `                | $\begin{matrix} x & y \\ z & v \end{matrix} $                |
+|                                                       | `\begin{vmatrix} x & y \\ z & v \end{vmatrix} `              | $\begin{vmatrix} x & y \\ z & v \end{vmatrix} $              |
+|                                                       | `\begin{Vmatrix} x & y \\ z & v \end{Vmatrix} `              | $\begin{Vmatrix} x & y \\ z & v \end{Vmatrix} $              |
+|                                                       | `\begin{bmatrix} 0      & \cdots & 0      \\ \vdots & \ddots & \vdots \\ 0      & \cdots & 0 \end{bmatrix} ` | $\begin{bmatrix} 0      & \cdots & 0      \\ \vdots & \ddots & \vdots \\ 0      & \cdots & 0 \end{bmatrix} $ |
+|                                                       | `\begin{Bmatrix} x & y \\ z & v \end{Bmatrix} `              | $\begin{Bmatrix} x & y \\ z & v \end{Bmatrix} $              |
+|                                                       | `\begin{pmatrix} x & y \\ z & v \end{pmatrix} `              | $\begin{pmatrix} x & y \\ z & v \end{pmatrix} $              |
+|                                                       | `\bigl( \begin{smallmatrix} a&b\\ c&d \end{smallmatrix} \bigr) ` | $\bigl( \begin{smallmatrix} a&b\\ c&d \end{smallmatrix} \bigr) $ |
+| 条件定义                                              | `f(n) = \begin{cases}  n/2,  & \mbox{if }n\mbox{ is even} \\ 3n+1, & \mbox{if }n\mbox{ is odd} \end{cases} ` | $f(n) = \begin{cases}  n/2,  & \mbox{if }n\mbox{ is even} \\ 3n+1, & \mbox{if }n\mbox{ is odd} \end{cases} $ |
+| 多行等式                                              | `\begin{align} f(x) & = (m+n)^2 \\ & = m^2+2mn+n^2 \\ \end{align} ` | $\begin{align} f(x) & = (m+n)^2 \\ & = m^2+2mn+n^2 \\ \end{align} $ |
+|                                                       | `\begin{alignat}{2} f(x) & = (m-n)^2 \\ f(x) & = (-m+n)^2 \\ & = m^2-2mn+n^2 \\ \end{alignat} ` | $\begin{alignat}{2} f(x) & = (m-n)^2 \\ f(x) & = (-m+n)^2 \\ & = m^2-2mn+n^2 \\ \end{alignat} $ |
+| 多行等式（左对齐）                                    | `\begin{array}{lcl} z        & = & a \\ f(x,y,z) & = & x + y + z  \end{array} ` | $\begin{array}{lcl} z        & = & a \\ f(x,y,z) & = & x + y + z  \end{array} $ |
+| 多行等式（右对齐）                                    | `\begin{array}{lcr} z        & = & a \\ f(x,y,z) & = & x + y + z     \end{array} ` | $\begin{array}{lcr} z        & = & a \\ f(x,y,z) & = & x + y + z     \end{array} $ |
+| 长公式换行                                            | `<math>f(x) \,\!</math> <math>= \sum_{n=0}^\infty a_n x^n </math> <math>= a_0+a_1x+a_2x^2+\cdots</math> ` | $<math>f(x) \,\!</math>$ <br />$<math>= \sum_{n=0}^\infty a_n x^n </math>$<br /> $<math>= a_0+a_1x+a_2x^2+\cdots</math>$ |
+| 方程组                                                | `\begin{cases} 3x + 5y +  z \\ 7x - 2y + 4z \\ -6x + 3y + 2z \end{cases} ` | $\begin{cases} 3x + 5y +  z \\ 7x - 2y + 4z \\ -6x + 3y + 2z \end{cases} $ |
+| 数组                                                  | `\begin{array}{|c|c||c|} a & b & S \\ \hline 0&0&1\\ 0&1&1\\ 1&0&1\\ 1&1&0\\ \end{array} ` | $\begin{array}{|c|c||c|} a & b & S \\ \hline 0&0&1\\ 0&1&1\\ 1&0&1\\ 1&1&0\\ \end{array}$ |
 
 # Letex综合运用实例
 
