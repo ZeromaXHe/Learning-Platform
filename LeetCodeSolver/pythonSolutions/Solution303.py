@@ -1,6 +1,7 @@
 from typing import List
 
 
+# 303. 区域和检索 - 数组不可变 | 难度：简单 | 标签：动态规划
 # 给定一个整数数组 nums，求出数组从索引i到j（i≤j）范围内元素的总和，包含i、j两点。
 # 
 # 实现 NumArray 类：
@@ -53,7 +54,8 @@ class NumArray:
         return self.preSum[j + 1] - self.preSum[i]
 
 
-numArray = NumArray([-2, 0, 3, -5, 2, -1])
-print("" + str(numArray.sumRange(0, 2)) + " should be 1 ")
-print("" + str(numArray.sumRange(2, 5)) + " should be -1 ")
-print("" + str(numArray.sumRange(0, 5)) + " should be -3 ")
+if __name__ == '__main__':
+    numArray = NumArray([-2, 0, 3, -5, 2, -1])
+    print("" + str(numArray.sumRange(0, 2)) + " should be 1 ")
+    print("" + str(numArray.sumRange(2, 5)) + " should be -1 ")
+    print("" + str(numArray.sumRange(0, 5)) + " should be -3 ")
