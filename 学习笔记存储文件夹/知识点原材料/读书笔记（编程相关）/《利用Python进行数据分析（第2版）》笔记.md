@@ -1500,3 +1500,3948 @@ Out[127]: 'Non-negative'
 虽然使用三元表达式可以压缩代码，但会降低代码可读性。
 
 # 第3章 Python的数据结构、函数和文件
+
+本章讨论Python的内置功能，这些功能本书会用到很多。虽然扩展库，比如pandas和Numpy，使处理大数据集很方便，但它们是和Python的内置数据处理工具一同使用的。
+
+我们会从Python最基础的数据结构开始：元组、列表、字典和集合。然后会讨论创建你自己的、可重复使用的Python函数。最后，会学习Python的文件对象，以及如何与本地硬盘交互。
+
+## 3.1 数据结构和序列
+
+Python的数据结构简单而强大。通晓它们才能成为熟练的Python程序员。
+
+### 元组
+
+元组是一个固定长度，不可改变的Python序列对象。创建元组的最简单方式，是用逗号分隔一列值：
+
+```
+In [1]: tup = 4, 5, 6
+
+In [2]: tup
+Out[2]: (4, 5, 6)
+```
+
+当用复杂的表达式定义元组，最好将值放到圆括号内，如下所示：
+
+```
+In [3]: nested_tup = (4, 5, 6), (7, 8)
+
+In [4]: nested_tup
+Out[4]: ((4, 5, 6), (7, 8))
+```
+
+用`tuple`可以将任意序列或迭代器转换成元组：
+
+```
+In [5]: tuple([4, 0, 2])
+Out[5]: (4, 0, 2)
+
+In [6]: tup = tuple('string')
+
+In [7]: tup
+Out[7]: ('s', 't', 'r', 'i', 'n', 'g')
+```
+
+可以用方括号访问元组中的元素。和C、C++、JAVA等语言一样，序列是从0开始的：
+
+```
+In [8]: tup[0]
+Out[8]: 's'
+```
+
+元组中存储的对象可能是可变对象。一旦创建了元组，元组中的对象就不能修改了：
+
+```
+In [9]: tup = tuple(['foo', [1, 2], True])
+
+In [10]: tup[2] = False
+---------------------------------------------------------------------------
+TypeError                                 Traceback (most recent call last)
+<ipython-input-10-c7308343b841> in <module>()
+----> 1 tup[2] = False
+TypeError: 'tuple' object does not support item assignment
+```
+
+如果元组中的某个对象是可变的，比如列表，可以在原位进行修改：
+
+```
+In [11]: tup[1].append(3)
+
+In [12]: tup
+Out[12]: ('foo', [1, 2, 3], True)
+```
+
+可以用加号运算符将元组串联起来：
+
+```
+In [13]: (4, None, 'foo') + (6, 0) + ('bar',)
+Out[13]: (4, None, 'foo', 6, 0, 'bar')
+```
+
+元组乘以一个整数，像列表一样，会将几个元组的复制串联起来：
+
+```
+In [14]: ('foo', 'bar') * 4
+Out[14]: ('foo', 'bar', 'foo', 'bar', 'foo', 'bar', 'foo', 'bar')
+```
+
+对象本身并没有被复制，只是引用了它。
+
+### 拆分元组
+
+如果你想将元组赋值给类似元组的变量，Python会试图拆分等号右边的值：
+
+```
+In [15]: tup = (4, 5, 6)
+
+In [16]: a, b, c = tup
+
+In [17]: b
+Out[17]: 5
+```
+
+即使含有元组的元组也会被拆分：
+
+```
+In [18]: tup = 4, 5, (6, 7)
+
+In [19]: a, b, (c, d) = tup
+
+In [20]: d
+Out[20]: 7
+```
+
+使用这个功能，你可以很容易地替换变量的名字，其它语言可能是这样：
+
+```
+tmp = a
+a = b
+b = tmp
+```
+
+但是在Python中，替换可以这样做：
+
+```
+In [21]: a, b = 1, 2
+
+In [22]: a
+Out[22]: 1
+
+In [23]: b
+Out[23]: 2
+
+In [24]: b, a = a, b
+
+In [25]: a
+Out[25]: 2
+
+In [26]: b
+Out[26]: 1
+```
+
+变量拆分常用来迭代元组或列表序列：
+
+```
+In [27]: seq = [(1, 2, 3), (4, 5, 6), (7, 8, 9)]
+
+In [28]: for a, b, c in seq:
+   ....:     print('a={0}, b={1}, c={2}'.format(a, b, c))
+a=1, b=2, c=3
+a=4, b=5, c=6
+a=7, b=8, c=9
+```
+
+另一个常见用法是从函数返回多个值。后面会详解。
+
+Python最近新增了更多高级的元组拆分功能，允许从元组的开头“摘取”几个元素。它使用了特殊的语法`*rest`，这也用在函数签名中以抓取任意长度列表的位置参数：
+
+```
+In [29]: values = 1, 2, 3, 4, 5
+
+In [30]: a, b, *rest = values
+
+In [31]: a, b
+Out[31]: (1, 2)
+
+In [32]: rest
+Out[32]: [3, 4, 5]
+```
+
+`rest`的部分是想要舍弃的部分，rest的名字不重要。作为惯用写法，许多Python程序员会将不需要的变量使用下划线：
+
+```
+In [33]: a, b, *_ = values
+```
+
+### tuple方法
+
+因为元组的大小和内容不能修改，它的实例方法都很轻量。其中一个很有用的就是`count`（也适用于列表），它可以统计某个值得出现频率：
+
+```
+In [34]: a = (1, 2, 2, 2, 3, 4, 2)
+
+In [35]: a.count(2)
+Out[35]: 4
+```
+
+### 列表
+
+与元组对比，列表的长度可变、内容可以被修改。你可以用方括号定义，或用`list`函数：
+
+```
+In [36]: a_list = [2, 3, 7, None]
+
+In [37]: tup = ('foo', 'bar', 'baz')
+
+In [38]: b_list = list(tup)
+
+In [39]: b_list
+Out[39]: ['foo', 'bar', 'baz']
+
+In [40]: b_list[1] = 'peekaboo'
+
+In [41]: b_list
+Out[41]: ['foo', 'peekaboo', 'baz']
+```
+
+列表和元组的语义接近，在许多函数中可以交叉使用。
+
+`list`函数常用来在数据处理中实体化迭代器或生成器：
+
+```
+In [42]: gen = range(10)
+
+In [43]: gen
+Out[43]: range(0, 10)
+
+In [44]: list(gen)
+Out[44]: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+```
+
+### 添加和删除元素
+
+可以用`append`在列表末尾添加元素：
+
+```
+In [45]: b_list.append('dwarf')
+
+In [46]: b_list
+Out[46]: ['foo', 'peekaboo', 'baz', 'dwarf']
+```
+
+`insert`可以在特定的位置插入元素：
+
+```
+In [47]: b_list.insert(1, 'red')
+
+In [48]: b_list
+Out[48]: ['foo', 'red', 'peekaboo', 'baz', 'dwarf']
+```
+
+插入的序号必须在0和列表长度之间。
+
+> 警告：与`append`相比，`insert`耗费的计算量大，因为对后续元素的引用必须在内部迁移，以便为新元素提供空间。如果要在序列的头部和尾部插入元素，你可能需要使用`collections.deque`，一个双尾部队列。
+
+insert的逆运算是pop，它移除并返回指定位置的元素：
+
+```
+In [49]: b_list.pop(2)
+Out[49]: 'peekaboo'
+
+In [50]: b_list
+Out[50]: ['foo', 'red', 'baz', 'dwarf']
+```
+
+可以用`remove`去除某个值，`remove`会先寻找第一个值并除去：
+
+```
+In [51]: b_list.append('foo')
+
+In [52]: b_list
+Out[52]: ['foo', 'red', 'baz', 'dwarf', 'foo']
+
+In [53]: b_list.remove('foo')
+
+In [54]: b_list
+Out[54]: ['red', 'baz', 'dwarf', 'foo']
+```
+
+如果不考虑性能，使用`append`和`remove`，可以把Python的列表当做完美的“多重集”数据结构。
+
+用`in`可以检查列表是否包含某个值：
+
+```
+In [55]: 'dwarf' in b_list
+Out[55]: True
+```
+
+否定`in`可以再加一个not：
+
+```
+In [56]: 'dwarf' not in b_list
+Out[56]: False
+```
+
+在列表中检查是否存在某个值远比字典和集合速度慢，因为Python是线性搜索列表中的值，但在字典和集合中，在同样的时间内还可以检查其它项（基于哈希表）。
+
+### 串联和组合列表
+
+与元组类似，可以用加号将两个列表串联起来：
+
+```
+In [57]: [4, None, 'foo'] + [7, 8, (2, 3)]
+Out[57]: [4, None, 'foo', 7, 8, (2, 3)]
+```
+
+如果已经定义了一个列表，用`extend`方法可以追加多个元素：
+
+```
+In [58]: x = [4, None, 'foo']
+
+In [59]: x.extend([7, 8, (2, 3)])
+
+In [60]: x
+Out[60]: [4, None, 'foo', 7, 8, (2, 3)]
+```
+
+通过加法将列表串联的计算量较大，因为要新建一个列表，并且要复制对象。用`extend`追加元素，尤其是到一个大列表中，更为可取。因此：
+
+```
+everything = []
+for chunk in list_of_lists:
+    everything.extend(chunk)
+```
+
+要比串联方法快：
+
+```
+everything = []
+for chunk in list_of_lists:
+    everything = everything + chunk
+```
+
+### 排序
+
+你可以用`sort`函数将一个列表原地排序（不创建新的对象）：
+
+```
+In [61]: a = [7, 2, 5, 1, 3]
+
+In [62]: a.sort()
+
+In [63]: a
+Out[63]: [1, 2, 3, 5, 7]
+```
+
+`sort`有一些选项，有时会很好用。其中之一是二级排序key，可以用这个key进行排序。例如，我们可以按长度对字符串进行排序：
+
+```
+In [64]: b = ['saw', 'small', 'He', 'foxes', 'six']
+
+In [65]: b.sort(key=len)
+
+In [66]: b
+Out[66]: ['He', 'saw', 'six', 'small', 'foxes']
+```
+
+稍后，我们会学习`sorted`函数，它可以产生一个排好序的序列副本。
+
+### 二分搜索和维护已排序的列表
+
+`bisect`模块支持二分查找，和向已排序的列表插入值。`bisect.bisect`可以找到插入值后仍保证排序的位置，`bisect.insort`是向这个位置插入值：
+
+```
+In [67]: import bisect
+
+In [68]: c = [1, 2, 2, 2, 3, 4, 7]
+
+In [69]: bisect.bisect(c, 2)
+Out[69]: 4
+
+In [70]: bisect.bisect(c, 5)
+Out[70]: 6
+
+In [71]: bisect.insort(c, 6)
+
+In [72]: c
+Out[72]: [1, 2, 2, 2, 3, 4, 6, 7]
+```
+
+> 注意：`bisect`模块不会检查列表是否已排好序，进行检查的话会耗费大量计算。因此，对未排序的列表使用`bisect`不会产生错误，但结果不一定正确。
+
+### 切片
+
+用切边可以选取大多数序列类型的一部分，切片的基本形式是在方括号中使用`start:stop`：
+
+```
+In [73]: seq = [7, 2, 3, 7, 5, 6, 0, 1]
+
+In [74]: seq[1:5]
+Out[74]: [2, 3, 7, 5]
+```
+
+切片也可以被序列赋值：
+
+```
+In [75]: seq[3:4] = [6, 3]
+
+In [76]: seq
+Out[76]: [7, 2, 3, 6, 3, 5, 6, 0, 1]
+```
+
+切片的起始元素是包括的，不包含结束元素。因此，结果中包含的元素个数是`stop - start`。
+
+`start`或`stop`都可以被省略，省略之后，分别默认序列的开头和结尾：
+
+```
+In [77]: seq[:5]
+Out[77]: [7, 2, 3, 6, 3]
+
+In [78]: seq[3:]
+Out[78]: [6, 3, 5, 6, 0, 1]
+```
+
+负数表明从后向前切片：
+
+```
+In [79]: seq[-4:]
+Out[79]: [5, 6, 0, 1]
+
+In [80]: seq[-6:-2]
+Out[80]: [6, 3, 5, 6]
+```
+
+需要一段时间来熟悉使用切片，尤其是当你之前学的是R或MATLAB。图3-1展示了正整数和负整数的切片。在图中，指数标示在边缘以表明切片是在哪里开始哪里结束的。
+
+在第二个冒号后面使用`step`，可以隔一个取一个元素：
+
+```
+In [81]: seq[::2]
+Out[81]: [7, 3, 3, 6, 1]
+```
+
+一个聪明的方法是使用`-1`，它可以将列表或元组颠倒过来：
+
+```
+In [82]: seq[::-1]
+Out[82]: [1, 0, 6, 5, 3, 6, 3, 2, 7]
+```
+
+### 序列函数
+
+Python有一些有用的序列函数。
+
+### enumerate函数
+
+迭代一个序列时，你可能想跟踪当前项的序号。手动的方法可能是下面这样：
+
+```python
+i = 0
+for value in collection:
+   # do something with value
+   i += 1
+```
+
+因为这么做很常见，Python内建了一个`enumerate`函数，可以返回`(i, value)`元组序列：
+
+```python
+for i, value in enumerate(collection):
+   # do something with value
+```
+
+当你索引数据时，使用`enumerate`的一个好方法是计算序列（唯一的）`dict`映射到位置的值：
+
+```
+In [83]: some_list = ['foo', 'bar', 'baz']
+
+In [84]: mapping = {}
+
+In [85]: for i, v in enumerate(some_list):
+   ....:     mapping[v] = i
+
+In [86]: mapping
+Out[86]: {'bar': 1, 'baz': 2, 'foo': 0}
+```
+
+### sorted函数
+
+`sorted`函数可以从任意序列的元素返回一个新的排好序的列表：
+
+```
+In [87]: sorted([7, 1, 2, 6, 0, 3, 2])
+Out[87]: [0, 1, 2, 2, 3, 6, 7]
+
+In [88]: sorted('horse race')
+Out[88]: [' ', 'a', 'c', 'e', 'e', 'h', 'o', 'r', 'r', 's']
+```
+
+`sorted`函数可以接受和`sort`相同的参数。
+
+### zip函数
+
+`zip`可以将多个列表、元组或其它序列成对组合成一个元组列表：
+
+```
+In [89]: seq1 = ['foo', 'bar', 'baz']
+
+In [90]: seq2 = ['one', 'two', 'three']
+
+In [91]: zipped = zip(seq1, seq2)
+
+In [92]: list(zipped)
+Out[92]: [('foo', 'one'), ('bar', 'two'), ('baz', 'three')]
+```
+
+`zip`可以处理任意多的序列，元素的个数取决于最短的序列：
+
+```
+In [93]: seq3 = [False, True]
+
+In [94]: list(zip(seq1, seq2, seq3))
+Out[94]: [('foo', 'one', False), ('bar', 'two', True)]
+```
+
+`zip`的常见用法之一是同时迭代多个序列，可能结合`enumerate`使用：
+
+```
+In [95]: for i, (a, b) in enumerate(zip(seq1, seq2)):
+   ....:     print('{0}: {1}, {2}'.format(i, a, b))
+   ....:
+0: foo, one
+1: bar, two
+2: baz, three
+```
+
+给出一个“被压缩的”序列，`zip`可以被用来解压序列。也可以当作把行的列表转换为列的列表。这个方法看起来有点神奇：
+
+```
+In [96]: pitchers = [('Nolan', 'Ryan'), ('Roger', 'Clemens'),
+   ....:             ('Schilling', 'Curt')]
+
+In [97]: first_names, last_names = zip(*pitchers)
+
+In [98]: first_names
+Out[98]: ('Nolan', 'Roger', 'Schilling')
+
+In [99]: last_names
+Out[99]: ('Ryan', 'Clemens', 'Curt')
+```
+
+### reversed函数
+
+`reversed`可以从后向前迭代一个序列：
+
+```
+In [100]: list(reversed(range(10)))
+Out[100]: [9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
+```
+
+要记住`reversed`是一个生成器（后面详细介绍），只有实体化（即列表或for循环）之后才能创建翻转的序列。
+
+### 字典
+
+字典可能是Python最为重要的数据结构。它更为常见的名字是哈希映射或关联数组。它是键值对的大小可变集合，键和值都是Python对象。创建字典的方法之一是使用尖括号，用冒号分隔键和值：
+
+```
+In [101]: empty_dict = {}
+
+In [102]: d1 = {'a' : 'some value', 'b' : [1, 2, 3, 4]}
+
+In [103]: d1
+Out[103]: {'a': 'some value', 'b': [1, 2, 3, 4]}
+```
+
+你可以像访问列表或元组中的元素一样，访问、插入或设定字典中的元素：
+
+```
+In [104]: d1[7] = 'an integer'
+
+In [105]: d1
+Out[105]: {'a': 'some value', 'b': [1, 2, 3, 4], 7: 'an integer'}
+
+In [106]: d1['b']
+Out[106]: [1, 2, 3, 4]
+```
+
+你可以用检查列表和元组是否包含某个值的方法，检查字典中是否包含某个键：
+
+```
+In [107]: 'b' in d1
+Out[107]: True
+```
+
+可以用`del`关键字或`pop`方法（返回值的同时删除键）删除值：
+
+```
+In [108]: d1[5] = 'some value'
+
+In [109]: d1
+Out[109]: 
+{'a': 'some value',
+ 'b': [1, 2, 3, 4],
+ 7: 'an integer',
+ 5: 'some value'}
+
+In [110]: d1['dummy'] = 'another value'
+
+In [111]: d1
+Out[111]: 
+{'a': 'some value',
+ 'b': [1, 2, 3, 4],
+ 7: 'an integer',
+ 5: 'some value',
+ 'dummy': 'another value'}
+
+In [112]: del d1[5]
+
+In [113]: d1
+Out[113]: 
+{'a': 'some value',
+ 'b': [1, 2, 3, 4],
+ 7: 'an integer',
+ 'dummy': 'another value'}
+
+In [114]: ret = d1.pop('dummy')
+
+In [115]: ret
+Out[115]: 'another value'
+
+In [116]: d1
+Out[116]: {'a': 'some value', 'b': [1, 2, 3, 4], 7: 'an integer'}
+```
+
+`keys`和`values`是字典的键和值的迭代器方法。虽然键值对没有顺序，这两个方法可以用相同的顺序输出键和值：
+
+```
+In [117]: list(d1.keys())
+Out[117]: ['a', 'b', 7]
+
+In [118]: list(d1.values())
+Out[118]: ['some value', [1, 2, 3, 4], 'an integer']
+```
+
+用`update`方法可以将一个字典与另一个融合：
+
+```
+In [119]: d1.update({'b' : 'foo', 'c' : 12})
+
+In [120]: d1
+Out[120]: {'a': 'some value', 'b': 'foo', 7: 'an integer', 'c': 12}
+```
+
+`update`方法是原地改变字典，因此任何传递给`update`的键的旧的值都会被舍弃。
+
+### 用序列创建字典
+
+常常，你可能想将两个序列配对组合成字典。下面是一种写法：
+
+```
+mapping = {}
+for key, value in zip(key_list, value_list):
+    mapping[key] = value
+```
+
+因为字典本质上是2元元组的集合，dict可以接受2元元组的列表：
+
+```
+In [121]: mapping = dict(zip(range(5), reversed(range(5))))
+
+In [122]: mapping
+Out[122]: {0: 4, 1: 3, 2: 2, 3: 1, 4: 0}
+```
+
+后面会谈到`dict comprehensions`，另一种构建字典的优雅方式。
+
+### 默认值
+
+下面的逻辑很常见：
+
+```
+if key in some_dict:
+    value = some_dict[key]
+else:
+    value = default_value
+```
+
+因此，dict的方法get和pop可以取默认值进行返回，上面的if-else语句可以简写成下面：
+
+```
+value = some_dict.get(key, default_value)
+```
+
+get默认会返回None，如果不存在键，pop会抛出一个例外。关于设定值，常见的情况是在字典的值是属于其它集合，如列表。例如，你可以通过首字母，将一个列表中的单词分类：
+
+```
+In [123]: words = ['apple', 'bat', 'bar', 'atom', 'book']
+
+In [124]: by_letter = {}
+
+In [125]: for word in words:
+   .....:     letter = word[0]
+   .....:     if letter not in by_letter:
+   .....:         by_letter[letter] = [word]
+   .....:     else:
+   .....:         by_letter[letter].append(word)
+   .....:
+
+In [126]: by_letter
+Out[126]: {'a': ['apple', 'atom'], 'b': ['bat', 'bar', 'book']}
+```
+
+`setdefault`方法就正是干这个的。前面的for循环可以改写为：
+
+```
+for word in words:
+    letter = word[0]
+    by_letter.setdefault(letter, []).append(word)
+```
+
+`collections`模块有一个很有用的类，`defaultdict`，它可以进一步简化上面。传递类型或函数以生成每个位置的默认值：
+
+```
+from collections import defaultdict
+by_letter = defaultdict(list)
+for word in words:
+    by_letter[word[0]].append(word)
+```
+
+### 有效的键类型
+
+字典的值可以是任意Python对象，而键通常是不可变的标量类型（整数、浮点型、字符串）或元组（元组中的对象必须是不可变的）。这被称为“可哈希性”。可以用`hash`函数检测一个对象是否是可哈希的（可被用作字典的键）：
+
+```
+In [127]: hash('string')
+Out[127]: 5023931463650008331
+
+In [128]: hash((1, 2, (2, 3)))
+Out[128]: 1097636502276347782
+
+In [129]: hash((1, 2, [2, 3])) # fails because lists are mutable
+---------------------------------------------------------------------------
+TypeError                                 Traceback (most recent call last)
+<ipython-input-129-800cd14ba8be> in <module>()
+----> 1 hash((1, 2, [2, 3])) # fails because lists are mutable
+TypeError: unhashable type: 'list'
+```
+
+要用列表当做键，一种方法是将列表转化为元组，只要内部元素可以被哈希，它也就可以被哈希：
+
+```
+In [130]: d = {}
+
+In [131]: d[tuple([1, 2, 3])] = 5
+
+In [132]: d
+Out[132]: {(1, 2, 3): 5}
+```
+
+### 集合
+
+集合是无序的不可重复的元素的集合。你可以把它当做字典，但是只有键没有值。可以用两种方式创建集合：通过set函数或使用尖括号set语句：
+
+```
+In [133]: set([2, 2, 2, 1, 3, 3])
+Out[133]: {1, 2, 3}
+
+In [134]: {2, 2, 2, 1, 3, 3}
+Out[134]: {1, 2, 3}
+```
+
+集合支持合并、交集、差分和对称差等数学集合运算。考虑两个示例集合：
+
+```
+In [135]: a = {1, 2, 3, 4, 5}
+
+In [136]: b = {3, 4, 5, 6, 7, 8}
+```
+
+合并是取两个集合中不重复的元素。可以用`union`方法，或者`|`运算符：
+
+```
+In [137]: a.union(b)
+Out[137]: {1, 2, 3, 4, 5, 6, 7, 8}
+
+In [138]: a | b
+Out[138]: {1, 2, 3, 4, 5, 6, 7, 8}
+```
+
+交集的元素包含在两个集合中。可以用`intersection`或`&`运算符：
+
+```
+In [139]: a.intersection(b)
+Out[139]: {3, 4, 5}
+
+In [140]: a & b
+Out[140]: {3, 4, 5}
+```
+
+表3-1列出了常用的集合方法。
+
+| 函数                             | 替代语法 | 说明                                                  |
+| -------------------------------- | -------- | ----------------------------------------------------- |
+| a.add(x)                         | N/A      | 将元素x添加到集合a                                    |
+| a.clear()                        | N/A      | 将集合清空                                            |
+| a.remove(x)                      | N/A      | 将元素x从集合a除去                                    |
+| a.pop()                          | N/A      | 从集合a去除任意元素，如果集合为空，则抛出KeyError错误 |
+| a.union(b)                       | a\|b     | 集合a和b中的所有不重复元素                            |
+| a.update(b)                      | a\|=b    | 设定集合a中的元素为a与 b的合并                        |
+| a.intersection(b)                | a&b      | a和b中的交叉的元素                                    |
+| a.intersection_update(b)         | a&=b     | 设定集合a中的元素为a与b的交叉                         |
+| a.difference(b)                  | a-b      | 存在于a但不存在于b的元素                              |
+| a.difference_update(b)           | a-=b     | 设定集合a中的元素为a与b的差                           |
+| a.symmetric_difference(b)        | a^b      | 只在a或只在b的元素                                    |
+| a.symmetric_difference_update(b) | a^=b     | 集合a中的元素为只在a或只在b的元素                     |
+| a.issubset(b)                    | N/A      | 如果a中的元素全部属于b，则为True                      |
+| a.issuperset(b)                  | N/A      | 如果b中的元素全部属于a，则为True                      |
+| a.isdisjoint(b)                  | N/A      | 如果a和b无共同元素，则为True                          |
+
+所有逻辑集合操作都有另外的原地实现方法，可以直接用结果替代集合的内容。对于大的集合，这么做效率更高：
+
+```
+In [141]: c = a.copy()
+
+In [142]: c |= b
+
+In [143]: c
+Out[143]: {1, 2, 3, 4, 5, 6, 7, 8}
+
+In [144]: d = a.copy()
+
+In [145]: d &= b
+
+In [146]: d
+Out[146]: {3, 4, 5}
+```
+
+与字典类似，集合元素通常都是不可变的。要获得类似列表的元素，必须转换成元组：
+
+```
+In [147]: my_data = [1, 2, 3, 4]
+
+In [148]: my_set = {tuple(my_data)}
+
+In [149]: my_set
+Out[149]: {(1, 2, 3, 4)}
+```
+
+你还可以检测一个集合是否是另一个集合的子集或父集：
+
+```
+In [150]: a_set = {1, 2, 3, 4, 5}
+
+In [151]: {1, 2, 3}.issubset(a_set)
+Out[151]: True
+
+In [152]: a_set.issuperset({1, 2, 3})
+Out[152]: True
+```
+
+集合的内容相同时，集合才对等：
+
+```
+In [153]: {1, 2, 3} == {3, 2, 1}
+Out[153]: True
+```
+
+### 列表、集合和字典推导式
+
+列表推导式是Python最受喜爱的特性之一。它允许用户方便的从一个集合过滤元素，形成列表，在传递参数的过程中还可以修改元素。形式如下：
+
+```
+[expr for val in collection if condition]
+```
+
+它等同于下面的for循环;
+
+```python
+result = []
+for val in collection:
+    if condition:
+        result.append(expr)
+```
+
+filter条件可以被忽略，只留下表达式就行。例如，给定一个字符串列表，我们可以过滤出长度在2及以下的字符串，并将其转换成大写：
+
+```
+In [154]: strings = ['a', 'as', 'bat', 'car', 'dove', 'python']
+
+In [155]: [x.upper() for x in strings if len(x) > 2]
+Out[155]: ['BAT', 'CAR', 'DOVE', 'PYTHON']
+```
+
+用相似的方法，还可以推导集合和字典。字典的推导式如下所示：
+
+```python
+dict_comp = {key-expr : value-expr for value in collection if condition}
+```
+
+集合的推导式与列表很像，只不过用的是尖括号：
+
+```python
+set_comp = {expr for value in collection if condition}
+```
+
+与列表推导式类似，集合与字典的推导也很方便，而且使代码的读写都很容易。来看前面的字符串列表。假如我们只想要字符串的长度，用集合推导式的方法非常方便：
+
+```
+In [156]: unique_lengths = {len(x) for x in strings}
+
+In [157]: unique_lengths
+Out[157]: {1, 2, 3, 4, 6}
+```
+
+`map`函数可以进一步简化：
+
+```
+In [158]: set(map(len, strings))
+Out[158]: {1, 2, 3, 4, 6}
+```
+
+作为一个字典推导式的例子，我们可以创建一个字符串的查找映射表以确定它在列表中的位置：
+
+```
+In [159]: loc_mapping = {val : index for index, val in enumerate(strings)}
+
+In [160]: loc_mapping
+Out[160]: {'a': 0, 'as': 1, 'bat': 2, 'car': 3, 'dove': 4, 'python': 5}
+```
+
+### 嵌套列表推导式
+
+假设我们有一个包含列表的列表，包含了一些英文名和西班牙名：
+
+```
+In [161]: all_data = [['John', 'Emily', 'Michael', 'Mary', 'Steven'],
+   .....:             ['Maria', 'Juan', 'Javier', 'Natalia', 'Pilar']]
+```
+
+你可能是从一些文件得到的这些名字，然后想按照语言进行分类。现在假设我们想用一个列表包含所有的名字，这些名字中包含两个或更多的e。可以用for循环来做：
+
+```
+names_of_interest = []
+for names in all_data:
+    enough_es = [name for name in names if name.count('e') >= 2]
+    names_of_interest.extend(enough_es)
+```
+
+可以用嵌套列表推导式的方法，将这些写在一起，如下所示：
+
+```
+In [162]: result = [name for names in all_data for name in names
+   .....:           if name.count('e') >= 2]
+
+In [163]: result
+Out[163]: ['Steven']
+```
+
+嵌套列表推导式看起来有些复杂。列表推导式的for部分是根据嵌套的顺序，过滤条件还是放在最后。下面是另一个例子，我们将一个整数元组的列表扁平化成了一个整数列表：
+
+```
+In [164]: some_tuples = [(1, 2, 3), (4, 5, 6), (7, 8, 9)]
+
+In [165]: flattened = [x for tup in some_tuples for x in tup]
+
+In [166]: flattened
+Out[166]: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+```
+
+记住，for表达式的顺序是与嵌套for循环的顺序一样（而不是列表推导式的顺序）：
+
+```
+flattened = []
+
+for tup in some_tuples:
+    for x in tup:
+        flattened.append(x)
+```
+
+你可以有任意多级别的嵌套，但是如果你有两三个以上的嵌套，你就应该考虑下代码可读性的问题了。分辨列表推导式的列表推导式中的语法也是很重要的：
+
+```
+In [167]: [[x for x in tup] for tup in some_tuples]
+Out[167]: [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
+```
+
+这段代码产生了一个列表的列表，而不是扁平化的只包含元素的列表。
+
+## 3.2 函数
+
+函数是Python中最主要也是最重要的代码组织和复用手段。作为最重要的原则，如果你要重复使用相同或非常类似的代码，就需要写一个函数。通过给函数起一个名字，还可以提高代码的可读性。
+
+函数使用`def`关键字声明，用`return`关键字返回值：
+
+```python
+def my_function(x, y, z=1.5):
+    if z > 1:
+        return z * (x + y)
+    else:
+        return z / (x + y)
+```
+
+同时拥有多条return语句也是可以的。如果到达函数末尾时没有遇到任何一条return语句，则返回None。
+
+函数可以有一些位置参数（positional）和一些关键字参数（keyword）。关键字参数通常用于指定默认值或可选参数。在上面的函数中，x和y是位置参数，而z则是关键字参数。也就是说，该函数可以下面这两种方式进行调用：
+
+```
+my_function(5, 6, z=0.7)
+my_function(3.14, 7, 3.5)
+my_function(10, 20)
+```
+
+函数参数的主要限制在于：关键字参数必须位于位置参数（如果有的话）之后。你可以任何顺序指定关键字参数。也就是说，你不用死记硬背函数参数的顺序，只要记得它们的名字就可以了。
+
+> 笔记：也可以用关键字传递位置参数。前面的例子，也可以写为：
+>
+> ```
+> my_function(x=5, y=6, z=7)
+> my_function(y=6, x=5, z=7)
+> ```
+>
+> 这种写法可以提高可读性。
+
+### 命名空间、作用域，和局部函数
+
+函数可以访问两种不同作用域中的变量：全局（global）和局部（local）。Python有一种更科学的用于描述变量作用域的名称，即命名空间（namespace）。任何在函数中赋值的变量默认都是被分配到局部命名空间（local namespace）中的。局部命名空间是在函数被调用时创建的，函数参数会立即填入该命名空间。在函数执行完毕之后，局部命名空间就会被销毁（会有一些例外的情况，具体请参见后面介绍闭包的那一节）。看看下面这个函数：
+
+```python
+def func():
+    a = []
+    for i in range(5):
+        a.append(i)
+```
+
+调用func()之后，首先会创建出空列表a，然后添加5个元素，最后a会在该函数退出的时候被销毁。假如我们像下面这样定义a：
+
+```python
+a = []
+def func():
+    for i in range(5):
+        a.append(i)
+```
+
+虽然可以在函数中对全局变量进行赋值操作，但是那些变量必须用global关键字声明成全局的才行：
+
+```
+In [168]: a = None
+
+In [169]: def bind_a_variable():
+   .....:     global a
+   .....:     a = []
+   .....: bind_a_variable()
+   .....:
+
+In [170]: print(a)
+[]
+```
+
+> 注意：我常常建议人们不要频繁使用global关键字。因为全局变量一般是用于存放系统的某些状态的。如果你发现自己用了很多，那可能就说明得要来点儿面向对象编程了（即使用类）。
+
+### 返回多个值
+
+在我第一次用Python编程时（之前已经习惯了Java和C++），最喜欢的一个功能是：函数可以返回多个值。下面是一个简单的例子：
+
+```python
+def f():
+    a = 5
+    b = 6
+    c = 7
+    return a, b, c
+
+a, b, c = f()
+```
+
+在数据分析和其他科学计算应用中，你会发现自己常常这么干。该函数其实只返回了一个对象，也就是一个元组，最后该元组会被拆包到各个结果变量中。在上面的例子中，我们还可以这样写：
+
+```
+return_value = f()
+```
+
+这里的return_value将会是一个含有3个返回值的三元元组。此外，还有一种非常具有吸引力的多值返回方式——返回字典：
+
+```python
+def f():
+    a = 5
+    b = 6
+    c = 7
+    return {'a' : a, 'b' : b, 'c' : c}
+```
+
+取决于工作内容，第二种方法可能很有用。
+
+### 函数也是对象
+
+由于Python函数都是对象，因此，在其他语言中较难表达的一些设计思想在Python中就要简单很多了。假设我们有下面这样一个字符串数组，希望对其进行一些数据清理工作并执行一堆转换：
+
+```
+In [171]: states = ['   Alabama ', 'Georgia!', 'Georgia', 'georgia', 'FlOrIda',
+   .....:           'south   carolina##', 'West virginia?']
+```
+
+不管是谁，只要处理过由用户提交的调查数据，就能明白这种乱七八糟的数据是怎么一回事。为了得到一组能用于分析工作的格式统一的字符串，需要做很多事情：去除空白符、删除各种标点符号、正确的大写格式等。做法之一是使用内建的字符串方法和正则表达式`re`模块：
+
+```
+import re
+
+def clean_strings(strings):
+    result = []
+    for value in strings:
+        value = value.strip()
+        value = re.sub('[!#?]', '', value)
+        value = value.title()
+        result.append(value)
+    return result
+```
+
+结果如下所示：
+
+```
+In [173]: clean_strings(states)
+Out[173]: 
+['Alabama',
+ 'Georgia',
+ 'Georgia',
+ 'Georgia',
+ 'Florida',
+ 'South   Carolina',
+ 'West Virginia']
+```
+
+其实还有另外一种不错的办法：将需要在一组给定字符串上执行的所有运算做成一个列表：
+
+```
+def remove_punctuation(value):
+    return re.sub('[!#?]', '', value)
+
+clean_ops = [str.strip, remove_punctuation, str.title]
+
+def clean_strings(strings, ops):
+    result = []
+    for value in strings:
+        for function in ops:
+            value = function(value)
+        result.append(value)
+    return result
+```
+
+然后我们就有了：
+
+```
+In [175]: clean_strings(states, clean_ops)
+Out[175]: 
+['Alabama',
+ 'Georgia',
+ 'Georgia',
+ 'Georgia',
+ 'Florida',
+ 'South   Carolina',
+ 'West Virginia']
+```
+
+这种多函数模式使你能在很高的层次上轻松修改字符串的转换方式。此时的clean_strings也更具可复用性！
+
+还可以将函数用作其他函数的参数，比如内置的map函数，它用于在一组数据上应用一个函数：
+
+```
+In [176]: for x in map(remove_punctuation, states):
+   .....:     print(x)
+Alabama 
+Georgia
+Georgia
+georgia
+FlOrIda
+south   carolina
+West virginia
+```
+
+### 匿名（lambda）函数
+
+Python支持一种被称为匿名的、或lambda函数。它仅由单条语句组成，该语句的结果就是返回值。它是通过lambda关键字定义的，这个关键字没有别的含义，仅仅是说“我们正在声明的是一个匿名函数”。
+
+```python
+def short_function(x):
+    return x * 2
+
+equiv_anon = lambda x: x * 2
+```
+
+本书其余部分一般将其称为lambda函数。它们在数据分析工作中非常方便，因为你会发现很多数据转换函数都以函数作为参数的。直接传入lambda函数比编写完整函数声明要少输入很多字（也更清晰），甚至比将lambda函数赋值给一个变量还要少输入很多字。看看下面这个简单得有些傻的例子：
+
+```
+def apply_to_list(some_list, f):
+    return [f(x) for x in some_list]
+
+ints = [4, 0, 1, 5, 6]
+apply_to_list(ints, lambda x: x * 2)
+```
+
+虽然你可以直接编写[x *2for x in ints]，但是这里我们可以非常轻松地传入一个自定义运算给apply_to_list函数。
+
+再来看另外一个例子。假设有一组字符串，你想要根据各字符串不同字母的数量对其进行排序：
+
+```
+In [177]: strings = ['foo', 'card', 'bar', 'aaaa', 'abab']
+```
+
+这里，我们可以传入一个lambda函数到列表的sort方法：
+
+```
+In [178]: strings.sort(key=lambda x: len(set(list(x))))
+
+In [179]: strings
+Out[179]: ['aaaa', 'foo', 'abab', 'bar', 'card']
+```
+
+> 笔记：lambda函数之所以会被称为匿名函数，与def声明的函数不同，原因之一就是这种函数对象本身是没有提供名称__name__属性。
+
+### 柯里化：部分参数应用
+
+柯里化（currying）是一个有趣的计算机科学术语，它指的是通过“部分参数应用”（partial argument application）从现有函数派生出新函数的技术。例如，假设我们有一个执行两数相加的简单函数：
+
+```python
+def add_numbers(x, y):
+    return x + y
+```
+
+通过这个函数，我们可以派生出一个新的只有一个参数的函数——add_five，它用于对其参数加5：
+
+```python
+add_five = lambda y: add_numbers(5, y)
+```
+
+add_numbers的第二个参数称为“柯里化的”（curried）。这里没什么特别花哨的东西，因为我们其实就只是定义了一个可以调用现有函数的新函数而已。内置的functools模块可以用partial函数将此过程简化：
+
+```python
+from functools import partial
+add_five = partial(add_numbers, 5)
+```
+
+### 生成器
+
+能以一种一致的方式对序列进行迭代（比如列表中的对象或文件中的行）是Python的一个重要特点。这是通过一种叫做迭代器协议（iterator protocol，它是一种使对象可迭代的通用方式）的方式实现的，一个原生的使对象可迭代的方法。比如说，对字典进行迭代可以得到其所有的键：
+
+```
+In [180]: some_dict = {'a': 1, 'b': 2, 'c': 3}
+
+In [181]: for key in some_dict:
+   .....:     print(key)
+a
+b
+c
+```
+
+当你编写for key in some_dict时，Python解释器首先会尝试从some_dict创建一个迭代器：
+
+```
+In [182]: dict_iterator = iter(some_dict)
+
+In [183]: dict_iterator
+Out[183]: <dict_keyiterator at 0x7fbbd5a9f908>
+```
+
+迭代器是一种特殊对象，它可以在诸如for循环之类的上下文中向Python解释器输送对象。大部分能接受列表之类的对象的方法也都可以接受任何可迭代对象。比如min、max、sum等内置方法以及list、tuple等类型构造器：
+
+```
+In [184]: list(dict_iterator)
+Out[184]: ['a', 'b', 'c']
+```
+
+生成器（generator）是构造新的可迭代对象的一种简单方式。一般的函数执行之后只会返回单个值，而生成器则是以延迟的方式返回一个值序列，即每返回一个值之后暂停，直到下一个值被请求时再继续。要创建一个生成器，只需将函数中的return替换为yield即可：
+
+```python
+def squares(n=10):
+    print('Generating squares from 1 to {0}'.format(n ** 2))
+    for i in range(1, n + 1):
+        yield i ** 2
+```
+
+调用该生成器时，没有任何代码会被立即执行：
+
+```
+In [186]: gen = squares()
+
+In [187]: gen
+Out[187]: <generator object squares at 0x7fbbd5ab4570>
+```
+
+直到你从该生成器中请求元素时，它才会开始执行其代码：
+
+```
+In [188]: for x in gen:
+   .....:     print(x, end=' ')
+Generating squares from 1 to 100
+1 4 9 16 25 36 49 64 81 100
+```
+
+### 生成器表达式
+
+另一种更简洁的构造生成器的方法是使用生成器表达式（generator expression）。这是一种类似于列表、字典、集合推导式的生成器。其创建方式为，把列表推导式两端的方括号改成圆括号：
+
+```
+In [189]: gen = (x ** 2 for x in range(100))
+
+In [190]: gen
+Out[190]: <generator object <genexpr> at 0x7fbbd5ab29e8>
+```
+
+它跟下面这个冗长得多的生成器是完全等价的：
+
+```python
+def _make_gen():
+    for x in range(100):
+        yield x ** 2
+gen = _make_gen()
+```
+
+生成器表达式也可以取代列表推导式，作为函数参数：
+
+```
+In [191]: sum(x ** 2 for x in range(100))
+Out[191]: 328350
+
+In [192]: dict((i, i **2) for i in range(5))
+Out[192]: {0: 0, 1: 1, 2: 4, 3: 9, 4: 16}
+```
+
+### itertools模块
+
+标准库itertools模块中有一组用于许多常见数据算法的生成器。例如，groupby可以接受任何序列和一个函数。它根据函数的返回值对序列中的连续元素进行分组。下面是一个例子：
+
+```
+In [193]: import itertools
+
+In [194]: first_letter = lambda x: x[0]
+
+In [195]: names = ['Alan', 'Adam', 'Wes', 'Will', 'Albert', 'Steven']
+
+In [196]: for letter, names in itertools.groupby(names, first_letter):
+   .....:     print(letter, list(names)) # names is a generator
+A ['Alan', 'Adam']
+W ['Wes', 'Will']
+A ['Albert']
+S ['Steven']
+```
+
+表3-2中列出了一些我经常用到的itertools函数。建议参阅Python官方文档，进一步学习。
+
+| 函数                         | 说明                                                         |
+| ---------------------------- | ------------------------------------------------------------ |
+| combinations(iterable, k)    | 生成一个由iterable中所有可能的k元元组组成的序列，不考虑顺序（参阅另一个函数combinations_with_replacement） |
+| permutations(iterable, k)    | 生成一个由iterable中所有可能的k元元组组成的序列，考虑顺序    |
+| groupby(iterable[,keyfunc])  | 为每个唯一键生成一个(key, sub-iterator)                      |
+| product(*iterables,repeat=1) | 生成输入的iterables的笛卡尔积，结果为元组，类似于嵌套for循环 |
+
+### 错误和异常处理
+
+优雅地处理Python的错误和异常是构建健壮程序的重要部分。在数据分析中，许多函数函数只用于部分输入。例如，Python的float函数可以将字符串转换成浮点数，但输入有误时，有`ValueError`错误：
+
+```
+In [197]: float('1.2345')
+Out[197]: 1.2345
+
+In [198]: float('something')
+---------------------------------------------------------------------------
+ValueError                                Traceback (most recent call last)
+<ipython-input-198-439904410854> in <module>()
+----> 1 float('something')
+ValueError: could not convert string to float: 'something'
+```
+
+假如想优雅地处理float的错误，让它返回输入值。我们可以写一个函数，在try/except中调用float：
+
+```python
+def attempt_float(x):
+    try:
+        return float(x)
+    except:
+        return x
+```
+
+当float(x)抛出异常时，才会执行except的部分：
+
+```
+In [200]: attempt_float('1.2345')
+Out[200]: 1.2345
+
+In [201]: attempt_float('something')
+Out[201]: 'something'
+```
+
+你可能注意到float抛出的异常不仅是ValueError：
+
+```
+In [202]: float((1, 2))
+---------------------------------------------------------------------------
+TypeError                                 Traceback (most recent call last)
+<ipython-input-202-842079ebb635> in <module>()
+----> 1 float((1, 2))
+TypeError: float() argument must be a string or a number, not 'tuple'
+```
+
+你可能只想处理ValueError，TypeError错误（输入不是字符串或数值）可能是合理的bug。可以写一个异常类型：
+
+```python
+def attempt_float(x):
+    try:
+        return float(x)
+    except ValueError:
+        return x
+```
+
+然后有：
+
+```
+In [204]: attempt_float((1, 2))
+---------------------------------------------------------------------------
+TypeError                                 Traceback (most recent call last)
+<ipython-input-204-9bdfd730cead> in <module>()
+----> 1 attempt_float((1, 2))
+<ipython-input-203-3e06b8379b6b> in attempt_float(x)
+      1 def attempt_float(x):
+      2     try:
+----> 3         return float(x)
+      4     except ValueError:
+      5         return x
+TypeError: float() argument must be a string or a number, not 'tuple'
+```
+
+可以用元组包含多个异常：
+
+```python
+def attempt_float(x):
+    try:
+        return float(x)
+    except (TypeError, ValueError):
+        return x
+```
+
+某些情况下，你可能不想抑制异常，你想无论try部分的代码是否成功，都执行一段代码。可以使用finally：
+
+```python
+f = open(path, 'w')
+
+try:
+    write_to_file(f)
+finally:
+    f.close()
+```
+
+这里，文件处理f总会被关闭。相似的，你可以用else让只在try部分成功的情况下，才执行代码：
+
+```python
+f = open(path, 'w')
+
+try:
+    write_to_file(f)
+except:
+    print('Failed')
+else:
+    print('Succeeded')
+finally:
+    f.close()
+```
+
+### IPython的异常
+
+如果是在%run一个脚本或一条语句时抛出异常，IPython默认会打印完整的调用栈（traceback），在栈的每个点都会有几行上下文：
+
+```
+In [10]: %run examples/ipython_bug.py
+---------------------------------------------------------------------------
+AssertionError                            Traceback (most recent call last)
+/home/wesm/code/pydata-book/examples/ipython_bug.py in <module>()
+     13     throws_an_exception()
+     14
+---> 15 calling_things()
+
+/home/wesm/code/pydata-book/examples/ipython_bug.py in calling_things()
+     11 def calling_things():
+     12     works_fine()
+---> 13     throws_an_exception()
+     14
+     15 calling_things()
+
+/home/wesm/code/pydata-book/examples/ipython_bug.py in throws_an_exception()
+      7     a = 5
+      8     b = 6
+----> 9     assert(a + b == 10)
+     10
+     11 def calling_things():
+
+AssertionError:
+```
+
+自身就带有文本是相对于Python标准解释器的极大优点。你可以用魔术命令`%xmode`，从Plain（与Python标准解释器相同）到Verbose（带有函数的参数值）控制文本显示的数量。后面可以看到，发生错误之后，（用%debug或%pdb magics）可以进入stack进行事后调试。
+
+## 3.3 文件和操作系统
+
+本书的代码示例大多使用诸如pandas.read_csv之类的高级工具将磁盘上的数据文件读入Python数据结构。但我们还是需要了解一些有关Python文件处理方面的基础知识。好在它本来就很简单，这也是Python在文本和文件处理方面的如此流行的原因之一。
+
+为了打开一个文件以便读写，可以使用内置的open函数以及一个相对或绝对的文件路径：
+
+```
+In [207]: path = 'examples/segismundo.txt'
+
+In [208]: f = open(path)
+```
+
+默认情况下，文件是以只读模式（'r'）打开的。然后，我们就可以像处理列表那样来处理这个文件句柄f了，比如对行进行迭代：
+
+```
+for line in f:
+    pass
+```
+
+从文件中取出的行都带有完整的行结束符（EOL），因此你常常会看到下面这样的代码（得到一组没有EOL的行）：
+
+```
+In [209]: lines = [x.rstrip() for x in open(path)]
+
+In [210]: lines
+Out[210]: 
+['Sueña el rico en su riqueza,',
+ 'que más cuidados le ofrece;',
+ '',
+ 'sueña el pobre que padece',
+ 'su miseria y su pobreza;',
+ '',
+ 'sueña el que a medrar empieza,',
+ 'sueña el que afana y pretende,',
+ 'sueña el que agravia y ofende,',
+ '',
+ 'y en el mundo, en conclusión,',
+ 'todos sueñan lo que son,',
+ 'aunque ninguno lo entiende.',
+ '']
+```
+
+如果使用open创建文件对象，一定要用close关闭它。关闭文件可以返回操作系统资源：
+
+```
+In [211]: f.close()
+```
+
+用with语句可以可以更容易地清理打开的文件：
+
+```
+In [212]: with open(path) as f:
+   .....:     lines = [x.rstrip() for x in f]
+```
+
+这样可以在退出代码块时，自动关闭文件。
+
+如果输入f =open(path,'w')，就会有一个新文件被创建在examples/segismundo.txt，并覆盖掉该位置原来的任何数据。另外有一个x文件模式，它可以创建可写的文件，但是如果文件路径存在，就无法创建。表3-3列出了所有的读/写模式。
+
+| 模式 | 说明                                                  |
+| ---- | ----------------------------------------------------- |
+| r    | 只读模式                                              |
+| w    | 只写模式。创建新文件（删除同名的任何文件）            |
+| a    | 附加到现有文件（如果文件不存在则创建一个）            |
+| r+   | 读写模式                                              |
+| b    | 附加说明某模式用于二进制文件，即'rb'或'wb'            |
+| U    | 通用换行模式。单独使用'U'或附加到其他读模式（如'rU'） |
+
+对于可读文件，一些常用的方法是read、seek和tell。read会从文件返回字符。字符的内容是由文件的编码决定的（如UTF-8），如果是二进制模式打开的就是原始字节：
+
+```
+In [213]: f = open(path)
+
+In [214]: f.read(10)
+Out[214]: 'Sueña el r'
+
+In [215]: f2 = open(path, 'rb')  # Binary mode
+
+In [216]: f2.read(10)
+Out[216]: b'Sue\xc3\xb1a el '
+```
+
+read模式会将文件句柄的位置提前，提前的数量是读取的字节数。tell可以给出当前的位置：
+
+```
+In [217]: f.tell()
+Out[217]: 11
+
+In [218]: f2.tell()
+Out[218]: 10
+```
+
+尽管我们从文件读取了10个字符，位置却是11，这是因为用默认的编码用了这么多字节才解码了这10个字符。你可以用sys模块检查默认的编码：
+
+```
+In [219]: import sys
+
+In [220]: sys.getdefaultencoding()
+Out[220]: 'utf-8'
+```
+
+seek将文件位置更改为文件中的指定字节：
+
+```
+In [221]: f.seek(3)
+Out[221]: 3
+
+In [222]: f.read(1)
+Out[222]: 'ñ'
+```
+
+最后，关闭文件：
+
+```
+In [223]: f.close()
+
+In [224]: f2.close()
+```
+
+向文件写入，可以使用文件的write或writelines方法。例如，我们可以创建一个无空行版的prof_mod.py：
+
+```
+In [225]: with open('tmp.txt', 'w') as handle:
+   .....:     handle.writelines(x for x in open(path) if len(x) > 1)
+
+In [226]: with open('tmp.txt') as f:
+   .....:     lines = f.readlines()
+
+In [227]: lines
+Out[227]: 
+['Sueña el rico en su riqueza,\n',
+ 'que más cuidados le ofrece;\n',
+ 'sueña el pobre que padece\n',
+ 'su miseria y su pobreza;\n',
+ 'sueña el que a medrar empieza,\n',
+ 'sueña el que afana y pretende,\n',
+ 'sueña el que agravia y ofende,\n',
+ 'y en el mundo, en conclusión,\n',
+ 'todos sueñan lo que son,\n',
+ 'aunque ninguno lo entiende.\n']
+```
+
+表3-4列出了一些最常用的文件方法。
+
+| 方法              | 说明                                                         |
+| ----------------- | ------------------------------------------------------------ |
+| read([size])      | 以字符串形式返回文件数据，可选的size参数用于说明读取的字节数 |
+| readlines([size]) | 将文件返回为行列表，可选参数size                             |
+| write(str)        | 将字符串写入文件                                             |
+| close()           | 关闭句柄                                                     |
+| flush()           | 清空内部I/O缓存区，并将数据强行写回磁盘                      |
+| seek(pos)         | 移动到指定的文件位置（整数）                                 |
+| tell()            | 以整数形式返回当前文件位置                                   |
+| closed            | 如果文件已关闭，则为True                                     |
+
+### 文件的字节和Unicode
+
+Python文件的默认操作是“文本模式”，也就是说，你需要处理Python的字符串（即Unicode）。它与“二进制模式”相对，文件模式加一个b。我们来看上一节的文件（UTF-8编码、包含非ASCII字符）：
+
+```
+In [230]: with open(path) as f:
+   .....:     chars = f.read(10)
+
+In [231]: chars
+Out[231]: 'Sueña el r'
+```
+
+UTF-8是长度可变的Unicode编码，所以当我从文件请求一定数量的字符时，Python会从文件读取足够多（可能少至10或多至40字节）的字节进行解码。如果以“rb”模式打开文件，则读取确切的请求字节数：
+
+```
+In [232]: with open(path, 'rb') as f:
+   .....:     data = f.read(10)
+
+In [233]: data
+Out[233]: b'Sue\xc3\xb1a el '
+```
+
+取决于文本的编码，你可以将字节解码为str对象，但只有当每个编码的Unicode字符都完全成形时才能这么做：
+
+```
+In [234]: data.decode('utf8')
+Out[234]: 'Sueña el '
+
+In [235]: data[:4].decode('utf8')
+---------------------------------------------------------------------------
+UnicodeDecodeError                        Traceback (most recent call last)
+<ipython-input-235-300e0af10bb7> in <module>()
+----> 1 data[:4].decode('utf8')
+UnicodeDecodeError: 'utf-8' codec can't decode byte 0xc3 in position 3: unexpecte
+d end of data
+```
+
+文本模式结合了open的编码选项，提供了一种更方便的方法将Unicode转换为另一种编码：
+
+```
+In [236]: sink_path = 'sink.txt'
+
+In [237]: with open(path) as source:
+   .....:     with open(sink_path, 'xt', encoding='iso-8859-1') as sink:
+   .....:         sink.write(source.read())
+
+In [238]: with open(sink_path, encoding='iso-8859-1') as f:
+   .....:     print(f.read(10))
+Sueña el r
+```
+
+注意，不要在二进制模式中使用seek。如果文件位置位于定义Unicode字符的字节的中间位置，读取后面会产生错误：
+
+```
+In [240]: f = open(path)
+
+In [241]: f.read(5)
+Out[241]: 'Sueña'
+
+In [242]: f.seek(4)
+Out[242]: 4
+
+In [243]: f.read(1)
+---------------------------------------------------------------------------
+UnicodeDecodeError                        Traceback (most recent call last)
+<ipython-input-243-7841103e33f5> in <module>()
+----> 1 f.read(1)
+/miniconda/envs/book-env/lib/python3.6/codecs.py in decode(self, input, final)
+    319         # decode input (taking the buffer into account)
+    320         data = self.buffer + input
+--> 321         (result, consumed) = self._buffer_decode(data, self.errors, final
+)
+    322         # keep undecoded input until the next call
+    323         self.buffer = data[consumed:]
+UnicodeDecodeError: 'utf-8' codec can't decode byte 0xb1 in position 0: invalid s
+tart byte
+
+In [244]: f.close()
+```
+
+如果你经常要对非ASCII字符文本进行数据分析，通晓Python的Unicode功能是非常重要的。更多内容，参阅Python官方文档。
+
+## 3.4 结论
+
+我们已经学过了Python的基础、环境和语法，接下来学习NumPy和Python的面向数组计算。
+
+# 第4章 NumPy基础：数组和矢量计算
+
+NumPy（Numerical Python的简称）是Python数值计算最重要的基础包。大多数提供科学计算的包都是用NumPy的数组作为构建基础。
+
+NumPy的部分功能如下：
+
+- ndarray，一个具有矢量算术运算和复杂广播能力的快速且节省空间的多维数组。
+- 用于对整组数据进行快速运算的标准数学函数（无需编写循环）。
+- 用于读写磁盘数据的工具以及用于操作内存映射文件的工具。
+- 线性代数、随机数生成以及傅里叶变换功能。
+- 用于集成由C、C++、Fortran等语言编写的代码的A C API。
+
+由于NumPy提供了一个简单易用的C API，因此很容易将数据传递给由低级语言编写的外部库，外部库也能以NumPy数组的形式将数据返回给Python。这个功能使Python成为一种包装C/C++/Fortran历史代码库的选择，并使被包装库拥有一个动态的、易用的接口。
+
+NumPy本身并没有提供多么高级的数据分析功能，理解NumPy数组以及面向数组的计算将有助于你更加高效地使用诸如pandas之类的工具。因为NumPy是一个很大的题目，我会在附录A中介绍更多NumPy高级功能，比如广播。
+
+对于大部分数据分析应用而言，我最关注的功能主要集中在：
+
+- 用于数据整理和清理、子集构造和过滤、转换等快速的矢量化数组运算。
+- 常用的数组算法，如排序、唯一化、集合运算等。
+- 高效的描述统计和数据聚合/摘要运算。
+- 用于异构数据集的合并/连接运算的数据对齐和关系型数据运算。
+- 将条件逻辑表述为数组表达式（而不是带有if-elif-else分支的循环）。
+- 数据的分组运算（聚合、转换、函数应用等）。。
+
+虽然NumPy提供了通用的数值数据处理的计算基础，但大多数读者可能还是想将pandas作为统计和分析工作的基础，尤其是处理表格数据时。pandas还提供了一些NumPy所没有的领域特定的功能，如时间序列处理等。
+
+> 笔记：Python的面向数组计算可以追溯到1995年，Jim Hugunin创建了Numeric库。接下来的10年，许多科学编程社区纷纷开始使用Python的数组编程，但是进入21世纪，库的生态系统变得碎片化了。2005年，Travis Oliphant从Numeric和Numarray项目整了出了NumPy项目，进而所有社区都集合到了这个框架下。
+
+NumPy之于数值计算特别重要的原因之一，是因为它可以高效处理大数组的数据。这是因为：
+
+- NumPy是在一个连续的内存块中存储数据，独立于其他Python内置对象。NumPy的C语言编写的算法库可以操作内存，而不必进行类型检查或其它前期工作。比起Python的内置序列，NumPy数组使用的内存更少。
+- NumPy可以在整个数组上执行复杂的计算，而不需要Python的for循环。
+
+要搞明白具体的性能差距，考察一个包含一百万整数的数组，和一个等价的Python列表：
+
+```python
+In [7]: import numpy as np
+
+In [8]: my_arr = np.arange(1000000)
+
+In [9]: my_list = list(range(1000000))
+```
+
+各个序列分别乘以2：
+
+```python
+In [10]: %time for _ in range(10): my_arr2 = my_arr * 2
+CPU times: user 20 ms, sys: 50 ms, total: 70 ms
+Wall time: 72.4 ms
+
+In [11]: %time for _ in range(10): my_list2 = [x * 2 for x in my_list]
+CPU times: user 760 ms, sys: 290 ms, total: 1.05 s
+Wall time: 1.05 s
+```
+
+基于NumPy的算法要比纯Python快10到100倍（甚至更快），并且使用的内存更少。
+
+## 4.1 NumPy的ndarray：一种多维数组对象
+
+NumPy最重要的一个特点就是其N维数组对象（即ndarray），该对象是一个快速而灵活的大数据集容器。你可以利用这种数组对整块数据执行一些数学运算，其语法跟标量元素之间的运算一样。
+
+要明白Python是如何利用与标量值类似的语法进行批次计算，我先引入NumPy，然后生成一个包含随机数据的小数组：
+
+```python
+In [12]: import numpy as np
+
+# Generate some random data
+In [13]: data = np.random.randn(2, 3)
+
+In [14]: data
+Out[14]: 
+array([[-0.2047,  0.4789, -0.5194],
+       [-0.5557,  1.9658,  1.3934]])
+```
+
+然后进行数学运算：
+
+```python
+In [15]: data * 10
+Out[15]: 
+array([[ -2.0471,   4.7894,  -5.1944],
+       [ -5.5573,  19.6578,  13.9341]])
+
+In [16]: data + data
+Out[16]: 
+array([[-0.4094,  0.9579, -1.0389],
+       [-1.1115,  3.9316,  2.7868]])
+```
+
+第一个例子中，所有的元素都乘以10。第二个例子中，每个元素都与自身相加。
+
+> 笔记：在本章及全书中，我会使用标准的NumPy惯用法`import numpy as np`。你当然也可以在代码中使用`from numpy import *`，但不建议这么做。`numpy`的命名空间很大，包含许多函数，其中一些的名字与Python的内置函数重名（比如min和max）。
+
+ndarray是一个通用的同构数据多维容器，也就是说，其中的所有元素必须是相同类型的。每个数组都有一个shape（一个表示各维度大小的元组）和一个dtype（一个用于说明数组数据类型的对象）：
+
+```python
+In [17]: data.shape
+Out[17]: (2, 3)
+
+In [18]: data.dtype
+Out[18]: dtype('float64')
+```
+
+本章将会介绍NumPy数组的基本用法，这对于本书后面各章的理解基本够用。虽然大多数数据分析工作不需要深入理解NumPy，但是精通面向数组的编程和思维方式是成为Python科学计算牛人的一大关键步骤。
+
+> 笔记：当你在本书中看到“数组”、“NumPy数组”、"ndarray"时，基本上都指的是同一样东西，即ndarray对象。
+
+### 创建ndarray
+
+创建数组最简单的办法就是使用array函数。它接受一切序列型的对象（包括其他数组），然后产生一个新的含有传入数据的NumPy数组。以一个列表的转换为例：
+
+```python
+In [19]: data1 = [6, 7.5, 8, 0, 1]
+
+In [20]: arr1 = np.array(data1)
+
+In [21]: arr1
+Out[21]: array([ 6. ,  7.5,  8. ,  0. ,  1. ])
+```
+
+嵌套序列（比如由一组等长列表组成的列表）将会被转换为一个多维数组：
+
+```python
+In [22]: data2 = [[1, 2, 3, 4], [5, 6, 7, 8]]
+
+In [23]: arr2 = np.array(data2)
+
+In [24]: arr2
+Out[24]: 
+array([[1, 2, 3, 4],
+       [5, 6, 7, 8]])
+```
+
+因为data2是列表的列表，NumPy数组arr2的两个维度的shape是从data2引入的。可以用属性ndim和shape验证：
+
+```python
+In [25]: arr2.ndim
+Out[25]: 2
+
+In [26]: arr2.shape
+Out[26]: (2, 4)
+```
+
+除非特别说明（稍后将会详细介绍），np.array会尝试为新建的这个数组推断出一个较为合适的数据类型。数据类型保存在一个特殊的dtype对象中。比如说，在上面的两个例子中，我们有：
+
+```python
+In [27]: arr1.dtype
+Out[27]: dtype('float64')
+
+In [28]: arr2.dtype
+Out[28]: dtype('int64')
+```
+
+除np.array之外，还有一些函数也可以新建数组。比如，zeros和ones分别可以创建指定长度或形状的全0或全1数组。empty可以创建一个没有任何具体值的数组。要用这些方法创建多维数组，只需传入一个表示形状的元组即可：
+
+```python
+In [29]: np.zeros(10)
+Out[29]: array([ 0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.,  0.])
+
+In [30]: np.zeros((3, 6))
+Out[30]: 
+array([[ 0.,  0.,  0.,  0.,  0.,  0.],
+       [ 0.,  0.,  0.,  0.,  0.,  0.],
+       [ 0.,  0.,  0.,  0.,  0.,  0.]])
+
+In [31]: np.empty((2, 3, 2))
+Out[31]: 
+array([[[ 0.,  0.],
+        [ 0.,  0.],
+        [ 0.,  0.]],
+       [[ 0.,  0.],
+        [ 0.,  0.],
+        [ 0.,  0.]]])
+```
+
+> 注意：认为np.empty会返回全0数组的想法是不安全的。很多情况下（如前所示），它返回的都是一些未初始化的垃圾值。
+
+arange是Python内置函数range的数组版：
+
+```python
+In [32]: np.arange(15)
+Out[32]: array([ 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14])
+```
+
+表4-1列出了一些数组创建函数。由于NumPy关注的是数值计算，因此，如果没有特别指定，数据类型基本都是float64（浮点数）。
+
+| 函数              | 说明                                                         |
+| ----------------- | ------------------------------------------------------------ |
+| array             | 将输入数据（列表、元组、数组或其它序列类型）转换为ndarray。要么推断出dtype，要么特别指定dtype。默认直接复制输入数据 |
+| asarray           | 将输入转换为ndarray，如果输入本身就是一个ndarray就不进行复制 |
+| arange            | 类似于内置的range，但返回的是一个ndarray而不是列表           |
+| ones, ones_like   | 根据指定的形状和dtypes创建一个全1数组。one_like以另一个数组为参数，并根据其形状和dtype创建一个全1数组 |
+| zeros, zeros_like | 类似于ones和ones_like，只不过产生的是全0数组而已             |
+| empty, empty_like | 创建新数组，只分配内存空间但不填充任何值                     |
+| full, full_like   | 用fill value中的所有值，根据指定形状和dtype创建一个数组。full_like使用另一个数组，用相同形状和dtype创建 |
+| eye, identity     | 创建一个正方的N*N单位矩阵（对角线为1，其余为0）              |
+
+### ndarray的数据类型
+
+dtype（数据类型）是一个特殊的对象，它含有ndarray将一块内存解释为特定数据类型所需的信息：
+
+
+
+```python
+In [33]: arr1 = np.array([1, 2, 3], dtype=np.float64)
+
+In [34]: arr2 = np.array([1, 2, 3], dtype=np.int32)
+
+In [35]: arr1.dtype
+Out[35]: dtype('float64')
+
+In [36]: arr2.dtype
+Out[36]: dtype('int32')
+```
+
+dtype是NumPy灵活交互其它系统的源泉之一。多数情况下，它们直接映射到相应的机器表示，这使得“读写磁盘上的二进制数据流”以及“集成低级语言代码（如C、Fortran）”等工作变得更加简单。数值型dtype的命名方式相同：一个类型名（如float或int），后面跟一个用于表示各元素位长的数字。标准的双精度浮点值（即Python中的float对象）需要占用8字节（即64位）。因此，该类型在NumPy中就记作float64。表4-2列出了NumPy所支持的全部数据类型。
+
+> 笔记：记不住这些NumPy的dtype也没关系，新手更是如此。通常只需要知道你所处理的数据的大致类型是浮点数、复数、整数、布尔值、字符串，还是普通的Python对象即可。当你需要控制数据在内存和磁盘中的存储方式时（尤其是对大数据集），那就得了解如何控制存储类型。
+
+| 类型                              | 类型代码     | 说明                                                         |
+| --------------------------------- | ------------ | ------------------------------------------------------------ |
+| int8、uint8                       | i1、u1       | 有符号和无符号的8位（1个字节）整型                           |
+| int16、uint16                     | i2、u2       | 有符号和无符号的16位（2个字节）整型                          |
+| int32、uint32                     | i4、u4       | 有符号和无符号的32位（4个字节）整型                          |
+| int64、uint64                     | i8、u8       | 有符号和无符号的64位（8个字节）整型                          |
+| float16                           | f2           | 半精度浮点数                                                 |
+| float32                           | f4或f        | 标准的单精度浮点数。与C的float兼容                           |
+| float64                           | f8或d        | 标准的双精度浮点数。与C的double和Python的float对象兼容       |
+| float128                          | f16或g       | 扩展精度浮点数                                               |
+| complex64、complex128、complex256 | c8、c16、c32 | 分别用两个32位、64位或128位浮点数表示的复数                  |
+| bool                              | ？           | 存储True和False值的布尔类型                                  |
+| object                            | O            | Python对象类型                                               |
+| string_                           | S            | 固定长度的字符串类型（每个字符1个字节）。例如，要创建一个长度为10的字符串，应使用S10 |
+| unicode_                          | U            | 固定长度的unicode类型（字节数由平台决定）。跟字符串的定义方式一样（如U10） |
+
+你可以通过ndarray的astype方法明确地将一个数组从一个dtype转换成另一个dtype：
+
+```python
+In [37]: arr = np.array([1, 2, 3, 4, 5])
+
+In [38]: arr.dtype
+Out[38]: dtype('int64')
+
+In [39]: float_arr = arr.astype(np.float64)
+
+In [40]: float_arr.dtype
+Out[40]: dtype('float64')
+```
+
+在本例中，整数被转换成了浮点数。如果将浮点数转换成整数，则小数部分将会被截取删除：
+
+```python
+In [41]: arr = np.array([3.7, -1.2, -2.6, 0.5, 12.9, 10.1])
+
+In [42]: arr
+Out[42]: array([  3.7,  -1.2,  -2.6,   0.5,  12.9,  10.1])
+
+In [43]: arr.astype(np.int32)
+Out[43]: array([ 3, -1, -2,  0, 12, 10], dtype=int32)
+```
+
+如果某字符串数组表示的全是数字，也可以用astype将其转换为数值形式：
+
+```python
+In [44]: numeric_strings = np.array(['1.25', '-9.6', '42'], dtype=np.string_)
+
+In [45]: numeric_strings.astype(float)
+Out[45]: array([  1.25,  -9.6 ,  42.  ])
+```
+
+> 注意：使用numpy.string_类型时，一定要小心，因为NumPy的字符串数据是大小固定的，发生截取时，不会发出警告。pandas提供了更多非数值数据的便利的处理方法。
+
+如果转换过程因为某种原因而失败了（比如某个不能被转换为float64的字符串），就会引发一个ValueError。这里，我比较懒，写的是float而不是np.float64；NumPy很聪明，它会将Python类型映射到等价的dtype上。
+
+数组的dtype还有另一个属性：
+
+```python
+In [46]: int_array = np.arange(10)
+
+In [47]: calibers = np.array([.22, .270, .357, .380, .44, .50], dtype=np.float64)
+
+In [48]: int_array.astype(calibers.dtype)
+Out[48]: array([ 0.,  1.,  2.,  3.,  4.,  5.,  6.,  7.,  8.,  9.])
+```
+
+你还可以用简洁的类型代码来表示dtype：
+
+```python
+In [49]: empty_uint32 = np.empty(8, dtype='u4')
+
+In [50]: empty_uint32
+Out[50]: 
+array([         0, 1075314688,          0, 1075707904,          0,
+       1075838976,          0, 1072693248], dtype=uint32)
+```
+
+> 笔记：调用astype总会创建一个新的数组（一个数据的备份），即使新的dtype与旧的dtype相同。
+
+### NumPy数组的运算
+
+数组很重要，因为它使你不用编写循环即可对数据执行批量运算。NumPy用户称其为矢量化（vectorization）。大小相等的数组之间的任何算术运算都会将运算应用到元素级：
+
+```python
+In [51]: arr = np.array([[1., 2., 3.], [4., 5., 6.]])
+
+In [52]: arr
+Out[52]: 
+array([[ 1.,  2.,  3.],
+       [ 4.,  5.,  6.]])
+
+In [53]: arr * arr
+Out[53]: 
+array([[  1.,   4.,   9.],
+       [ 16.,  25.,  36.]])
+
+In [54]: arr - arr
+Out[54]: 
+array([[ 0.,  0.,  0.],
+       [ 0.,  0.,  0.]])
+```
+
+数组与标量的算术运算会将标量值传播到各个元素：
+
+```python
+In [55]: 1 / arr
+Out[55]: 
+array([[ 1.    ,  0.5   ,  0.3333],
+       [ 0.25  ,  0.2   ,  0.1667]])
+
+In [56]: arr ** 0.5
+Out[56]: 
+array([[ 1.    ,  1.4142,  1.7321],
+       [ 2.    ,  2.2361,  2.4495]])
+```
+
+大小相同的数组之间的比较会生成布尔值数组：
+
+```python
+In [57]: arr2 = np.array([[0., 4., 1.], [7., 2., 12.]])
+
+In [58]: arr2
+Out[58]: 
+array([[  0.,   4.,   1.],
+       [  7.,   2.,  12.]])
+
+In [59]: arr2 > arr
+Out[59]:
+array([[False,  True, False],
+       [ True, False,  True]], dtype=bool)
+```
+
+不同大小的数组之间的运算叫做广播（broadcasting），将在附录A中对其进行详细讨论。本书的内容不需要对广播机制有多深的理解。
+
+### 基本的索引和切片
+
+NumPy数组的索引是一个内容丰富的主题，因为选取数据子集或单个元素的方式有很多。一维数组很简单。从表面上看，它们跟Python列表的功能差不多：
+
+```python
+In [60]: arr = np.arange(10)
+
+In [61]: arr
+Out[61]: array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+
+In [62]: arr[5]
+Out[62]: 5
+
+In [63]: arr[5:8]
+Out[63]: array([5, 6, 7])
+
+In [64]: arr[5:8] = 12
+
+In [65]: arr
+Out[65]: array([ 0,  1,  2,  3,  4, 12, 12, 12,  8,  9])
+```
+
+如上所示，当你将一个标量值赋值给一个切片时（如arr[5:8]=12），该值会自动传播（也就说后面将会讲到的“广播”）到整个选区。跟列表最重要的区别在于，数组切片是原始数组的视图。这意味着数据不会被复制，视图上的任何修改都会直接反映到源数组上。
+
+作为例子，先创建一个arr的切片：
+
+```python
+In [66]: arr_slice = arr[5:8]
+
+In [67]: arr_slice
+Out[67]: array([12, 12, 12])
+```
+
+现在，当我修改arr_slice中的值，变动也会体现在原始数组arr中：
+
+```python
+In [68]: arr_slice[1] = 12345
+
+In [69]: arr
+Out[69]: array([    0,     1,     2,     3,     4,    12, 12345,    12,     8,   
+  9])
+```
+
+切片[ : ]会给数组中的所有值赋值：
+
+```python
+In [70]: arr_slice[:] = 64
+
+In [71]: arr
+Out[71]: array([ 0,  1,  2,  3,  4, 64, 64, 64,  8,  9])
+```
+
+如果你刚开始接触NumPy，可能会对此感到惊讶（尤其是当你曾经用过其他热衷于复制数组数据的编程语言）。由于NumPy的设计目的是处理大数据，所以你可以想象一下，假如NumPy坚持要将数据复制来复制去的话会产生何等的性能和内存问题。
+
+> 注意：如果你想要得到的是ndarray切片的一份副本而非视图，就需要明确地进行复制操作，例如`arr[5:8].copy()`。
+
+对于高维度数组，能做的事情更多。在一个二维数组中，各索引位置上的元素不再是标量而是一维数组：
+
+```python
+In [72]: arr2d = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+
+In [73]: arr2d[2]
+Out[73]: array([7, 8, 9])
+```
+
+因此，可以对各个元素进行递归访问，但这样需要做的事情有点多。你可以传入一个以逗号隔开的索引列表来选取单个元素。也就是说，下面两种方式是等价的：
+
+```python
+In [74]: arr2d[0][2]
+Out[74]: 3
+
+In [75]: arr2d[0, 2]
+Out[75]: 3
+```
+
+
+
+在多维数组中，如果省略了后面的索引，则返回对象会是一个维度低一点的ndarray（它含有高一级维度上的所有数据）。因此，在2×2×3数组arr3d中：
+
+```python
+In [76]: arr3d = np.array([[[1, 2, 3], [4, 5, 6]], [[7, 8, 9], [10, 11, 12]]])
+
+In [77]: arr3d
+Out[77]: 
+array([[[ 1,  2,  3],
+        [ 4,  5,  6]],
+       [[ 7,  8,  9],
+        [10, 11, 12]]])
+```
+
+arr3d[0]是一个2×3数组：
+
+```python
+In [78]: arr3d[0]
+Out[78]: 
+array([[1, 2, 3],
+       [4, 5, 6]])
+```
+
+标量值和数组都可以被赋值给arr3d[0]：
+
+```python
+In [79]: old_values = arr3d[0].copy()
+
+In [80]: arr3d[0] = 42
+
+In [81]: arr3d
+Out[81]: 
+array([[[42, 42, 42],
+        [42, 42, 42]],
+       [[ 7,  8,  9],
+        [10, 11, 12]]])
+
+In [82]: arr3d[0] = old_values
+
+In [83]: arr3d
+Out[83]: 
+array([[[ 1,  2,  3],
+        [ 4,  5,  6]],
+       [[ 7,  8,  9],
+        [10, 11, 12]]])
+```
+
+相似的，arr3d[1,0]可以访问索引以(1,0)开头的那些值（以一维数组的形式返回）：
+
+```python
+In [84]: arr3d[1, 0]
+Out[84]: array([7, 8, 9])
+```
+
+虽然是用两步进行索引的，表达式是相同的：
+
+```python
+In [85]: x = arr3d[1]
+
+In [86]: x
+Out[86]: 
+array([[ 7,  8,  9],
+       [10, 11, 12]])
+
+In [87]: x[0]
+Out[87]: array([7, 8, 9])
+```
+
+注意，在上面所有这些选取数组子集的例子中，返回的数组都是视图。
+
+### 切片索引
+
+ndarray的切片语法跟Python列表这样的一维对象差不多：
+
+```python
+In [88]: arr
+Out[88]: array([ 0,  1,  2,  3,  4, 64, 64, 64,  8,  9])
+
+In [89]: arr[1:6]
+Out[89]: array([ 1,  2,  3,  4, 64])
+```
+
+对于之前的二维数组arr2d，其切片方式稍显不同：
+
+```python
+In [90]: arr2d
+Out[90]: 
+array([[1, 2, 3],
+       [4, 5, 6],
+       [7, 8, 9]])
+
+In [91]: arr2d[:2]
+Out[91]: 
+array([[1, 2, 3],
+       [4, 5, 6]])
+```
+
+可以看出，它是沿着第0轴（即第一个轴）切片的。也就是说，切片是沿着一个轴向选取元素的。表达式arr2d[:2]可以被认为是“选取arr2d的前两行”。
+
+你可以一次传入多个切片，就像传入多个索引那样：
+
+```python
+In [92]: arr2d[:2, 1:]
+Out[92]: 
+array([[2, 3],
+       [5, 6]])
+```
+
+像这样进行切片时，只能得到相同维数的数组视图。通过将整数索引和切片混合，可以得到低维度的切片。
+
+例如，我可以选取第二行的前两列：
+
+```python
+In [93]: arr2d[1, :2]
+Out[93]: array([4, 5])
+```
+
+相似的，还可以选择第三列的前两行：
+
+```python
+In [94]: arr2d[:2, 2]
+Out[94]: array([3, 6])
+```
+
+图4-2对此进行了说明。注意，“只有冒号”表示选取整个轴，因此你可以像下面这样只对高维轴进行切片：
+
+```python
+In [95]: arr2d[:, :1]
+Out[95]: 
+array([[1],
+       [4],
+       [7]])
+```
+
+自然，对切片表达式的赋值操作也会被扩散到整个选区：
+
+```python
+In [96]: arr2d[:2, 1:] = 0
+
+In [97]: arr2d
+Out[97]: 
+array([[1, 0, 0],
+       [4, 0, 0],
+       [7, 8, 9]])
+```
+
+### 布尔型索引
+
+来看这样一个例子，假设我们有一个用于存储数据的数组以及一个存储姓名的数组（含有重复项）。在这里，我将使用numpy.random中的randn函数生成一些正态分布的随机数据：
+
+```python
+In [98]: names = np.array(['Bob', 'Joe', 'Will', 'Bob', 'Will', 'Joe', 'Joe'])
+
+In [99]: data = np.random.randn(7, 4)
+
+In [100]: names
+Out[100]: 
+array(['Bob', 'Joe', 'Will', 'Bob', 'Will', 'Joe', 'Joe'],
+      dtype='<U4')
+
+In [101]: data
+Out[101]: 
+array([[ 0.0929,  0.2817,  0.769 ,  1.2464],
+       [ 1.0072, -1.2962,  0.275 ,  0.2289],
+       [ 1.3529,  0.8864, -2.0016, -0.3718],
+       [ 1.669 , -0.4386, -0.5397,  0.477 ],
+       [ 3.2489, -1.0212, -0.5771,  0.1241],
+       [ 0.3026,  0.5238,  0.0009,  1.3438],
+       [-0.7135, -0.8312, -2.3702, -1.8608]])
+```
+
+假设每个名字都对应data数组中的一行，而我们想要选出对应于名字"Bob"的所有行。跟算术运算一样，数组的比较运算（如==）也是矢量化的。因此，对names和字符串"Bob"的比较运算将会产生一个布尔型数组：
+
+```python
+In [102]: names == 'Bob'
+Out[102]: array([ True, False, False,  True, False, False, False], dtype=bool)
+```
+
+这个布尔型数组可用于数组索引：
+
+```python
+In [103]: data[names == 'Bob']
+Out[103]: 
+array([[ 0.0929,  0.2817,  0.769 ,  1.2464],
+       [ 1.669 , -0.4386, -0.5397,  0.477 ]])
+```
+
+布尔型数组的长度必须跟被索引的轴长度一致。此外，还可以将布尔型数组跟切片、整数（或整数序列，稍后将对此进行详细讲解）混合使用：
+
+```python
+In [103]: data[names == 'Bob']
+Out[103]: 
+array([[ 0.0929,  0.2817,  0.769 ,  1.2464],
+       [ 1.669 , -0.4386, -0.5397,  0.477 ]])
+```
+
+> 注意：如果布尔型数组的长度不对，布尔型选择就会出错，因此一定要小心。
+
+下面的例子，我选取了`names == 'Bob'`的行，并索引了列：
+
+```python
+In [104]: data[names == 'Bob', 2:]
+Out[104]: 
+array([[ 0.769 ,  1.2464],
+       [-0.5397,  0.477 ]])
+
+In [105]: data[names == 'Bob', 3]
+Out[105]: array([ 1.2464,  0.477 ])
+```
+
+要选择除"Bob"以外的其他值，既可以使用不等于符号（!=），也可以通过~对条件进行否定：
+
+```python
+In [106]: names != 'Bob'
+Out[106]: array([False,  True,  True, False,  True,  True,  True], dtype=bool)
+
+In [107]: data[~(names == 'Bob')]
+Out[107]:
+array([[ 1.0072, -1.2962,  0.275 ,  0.2289],
+       [ 1.3529,  0.8864, -2.0016, -0.3718],
+       [ 3.2489, -1.0212, -0.5771,  0.1241],
+       [ 0.3026,  0.5238,  0.0009,  1.3438],
+       [-0.7135, -0.8312, -2.3702, -1.8608]])
+```
+
+~操作符用来反转条件很好用：
+
+```python
+In [108]: cond = names == 'Bob'
+
+In [109]: data[~cond]
+Out[109]: 
+array([[ 1.0072, -1.2962,  0.275 ,  0.2289],
+       [ 1.3529,  0.8864, -2.0016, -0.3718],
+       [ 3.2489, -1.0212, -0.5771,  0.1241],
+       [ 0.3026,  0.5238,  0.0009,  1.3438],
+       [-0.7135, -0.8312, -2.3702, -1.8608]])
+```
+
+选取这三个名字中的两个需要组合应用多个布尔条件，使用&（和）、|（或）之类的布尔算术运算符即可：
+
+```python
+In [110]: mask = (names == 'Bob') | (names == 'Will')
+
+In [111]: mask
+Out[111]: array([ True, False,  True,  True,  True, False, False], dtype=bool)
+
+In [112]: data[mask]
+Out[112]: 
+array([[ 0.0929,  0.2817,  0.769 ,  1.2464],
+       [ 1.3529,  0.8864, -2.0016, -0.3718],
+       [ 1.669 , -0.4386, -0.5397,  0.477 ],
+       [ 3.2489, -1.0212, -0.5771,  0.1241]])
+```
+
+通过布尔型索引选取数组中的数据，将总是创建数据的副本，即使返回一模一样的数组也是如此。
+
+> 注意：Python关键字and和or在布尔型数组中无效。要使用&与|。
+
+通过布尔型数组设置值是一种经常用到的手段。为了将data中的所有负值都设置为0，我们只需：
+
+```python
+In [113]: data[data < 0] = 0
+
+In [114]: data
+Out[114]: 
+array([[ 0.0929,  0.2817,  0.769 ,  1.2464],
+       [ 1.0072,  0.    ,  0.275 ,  0.2289],
+       [ 1.3529,  0.8864,  0.    ,  0.    ],
+       [ 1.669 ,  0.    ,  0.    ,  0.477 ],
+       [ 3.2489,  0.    ,  0.    ,  0.1241],
+       [ 0.3026,  0.5238,  0.0009,  1.3438],
+       [ 0.    ,  0.    ,  0.    ,  0.    ]])
+```
+
+通过一维布尔数组设置整行或列的值也很简单：
+
+```python
+In [115]: data[names != 'Joe'] = 7
+
+In [116]: data
+Out[116]: 
+array([[ 7.    ,  7.    ,  7.    ,  7.    ],
+       [ 1.0072,  0.    ,  0.275 ,  0.2289],
+       [ 7.    ,  7.    ,  7.    ,  7.    ],
+       [ 7.    ,  7.    ,  7.    ,  7.    ],
+       [ 7.    ,  7.    ,  7.    ,  7.    ],
+       [ 0.3026,  0.5238,  0.0009,  1.3438],
+       [ 0.    ,  0.    ,  0.    ,  0.    ]])
+```
+
+后面会看到，这类二维数据的操作也可以用pandas方便的来做。
+
+### 花式索引
+
+花式索引（Fancy indexing）是一个NumPy术语，它指的是利用整数数组进行索引。假设我们有一个8×4数组：
+
+```python
+In [117]: arr = np.empty((8, 4))
+
+In [118]: for i in range(8):
+   .....:     arr[i] = i
+
+In [119]: arr
+Out[119]: 
+array([[ 0.,  0.,  0.,  0.],
+       [ 1.,  1.,  1.,  1.],
+       [ 2.,  2.,  2.,  2.],
+       [ 3.,  3.,  3.,  3.],
+       [ 4.,  4.,  4.,  4.],
+       [ 5.,  5.,  5.,  5.],
+       [ 6.,  6.,  6.,  6.],
+       [ 7.,  7.,  7.,  7.]])
+```
+
+为了以特定顺序选取行子集，只需传入一个用于指定顺序的整数列表或ndarray即可：
+
+```python
+In [120]: arr[[4, 3, 0, 6]]
+Out[120]: 
+array([[ 4.,  4.,  4.,  4.],
+       [ 3.,  3.,  3.,  3.],
+       [ 0.,  0.,  0.,  0.],
+       [ 6.,  6.,  6.,  6.]])
+```
+
+这段代码确实达到我们的要求了！使用负数索引将会从末尾开始选取行：
+
+```python
+In [121]: arr[[-3, -5, -7]]
+Out[121]: 
+array([[ 5.,  5.,  5.,  5.],
+       [ 3.,  3.,  3.,  3.],
+       [ 1.,  1.,  1.,  1.]])
+```
+
+一次传入多个索引数组会有一点特别。它返回的是一个一维数组，其中的元素对应各个索引元组：
+
+```python
+In [122]: arr = np.arange(32).reshape((8, 4))
+
+In [123]: arr
+Out[123]: 
+array([[ 0,  1,  2,  3],
+       [ 4,  5,  6,  7],
+       [ 8,  9, 10, 11],
+       [12, 13, 14, 15],
+       [16, 17, 18, 19],
+       [20, 21, 22, 23],
+       [24, 25, 26, 27],
+       [28, 29, 30, 31]])
+
+In [124]: arr[[1, 5, 7, 2], [0, 3, 1, 2]]
+Out[124]: array([ 4, 23, 29, 10])
+```
+
+附录A中会详细介绍reshape方法。
+
+最终选出的是元素(1,0)、(5,3)、(7,1)和(2,2)。无论数组是多少维的，花式索引总是一维的。
+
+这个花式索引的行为可能会跟某些用户的预期不一样（包括我在内），选取矩阵的行列子集应该是矩形区域的形式才对。下面是得到该结果的一个办法：
+
+```python
+In [125]: arr[[1, 5, 7, 2]][:, [0, 3, 1, 2]]
+Out[125]: 
+array([[ 4,  7,  5,  6],
+       [20, 23, 21, 22],
+       [28, 31, 29, 30],
+       [ 8, 11,  9, 10]])
+```
+
+记住，花式索引跟切片不一样，它总是将数据复制到新数组中。
+
+### 数组转置和轴对换
+
+转置是重塑的一种特殊形式，它返回的是源数据的视图（不会进行任何复制操作）。数组不仅有transpose方法，还有一个特殊的T属性：
+
+```python
+In [126]: arr = np.arange(15).reshape((3, 5))
+
+In [127]: arr
+Out[127]: 
+array([[ 0,  1,  2,  3,  4],
+       [ 5,  6,  7,  8,  9],
+       [10, 11, 12, 13, 14]])
+
+In [128]: arr.T
+Out[128]: 
+array([[ 0,  5, 10],
+       [ 1,  6, 11],
+       [ 2,  7, 12],
+       [ 3,  8, 13],
+       [ 4,  9, 14]])
+```
+
+在进行矩阵计算时，经常需要用到该操作，比如利用np.dot计算矩阵内积：
+
+```python
+In [129]: arr = np.random.randn(6, 3)
+
+In [130]: arr
+Out[130]: 
+array([[-0.8608,  0.5601, -1.2659],
+       [ 0.1198, -1.0635,  0.3329],
+       [-2.3594, -0.1995, -1.542 ],
+       [-0.9707, -1.307 ,  0.2863],
+       [ 0.378 , -0.7539,  0.3313],
+       [ 1.3497,  0.0699,  0.2467]])
+
+In [131]: np.dot(arr.T, arr)
+Out[131]:
+array([[ 9.2291,  0.9394,  4.948 ],
+       [ 0.9394,  3.7662, -1.3622],
+       [ 4.948 , -1.3622,  4.3437]])
+```
+
+对于高维数组，transpose需要得到一个由轴编号组成的元组才能对这些轴进行转置（比较费脑子）：
+
+```python
+In [132]: arr = np.arange(16).reshape((2, 2, 4))
+
+In [133]: arr
+Out[133]: 
+array([[[ 0,  1,  2,  3],
+        [ 4,  5,  6,  7]],
+       [[ 8,  9, 10, 11],
+        [12, 13, 14, 15]]])
+
+In [134]: arr.transpose((1, 0, 2))
+Out[134]: 
+array([[[ 0,  1,  2,  3],
+        [ 8,  9, 10, 11]],
+       [[ 4,  5,  6,  7],
+        [12, 13, 14, 15]]])
+```
+
+这里，第一个轴被换成了第二个，第二个轴被换成了第一个，最后一个轴不变。
+
+简单的转置可以使用.T，它其实就是进行轴对换而已。ndarray还有一个swapaxes方法，它需要接受一对轴编号：
+
+```python
+In [135]: arr
+Out[135]: 
+array([[[ 0,  1,  2,  3],
+        [ 4,  5,  6,  7]],
+       [[ 8,  9, 10, 11],
+        [12, 13, 14, 15]]])
+
+In [136]: arr.swapaxes(1, 2)
+Out[136]: 
+array([[[ 0,  4],
+        [ 1,  5],
+        [ 2,  6],
+        [ 3,  7]],
+       [[ 8, 12],
+        [ 9, 13],
+        [10, 14],
+        [11, 15]]])
+```
+
+swapaxes也是返回源数据的视图（不会进行任何复制操作）。
+
+## 4.2 通用函数：快速的元素级数组函数
+
+通用函数（即ufunc）是一种对ndarray中的数据执行元素级运算的函数。你可以将其看做简单函数（接受一个或多个标量值，并产生一个或多个标量值）的矢量化包装器。
+
+许多ufunc都是简单的元素级变体，如sqrt和exp：
+
+```python
+In [137]: arr = np.arange(10)
+
+In [138]: arr
+Out[138]: array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+
+In [139]: np.sqrt(arr)
+Out[139]: 
+array([ 0.    ,  1.    ,  1.4142,  1.7321,  2.    ,  2.2361,  2.4495,
+        2.6458,  2.8284,  3.    ])
+
+In [140]: np.exp(arr)
+Out[140]: 
+array([    1.    ,     2.7183,     7.3891,    20.0855,    54.5982,
+         148.4132,   403.4288,  1096.6332,  2980.958 ,  8103.0839])
+```
+
+这些都是一元（unary）ufunc。另外一些（如add或maximum）接受2个数组（因此也叫二元（binary）ufunc），并返回一个结果数组：
+
+```python
+In [141]: x = np.random.randn(8)
+
+In [142]: y = np.random.randn(8)
+
+In [143]: x
+Out[143]: 
+array([-0.0119,  1.0048,  1.3272, -0.9193, -1.5491,  0.0222,  0.7584,
+       -0.6605])
+
+In [144]: y
+Out[144]: 
+array([ 0.8626, -0.01  ,  0.05  ,  0.6702,  0.853 , -0.9559, -0.0235,
+       -2.3042])
+
+In [145]: np.maximum(x, y)
+Out[145]: 
+array([ 0.8626,  1.0048,  1.3272,  0.6702,  0.853 ,  0.0222,  0.7584,   
+       -0.6605])
+```
+
+这里，numpy.maximum计算了x和y中元素级别最大的元素。
+
+虽然并不常见，但有些ufunc的确可以返回多个数组。modf就是一个例子，它是Python内置函数divmod的矢量化版本，它会返回浮点数数组的小数和整数部分：
+
+```python
+In [146]: arr = np.random.randn(7) * 5
+
+In [147]: arr
+Out[147]: array([-3.2623, -6.0915, -6.663 ,  5.3731,  3.6182,  3.45  ,  5.0077])
+
+In [148]: remainder, whole_part = np.modf(arr)
+
+In [149]: remainder
+Out[149]: array([-0.2623, -0.0915, -0.663 ,  0.3731,
+0.6182,  0.45  ,  0.0077])
+
+In [150]: whole_part
+Out[150]: array([-3., -6., -6.,  5.,  3.,  3.,  5.])
+```
+
+Ufuncs可以接受一个out可选参数，这样就能在数组原地进行操作：
+
+```python
+In [151]: arr
+Out[151]: array([-3.2623, -6.0915, -6.663 ,  5.3731,  3.6182,  3.45  ,  5.0077])
+
+In [152]: np.sqrt(arr)
+Out[152]: array([    nan,     nan,     nan,  2.318 ,  1.9022,  1.8574,  2.2378])
+
+In [153]: np.sqrt(arr, arr)
+Out[153]: array([    nan,     nan,     nan,  2.318 ,  1.9022,  1.8574,  2.2378])
+
+In [154]: arr
+Out[154]: array([    nan,     nan,     nan,  2.318 ,  1.9022,  1.8574,  2.2378])
+```
+
+表4-3和表4-4分别列出了一些一元和二元ufunc。
+
+表4-3：一元ufunc
+
+| 函数                                              | 说明                                                         |
+| ------------------------------------------------- | ------------------------------------------------------------ |
+| abs、fabs                                         | 计算整数、浮点数或复数的绝对值。对于非复数值，可以使用更快的fabs |
+| sqrt                                              | 计算各元素的平方根。相当于`arr**0.5`                         |
+| square                                            | 计算各元素的平方。相对于`arr**2`                             |
+| exp                                               | 计算各元素的指数e^x                                          |
+| log、log10、log2、log1p                           | 分别为自然对数（底数为e）、底数为10的log、底数为2的log、log(1+x) |
+| sign                                              | 计算各元素的正负号：1（正数）、0（零）、-1（负数）           |
+| ceil                                              | 计算各元素的ceiling值，即大于等于该值的最小整数              |
+| floor                                             | 计算各元素的floor值，即小于等于该值的最大整数                |
+| rint                                              | 将各元素值四舍五入到最接近的整数，保留dtype                  |
+| modf                                              | 将数组的小数和整数部分以两个独立数组的形式返回               |
+| isnan                                             | 返回一个表示“哪些值是NaN（这不是一个数字）”的布尔型数组      |
+| isfinite、isinf                                   | 分别返回一个表示“哪些元素是有穷的（非inf，非NaN）”或“哪些元素是无穷的”的布尔型数组 |
+| cos、cosh、sin、sinh、tan、tanh                   | 普通型和双曲型三角函数                                       |
+| arccos、arccosh、arcsin、arcsinh、arctan、arctanh | 反三角函数                                                   |
+| logical_not                                       | 计算各元素not x的真值。相当于-arr                            |
+
+表4-4：二元ufunc
+
+| 函数                                                       | 说明                                                         |
+| ---------------------------------------------------------- | ------------------------------------------------------------ |
+| add                                                        | 将数组中对应的元素相加                                       |
+| substract                                                  | 从第一个数组中减去第二个数组中的元素                         |
+| multiply                                                   | 数组元素相乘                                                 |
+| divide、floor_divide                                       | 除法或向下圆整除法（丢弃余数）                               |
+| power                                                      | 对第一个数组中的元素A，根据第二个数组中的相应元素B，计算A^B  |
+| maximum、fmax                                              | 元素级的最大值计算。fmax将忽略NaN                            |
+| minimum、fmin                                              | 元素级的最小值计算。fmin将忽略NaN                            |
+| mod                                                        | 元素级的求模计算（除法的余数）                               |
+| copysign                                                   | 将第二个数组的值的符号复制给第一个数组中的值                 |
+| greater、greater_equal、less、less_equal、equal、not_equal | 执行元素级的比较运算，最终产生布尔型数组。相当于中缀运算符>、>=、<、<=、==、!= |
+| logical_and、logical_or、logical_xor                       | 执行元素级的真值逻辑运算。相当于中缀运算符&、\|、^           |
+
+## 4.3 利用数组进行数据处理
+
+NumPy数组使你可以将许多种数据处理任务表述为简洁的数组表达式（否则需要编写循环）。用数组表达式代替循环的做法，通常被称为矢量化。一般来说，矢量化数组运算要比等价的纯Python方式快上一两个数量级（甚至更多），尤其是各种数值计算。在后面内容中（见附录A）我将介绍广播，这是一种针对矢量化计算的强大手段。
+
+作为简单的例子，假设我们想要在一组值（网格型）上计算函数`sqrt(x^2+y^2)`。np.meshgrid函数接受两个一维数组，并产生两个二维矩阵（对应于两个数组中所有的(x,y)对）：
+
+```python
+In [155]: points = np.arange(-5, 5, 0.01) # 1000 equally spaced points
+
+In [156]: xs, ys = np.meshgrid(points, points)
+In [157]: ys
+Out[157]: 
+array([[-5.  , -5.  , -5.  , ..., -5.  , -5.  , -5.  ],
+       [-4.99, -4.99, -4.99, ..., -4.99, -4.99, -4.99],
+       [-4.98, -4.98, -4.98, ..., -4.98, -4.98, -4.98],
+       ..., 
+       [ 4.97,  4.97,  4.97, ...,  4.97,  4.97,  4.97],
+       [ 4.98,  4.98,  4.98, ...,  4.98,  4.98,  4.98],
+       [ 4.99,  4.99,  4.99, ...,  4.99,  4.99,  4.99]])
+```
+
+现在，对该函数的求值运算就好办了，把这两个数组当做两个浮点数那样编写表达式即可：
+
+```python
+In [158]: z = np.sqrt(xs ** 2 + ys ** 2)
+
+In [159]: z
+Out[159]: 
+array([[ 7.0711,  7.064 ,  7.0569, ...,  7.0499,  7.0569,  7.064 ],
+       [ 7.064 ,  7.0569,  7.0499, ...,  7.0428,  7.0499,  7.0569],
+       [ 7.0569,  7.0499,  7.0428, ...,  7.0357,  7.0428, 7.0499],
+       ..., 
+       [ 7.0499,  7.0428,  7.0357, ...,  7.0286,  7.0357,  7.0428],
+       [ 7.0569,  7.0499,  7.0428, ...,  7.0357,  7.0428,  7.0499],
+       [ 7.064 ,  7.0569,  7.0499, ...,  7.0428,  7.0499,  7.0569]])
+```
+
+作为第9章的先导，我用matplotlib创建了这个二维数组的可视化：
+
+```python
+In [160]: import matplotlib.pyplot as plt
+
+In [161]: plt.imshow(z, cmap=plt.cm.gray); plt.colorbar()
+Out[161]: <matplotlib.colorbar.Colorbar at 0x7f715e3fa630>
+
+In [162]: plt.title("Image plot of $\sqrt{x^2 + y^2}$ for a grid of values")
+Out[162]: <matplotlib.text.Text at 0x7f715d2de748>
+```
+
+见图4-3。这张图是用matplotlib的imshow函数创建的。
+
+### 将条件逻辑表述为数组运算
+
+numpy.where函数是三元表达式x if condition else y的矢量化版本。假设我们有一个布尔数组和两个值数组：
+
+```python
+In [165]: xarr = np.array([1.1, 1.2, 1.3, 1.4, 1.5])
+
+In [166]: yarr = np.array([2.1, 2.2, 2.3, 2.4, 2.5])
+
+In [167]: cond = np.array([True, False, True, True, False])
+```
+
+假设我们想要根据cond中的值选取xarr和yarr的值：当cond中的值为True时，选取xarr的值，否则从yarr中选取。列表推导式的写法应该如下所示：
+
+```python
+In [168]: result = [(x if c else y)
+   .....:           for x, y, c in zip(xarr, yarr, cond)]
+
+In [169]: result
+Out[169]: [1.1000000000000001, 2.2000000000000002, 1.3, 1.3999999999999999, 2.5]
+```
+
+这有几个问题。第一，它对大数组的处理速度不是很快（因为所有工作都是由纯Python完成的）。第二，无法用于多维数组。若使用np.where，则可以将该功能写得非常简洁：
+
+```python
+In [170]: result = np.where(cond, xarr, yarr)
+
+In [171]: result
+Out[171]: array([ 1.1,  2.2,  1.3,  1.4,  2.5])
+```
+
+np.where的第二个和第三个参数不必是数组，它们都可以是标量值。在数据分析工作中，where通常用于根据另一个数组而产生一个新的数组。假设有一个由随机数据组成的矩阵，你希望将所有正值替换为2，将所有负值替换为－2。若利用np.where，则会非常简单：
+
+```python
+In [172]: arr = np.random.randn(4, 4)
+
+In [173]: arr
+Out[173]: 
+array([[-0.5031, -0.6223, -0.9212, -0.7262],
+       [ 0.2229,  0.0513, -1.1577,  0.8167],
+       [ 0.4336,  1.0107,  1.8249, -0.9975],
+       [ 0.8506, -0.1316,  0.9124,  0.1882]])
+
+In [174]: arr > 0
+Out[174]: 
+array([[False, False, False, False],
+       [ True,  True, False,  True],
+       [ True,  True,  True, False],
+       [ True, False,  True,  True]], dtype=bool)
+
+In [175]: np.where(arr > 0, 2, -2)
+Out[175]: 
+array([[-2, -2, -2, -2],
+       [ 2,  2, -2,  2],
+       [ 2,  2,  2, -2],
+       [ 2, -2,  2,  2]])
+```
+
+使用np.where，可以将标量和数组结合起来。例如，我可用常数2替换arr中所有正的值：
+
+```python
+In [176]: np.where(arr > 0, 2, arr) # set only positive values to 2
+Out[176]: 
+array([[-0.5031, -0.6223, -0.9212, -0.7262],
+       [ 2.    ,  2.    , -1.1577,  2.    ],
+       [ 2.    ,  2.    ,  2.    , -0.9975],
+       [ 2.    , -0.1316,  2.    ,  2.    ]])
+```
+
+传递给where的数组大小可以不相等，甚至可以是标量值。
+
+### 数学和统计方法
+
+可以通过数组上的一组数学函数对整个数组或某个轴向的数据进行统计计算。sum、mean以及标准差std等聚合计算（aggregation，通常叫做约简（reduction））既可以当做数组的实例方法调用，也可以当做顶级NumPy函数使用。
+
+这里，我生成了一些正态分布随机数据，然后做了聚类统计：
+
+```python
+In [177]: arr = np.random.randn(5, 4)
+
+In [178]: arr
+Out[178]: 
+array([[ 2.1695, -0.1149,  2.0037,  0.0296],
+       [ 0.7953,  0.1181, -0.7485,  0.585 ],
+       [ 0.1527, -1.5657, -0.5625, -0.0327],
+       [-0.929 , -0.4826, -0.0363,  1.0954],
+       [ 0.9809, -0.5895,  1.5817, -0.5287]])
+
+In [179]: arr.mean()
+Out[179]: 0.19607051119998253
+
+In [180]: np.mean(arr)
+Out[180]: 0.19607051119998253
+
+In [181]: arr.sum()
+Out[181]: 3.9214102239996507
+```
+
+mean和sum这类的函数可以接受一个axis选项参数，用于计算该轴向上的统计值，最终结果是一个少一维的数组：
+
+```python
+In [182]: arr.mean(axis=1)
+Out[182]: array([ 1.022 ,  0.1875, -0.502 , -0.0881,  0.3611])
+
+In [183]: arr.sum(axis=0)
+Out[183]: array([ 3.1693, -2.6345,  2.2381,  1.1486])
+```
+
+这里，arr.mean(1)是“计算行的平均值”，arr.sum(0)是“计算每列的和”。
+
+其他如cumsum和cumprod之类的方法则不聚合，而是产生一个由中间结果组成的数组：
+
+```python
+In [184]: arr = np.array([0, 1, 2, 3, 4, 5, 6, 7])
+
+In [185]: arr.cumsum()
+Out[185]: array([ 0,  1,  3,  6, 10, 15, 21, 28])
+```
+
+在多维数组中，累加函数（如cumsum）返回的是同样大小的数组，但是会根据每个低维的切片沿着标记轴计算部分聚类：
+
+```python
+In [186]: arr = np.array([[0, 1, 2], [3, 4, 5], [6, 7, 8]])
+
+In [187]: arr
+Out[187]: 
+array([[0, 1, 2],
+       [3, 4, 5],
+       [6, 7, 8]])
+
+In [188]: arr.cumsum(axis=0)
+Out[188]: 
+array([[ 0,  1,  2],
+       [ 3,  5,  7],
+       [ 9, 12, 15]])
+
+In [189]: arr.cumprod(axis=1)
+Out[189]: 
+array([[  0,   0,   0],
+       [  3,  12,  60],
+       [  6,  42, 336]])
+```
+
+表4-5列出了全部的基本数组统计方法。后续章节中有很多例子都会用到这些方法。
+
+| 方法           | 说明                                                 |
+| -------------- | ---------------------------------------------------- |
+| sum            | 对数组中全部或某轴向的元素求和。零长度的数组的sum为0 |
+| mean           | 算术平均数。零长度的数组的mean为NaN                  |
+| std、var       | 分别为标准差和方差，自由度可调（默认为n）            |
+| min、max       | 最大值和最小值                                       |
+| argmin、argmax | 分别为最大和最小元素的索引                           |
+| cumsum         | 所有元素的累计和                                     |
+| cumprod        | 所有元素的累计积                                     |
+
+### 用于布尔型数组的方法
+
+在上面这些方法中，布尔值会被强制转换为1（True）和0（False）。因此，sum经常被用来对布尔型数组中的True值计数：
+
+```python
+In [190]: arr = np.random.randn(100)
+
+In [191]: (arr > 0).sum() # Number of positive values
+Out[191]: 42
+```
+
+另外还有两个方法any和all，它们对布尔型数组非常有用。any用于测试数组中是否存在一个或多个True，而all则检查数组中所有值是否都是True：
+
+```python
+In [192]: bools = np.array([False, False, True, False])
+
+In [193]: bools.any()
+Out[193]: True
+
+In [194]: bools.all()
+Out[194]: False
+```
+
+这两个方法也能用于非布尔型数组，所有非0元素将会被当做True。
+
+### 排序
+
+跟Python内置的列表类型一样，NumPy数组也可以通过sort方法就地排序：
+
+```python
+In [195]: arr = np.random.randn(6)
+
+In [196]: arr
+Out[196]: array([ 0.6095, -0.4938,  1.24  , -0.1357,  1.43  , -0.8469])
+
+In [197]: arr.sort()
+
+In [198]: arr
+Out[198]: array([-0.8469, -0.4938, -0.1357,  0.6095,  1.24  ,  1.43  ])
+```
+
+多维数组可以在任何一个轴向上进行排序，只需将轴编号传给sort即可：
+
+```python
+In [199]: arr = np.random.randn(5, 3)
+
+In [200]: arr
+Out[200]: 
+array([[ 0.6033,  1.2636, -0.2555],
+       [-0.4457,  0.4684, -0.9616],
+       [-1.8245,  0.6254,  1.0229],
+       [ 1.1074,  0.0909, -0.3501],
+       [ 0.218 , -0.8948, -1.7415]])
+
+In [201]: arr.sort(1)
+
+In [202]: arr
+Out[202]: 
+array([[-0.2555,  0.6033,  1.2636],
+       [-0.9616, -0.4457,  0.4684],
+       [-1.8245,  0.6254,  1.0229],
+       [-0.3501,  0.0909,  1.1074],
+       [-1.7415, -0.8948,  0.218 ]])
+```
+
+顶级方法np.sort返回的是数组的已排序副本，而就地排序则会修改数组本身。计算数组分位数最简单的办法是对其进行排序，然后选取特定位置的值：
+
+```python
+In [203]: large_arr = np.random.randn(1000)
+
+In [204]: large_arr.sort()
+
+In [205]: large_arr[int(0.05 * len(large_arr))] # 5% quantile
+Out[205]: -1.5311513550102103
+```
+
+更多关于NumPy排序方法以及诸如间接排序之类的高级技术，请参阅附录A。在pandas中还可以找到一些其他跟排序有关的数据操作（比如根据一列或多列对表格型数据进行排序）。
+
+### 唯一化以及其它的集合逻辑
+
+NumPy提供了一些针对一维ndarray的基本集合运算。最常用的可能要数np.unique了，它用于找出数组中的唯一值并返回已排序的结果：
+
+```python
+In [206]: names = np.array(['Bob', 'Joe', 'Will', 'Bob', 'Will', 'Joe', 'Joe'])
+
+In [207]: np.unique(names)
+Out[207]: 
+array(['Bob', 'Joe', 'Will'],
+      dtype='<U4')
+
+In [208]: ints = np.array([3, 3, 3, 2, 2, 1, 1, 4, 4])
+
+In [209]: np.unique(ints)
+Out[209]: array([1, 2, 3, 4])
+```
+
+拿跟np.unique等价的纯Python代码来对比一下：
+
+```python
+In [210]: sorted(set(names))
+Out[210]: ['Bob', 'Joe', 'Will']
+```
+
+另一个函数np.in1d用于测试一个数组中的值在另一个数组中的成员资格，返回一个布尔型数组：
+
+```python
+In [211]: values = np.array([6, 0, 0, 3, 2, 5, 6])
+
+In [212]: np.in1d(values, [2, 3, 6])
+Out[212]: array([ True, False, False,  True,  True, False,  True], dtype=bool)
+```
+
+NumPy中的集合函数请参见表4-6。
+
+| 方法              | 说明                                                         |
+| ----------------- | ------------------------------------------------------------ |
+| unique(x)         | 计算x中的唯一元素，并返回有序结果                            |
+| intersect1d(x, y) | 计算x和y中的公共元素，并返回有序结果                         |
+| union1d(x, y)     | 计算x和y的并集，并返回有序结果                               |
+| in1d(x, y)        | 得到一个表示“x的元素是否包含于y”的布尔型数组                 |
+| setdiff1d(x, y)   | 集合的差，即元素在x中且不在y中                               |
+| setxor1d(x, y)    | 集合的对称差，即存在于一个数组中但不同时存在于两个数组中的元素 |
+
+## 4.4 用于数组的文件输入输出
+
+NumPy能够读写磁盘上的文本数据或二进制数据。这一小节只讨论NumPy的内置二进制格式，因为更多的用户会使用pandas或其它工具加载文本或表格数据（见第6章）。
+
+np.save和np.load是读写磁盘数组数据的两个主要函数。默认情况下，数组是以未压缩的原始二进制格式保存在扩展名为.npy的文件中的：
+
+```python
+In [213]: arr = np.arange(10)
+
+In [214]: np.save('some_array', arr)
+```
+
+如果文件路径末尾没有扩展名.npy，则该扩展名会被自动加上。然后就可以通过np.load读取磁盘上的数组：
+
+```python
+In [215]: np.load('some_array.npy')
+Out[215]: array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+```
+
+通过np.savez可以将多个数组保存到一个未压缩文件中，将数组以关键字参数的形式传入即可：
+
+```python
+In [216]: np.savez('array_archive.npz', a=arr, b=arr)
+```
+
+加载.npz文件时，你会得到一个类似字典的对象，该对象会对各个数组进行延迟加载：
+
+```python
+In [217]: arch = np.load('array_archive.npz')
+
+In [218]: arch['b']
+Out[218]: array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+```
+
+如果要将数据压缩，可以使用numpy.savez_compressed：
+
+```python
+In [219]: np.savez_compressed('arrays_compressed.npz', a=arr, b=arr)
+```
+
+## 4.5 线性代数
+
+线性代数（如矩阵乘法、矩阵分解、行列式以及其他方阵数学等）是任何数组库的重要组成部分。不像某些语言（如MATLAB），通过*对两个二维数组相乘得到的是一个元素级的积，而不是一个矩阵点积。因此，NumPy提供了一个用于矩阵乘法的dot函数（既是一个数组方法也是numpy命名空间中的一个函数）：
+
+```python
+In [223]: x = np.array([[1., 2., 3.], [4., 5., 6.]])
+
+In [224]: y = np.array([[6., 23.], [-1, 7], [8, 9]])
+
+In [225]: x
+Out[225]: 
+array([[ 1.,  2.,  3.],
+       [ 4.,  5.,  6.]])
+
+In [226]: y
+Out[226]: 
+array([[  6.,  23.],
+       [ -1.,   7.],
+       [  8.,   9.]])
+
+In [227]: x.dot(y)
+Out[227]: 
+array([[  28.,   64.],
+       [  67.,  181.]])
+```
+
+x.dot(y)等价于np.dot(x, y)：
+
+```python
+In [228]: np.dot(x, y)
+Out[228]: 
+array([[  28.,   64.],
+       [  67.,  181.]])
+```
+
+一个二维数组跟一个大小合适的一维数组的矩阵点积运算之后将会得到一个一维数组：
+
+```python
+In [229]: np.dot(x, np.ones(3))
+Out[229]: array([  6.,  15.])
+```
+
+@符（类似Python 3.5）也可以用作中缀运算符，进行矩阵乘法：
+
+```python
+In [230]: x @ np.ones(3)
+Out[230]: array([  6.,  15.])
+```
+
+numpy.linalg中有一组标准的矩阵分解运算以及诸如求逆和行列式之类的东西。它们跟MATLAB和R等语言所使用的是相同的行业标准线性代数库，如BLAS、LAPACK、Intel MKL（Math Kernel Library，可能有，取决于你的NumPy版本）等：
+
+```python
+In [231]: from numpy.linalg import inv, qr
+
+In [232]: X = np.random.randn(5, 5)
+
+In [233]: mat = X.T.dot(X)
+
+In [234]: inv(mat)
+Out[234]: 
+array([[  933.1189,   871.8258, -1417.6902, -1460.4005,  1782.1391],
+       [  871.8258,   815.3929, -1325.9965, -1365.9242,  1666.9347],
+       [-1417.6902, -1325.9965,  2158.4424,  2222.0191, -2711.6822],
+       [-1460.4005, -1365.9242,  2222.0191,  2289.0575, -2793.422 ],
+       [ 1782.1391,  1666.9347, -2711.6822, -2793.422 ,  3409.5128]])
+
+In [235]: mat.dot(inv(mat))
+Out[235]: 
+array([[ 1.,  0., -0., -0., -0.],
+       [-0.,  1.,  0.,  0.,  0.],
+       [ 0.,  0.,  1.,  0.,  0.],
+       [-0.,  0.,  0.,  1., -0.],
+       [-0.,  0.,  0.,  0.,  1.]])
+
+In [236]: q, r = qr(mat)
+
+In [237]: r
+Out[237]: 
+array([[-1.6914,  4.38  ,  0.1757,  0.4075, -0.7838],
+       [ 0.    , -2.6436,  0.1939, -3.072 , -1.0702],
+       [ 0.    ,  0.    , -0.8138,  1.5414,  0.6155],
+       [ 0.    ,  0.    ,  0.    , -2.6445, -2.1669],
+       [ 0.    ,  0.    ,  0.    ,  0.    ,  0.0002]])
+```
+
+表达式X.T.dot(X)计算X和它的转置X.T的点积。
+
+表4-7中列出了一些最常用的线性代数函数。
+
+| 函数  | 说明                                                         |
+| ----- | ------------------------------------------------------------ |
+| diag  | 以一维数组的形式返回方阵的对角线（或非对角线）元素，或将一维数组转换为方阵（非对角线元素为0） |
+| dot   | 矩阵乘法                                                     |
+| trace | 计算对角线元素的和                                           |
+| det   | 计算矩阵行列式                                               |
+| eig   | 计算方阵的本征值和本征向量                                   |
+| inv   | 计算方阵的逆                                                 |
+| pinv  | 计算矩阵的Moore-Penrose伪逆                                  |
+| qr    | 计算QR分解                                                   |
+| svd   | 计算奇异值分解                                               |
+| solve | 解线性方程组Ax=b，其中A为一个方阵                            |
+| lstsq | 计算Ax=b的最小二乘解                                         |
+
+## 4.6 伪随机数生成
+
+numpy.random模块对Python内置的random进行了补充，增加了一些用于高效生成多种概率分布的样本值的函数。例如，你可以用normal来得到一个标准正态分布的4×4样本数组：
+
+```python
+In [238]: samples = np.random.normal(size=(4, 4))
+
+In [239]: samples
+Out[239]: 
+array([[ 0.5732,  0.1933,  0.4429,  1.2796],
+       [ 0.575 ,  0.4339, -0.7658, -1.237 ],
+       [-0.5367,  1.8545, -0.92  , -0.1082],
+       [ 0.1525,  0.9435, -1.0953, -0.144 ]])
+```
+
+而Python内置的random模块则只能一次生成一个样本值。从下面的测试结果中可以看出，如果需要产生大量样本值，numpy.random快了不止一个数量级：
+
+```python
+In [240]: from random import normalvariate
+
+In [241]: N = 1000000
+
+In [242]: %timeit samples = [normalvariate(0, 1) for _ in range(N)]
+1.77 s +- 126 ms per loop (mean +- std. dev. of 7 runs, 1 loop each)
+
+In [243]: %timeit np.random.normal(size=N)
+61.7 ms +- 1.32 ms per loop (mean +- std. dev. of 7 runs, 10 loops each)
+```
+
+我们说这些都是伪随机数，是因为它们都是通过算法基于随机数生成器种子，在确定性的条件下生成的。你可以用NumPy的np.random.seed更改随机数生成种子：
+
+```python
+In [244]: np.random.seed(1234)
+```
+
+numpy.random的数据生成函数使用了全局的随机种子。要避免全局状态，你可以使用numpy.random.RandomState，创建一个与其它隔离的随机数生成器：
+
+```python
+In [245]: rng = np.random.RandomState(1234)
+
+In [246]: rng.randn(10)
+Out[246]: 
+array([ 0.4714, -1.191 ,  1.4327, -0.3127, -0.7206,  0.8872,  0.8596,
+       -0.6365,  0.0157, -2.2427])
+```
+
+表4-8列出了numpy.random中的部分函数。在下一节中，我将给出一些利用这些函数一次性生成大量样本值的范例。
+
+| 函数        | 说明                                                         |
+| ----------- | ------------------------------------------------------------ |
+| seed        | 确定随机数生成器的种子                                       |
+| permutation | 返回一个序列的随机排列或返回一个随机排列的范围               |
+| shuffle     | 对一个序列就地随机排列                                       |
+| rand        | 产生均匀分布的样本值                                         |
+| randint     | 从给定的上下限范围内随机选取整数                             |
+| randn       | 产生正态分布（平均值为0，标准差为1）的样本值，类似于MATLAB接口 |
+| binomial    | 产生二项分布的样本值                                         |
+| normal      | 产生正态（高斯）分布的样本值                                 |
+| beta        | 产生Beta分布的样本值                                         |
+| chisquare   | 产生卡方分布的样本值                                         |
+| gamma       | 产生Gamma分布的样本值                                        |
+| uniform     | 产生在[0,1)中均匀分布的样本值                                |
+
+## 4.7 示例：随机漫步
+
+我们通过模拟随机漫步来说明如何运用数组运算。先来看一个简单的随机漫步的例子：从0开始，步长1和－1出现的概率相等。
+
+下面是一个通过内置的random模块以纯Python的方式实现1000步的随机漫步：
+
+```python
+In [247]: import random
+   .....: position = 0
+   .....: walk = [position]
+   .....: steps = 1000
+   .....: for i in range(steps):
+   .....:     step = 1 if random.randint(0, 1) else -1
+   .....:     position += step
+   .....:     walk.append(position)
+   .....:
+```
+
+图4-4是根据前100个随机漫步值生成的折线图：
+
+```python
+In [249]: plt.plot(walk[:100])
+```
+
+不难看出，这其实就是随机漫步中各步的累计和，可以用一个数组运算来实现。因此，我用np.random模块一次性随机产生1000个“掷硬币”结果（即两个数中任选一个），将其分别设置为1或－1，然后计算累计和：
+
+```python
+In [251]: nsteps = 1000
+
+In [252]: draws = np.random.randint(0, 2, size=nsteps)
+
+In [253]: steps = np.where(draws > 0, 1, -1)
+
+In [254]: walk = steps.cumsum()
+```
+
+有了这些数据之后，我们就可以沿着漫步路径做一些统计工作了，比如求取最大值和最小值：
+
+```python
+In [255]: walk.min()
+Out[255]: -3
+
+In [256]: walk.max()
+Out[256]: 31
+```
+
+现在来看一个复杂点的统计任务——首次穿越时间，即随机漫步过程中第一次到达某个特定值的时间。假设我们想要知道本次随机漫步需要多久才能距离初始0点至少10步远（任一方向均可）。np.abs(walk)>=10可以得到一个布尔型数组，它表示的是距离是否达到或超过10，而我们想要知道的是第一个10或－10的索引。可以用argmax来解决这个问题，它返回的是该布尔型数组第一个最大值的索引（True就是最大值）：
+
+```python
+In [257]: (np.abs(walk) >= 10).argmax()
+Out[257]: 37
+```
+
+注意，这里使用argmax并不是很高效，因为它无论如何都会对数组进行完全扫描。在本例中，只要发现了一个True，那我们就知道它是个最大值了。
+
+### 一次模拟多个随机漫步
+
+如果你希望模拟多个随机漫步过程（比如5000个），只需对上面的代码做一点点修改即可生成所有的随机漫步过程。只要给numpy.random的函数传入一个二元元组就可以产生一个二维数组，然后我们就可以一次性计算5000个随机漫步过程（一行一个）的累计和了：
+
+```python
+In [258]: nwalks = 5000
+
+In [259]: nsteps = 1000
+
+In [260]: draws = np.random.randint(0, 2, size=(nwalks, nsteps)) # 0 or 1
+
+In [261]: steps = np.where(draws > 0, 1, -1)
+
+In [262]: walks = steps.cumsum(1)
+
+In [263]: walks
+Out[263]: 
+array([[  1,   0,   1, ...,   8,   7,   8],
+       [  1,   0,  -1, ...,  34,  33,  32],
+       [  1,   0,  -1, ...,   4,   5,   4],
+       ..., 
+       [  1,   2,   1, ...,  24,  25,  26],
+       [  1,   2,   3, ...,  14,  13,  14],
+       [ -1,  -2,  -3, ..., -24, -23, -22]])
+```
+
+现在，我们来计算所有随机漫步过程的最大值和最小值：
+
+```python
+In [264]: walks.max()
+Out[264]: 138
+
+In [265]: walks.min()
+Out[265]: -133
+```
+
+得到这些数据之后，我们来计算30或－30的最小穿越时间。这里稍微复杂些，因为不是5000个过程都到达了30。我们可以用any方法来对此进行检查：
+
+```python
+In [266]: hits30 = (np.abs(walks) >= 30).any(1)
+
+In [267]: hits30
+Out[267]: array([False,  True, False, ..., False,  True, False], dtype=bool)
+
+In [268]: hits30.sum() # Number that hit 30 or -30
+Out[268]: 3410
+```
+
+然后我们利用这个布尔型数组选出那些穿越了30（绝对值）的随机漫步（行），并调用argmax在轴1上获取穿越时间：
+
+```python
+In [269]: crossing_times = (np.abs(walks[hits30]) >= 30).argmax(1)
+
+In [270]: crossing_times.mean()
+Out[270]: 498.88973607038122
+```
+
+请尝试用其他分布方式得到漫步数据。只需使用不同的随机数生成函数即可，如normal用于生成指定均值和标准差的正态分布数据：
+
+```python
+In [271]: steps = np.random.normal(loc=0, scale=0.25,
+   .....:                          size=(nwalks, nsteps))
+```
+
+## 4.8 结论
+
+虽然本书剩下的章节大部分是用pandas规整数据，我们还是会用到相似的基于数组的计算。在附录A中，我们会深入挖掘NumPy的特点，进一步学习数组的技巧。
+
+# 第5章 pandas入门
+
+pandas是本书后续内容的首选库。它含有使数据清洗和分析工作变得更快更简单的数据结构和操作工具。pandas经常和其它工具一同使用，如数值计算工具NumPy和SciPy，分析库statsmodels和scikit-learn，和数据可视化库matplotlib。pandas是基于NumPy数组构建的，特别是基于数组的函数和不使用for循环的数据处理。
+
+虽然pandas采用了大量的NumPy编码风格，但二者最大的不同是pandas是专门为处理表格和混杂数据设计的。而NumPy更适合处理统一的数值数组数据。
+
+自从2010年pandas开源以来，pandas逐渐成长为一个非常大的库，应用于许多真实案例。开发者社区已经有了800个独立的贡献者，他们在解决日常数据问题的同时为这个项目提供贡献。
+
+在本书后续部分中，我将使用下面这样的pandas引入约定：
+
+```python
+In [1]: import pandas as pd
+```
+
+因此，只要你在代码中看到pd.，就得想到这是pandas。因为Series和DataFrame用的次数非常多，所以将其引入本地命名空间中会更方便：
+
+```python
+In [2]: from pandas import Series, DataFrame
+```
+
+## 5.1 pandas的数据结构介绍
+
+要使用pandas，你首先就得熟悉它的两个主要数据结构：Series和DataFrame。虽然它们并不能解决所有问题，但它们为大多数应用提供了一种可靠的、易于使用的基础。
+
+### Series
+
+Series是一种类似于一维数组的对象，它由一组数据（各种NumPy数据类型）以及一组与之相关的数据标签（即索引）组成。仅由一组数据即可产生最简单的Series：
+
+```python
+In [11]: obj = pd.Series([4, 7, -5, 3])
+
+In [12]: obj
+Out[12]: 
+0    4
+1    7
+2   -5
+3    3
+dtype: int64
+```
+
+Series的字符串表现形式为：索引在左边，值在右边。由于我们没有为数据指定索引，于是会自动创建一个0到N-1（N为数据的长度）的整数型索引。你可以通过Series 的values和index属性获取其数组表示形式和索引对象：
+
+```python
+In [13]: obj.values
+Out[13]: array([ 4,  7, -5,  3])
+
+In [14]: obj.index  # like range(4)
+Out[14]: RangeIndex(start=0, stop=4, step=1)
+```
+
+通常，我们希望所创建的Series带有一个可以对各个数据点进行标记的索引：
+
+```python
+In [15]: obj2 = pd.Series([4, 7, -5, 3], index=['d', 'b', 'a', 'c'])
+
+In [16]: obj2
+Out[16]: 
+d    4
+b    7
+a   -5
+c    3
+dtype: int64
+
+In [17]: obj2.index
+Out[17]: Index(['d', 'b', 'a', 'c'], dtype='object')
+```
+
+与普通NumPy数组相比，你可以通过索引的方式选取Series中的单个或一组值：
+
+```python
+In [18]: obj2['a']
+Out[18]: -5
+
+In [19]: obj2['d'] = 6
+
+In [20]: obj2[['c', 'a', 'd']]
+Out[20]: 
+c    3
+a   -5
+d    6
+dtype: int64
+```
+
+['c', 'a', 'd']是索引列表，即使它包含的是字符串而不是整数。
+
+使用NumPy函数或类似NumPy的运算（如根据布尔型数组进行过滤、标量乘法、应用数学函数等）都会保留索引值的链接：
+
+```python
+In [21]: obj2[obj2 > 0]
+Out[21]: 
+d    6
+b    7
+c    3
+dtype: int64
+
+In [22]: obj2 * 2
+Out[22]:
+d    12
+b    14
+a   -10
+c     6
+dtype: int64
+
+In [23]: np.exp(obj2)
+Out[23]: 
+d     403.428793
+b    1096.633158
+a       0.006738
+c      20.085537
+dtype: float64
+```
+
+还可以将Series看成是一个定长的有序字典，因为它是索引值到数据值的一个映射。它可以用在许多原本需要字典参数的函数中：
+
+```python
+In [24]: 'b' in obj2
+Out[24]: True
+
+In [25]: 'e' in obj2
+Out[25]: False
+```
+
+如果数据被存放在一个Python字典中，也可以直接通过这个字典来创建Series：
+
+```python
+In [26]: sdata = {'Ohio': 35000, 'Texas': 71000, 'Oregon': 16000, 'Utah': 5000}
+
+In [27]: obj3 = pd.Series(sdata)
+
+In [28]: obj3
+Out[28]: 
+Ohio      35000
+Oregon    16000
+Texas     71000
+Utah       5000
+dtype: int64
+```
+
+如果只传入一个字典，则结果Series中的索引就是原字典的键（有序排列）。你可以传入排好序的字典的键以改变顺序：
+
+```python
+In [29]: states = ['California', 'Ohio', 'Oregon', 'Texas']
+
+In [30]: obj4 = pd.Series(sdata, index=states)
+
+In [31]: obj4
+Out[31]: 
+California        NaN
+Ohio          35000.0
+Oregon        16000.0
+Texas         71000.0
+dtype: float64
+```
+
+在这个例子中，sdata中跟states索引相匹配的那3个值会被找出来并放到相应的位置上，但由于"California"所对应的sdata值找不到，所以其结果就为NaN（即“非数字”（not a number），在pandas中，它用于表示缺失或NA值）。因为‘Utah’不在states中，它被从结果中除去。
+
+我将使用缺失（missing）或NA表示缺失数据。pandas的isnull和notnull函数可用于检测缺失数据：
+
+```python
+In [32]: pd.isnull(obj4)
+Out[32]: 
+California     True
+Ohio          False
+Oregon        False
+Texas         False
+dtype: bool
+
+In [33]: pd.notnull(obj4)
+Out[33]: 
+California    False
+Ohio           True
+Oregon         True
+Texas          True
+dtype: bool
+```
+
+Series也有类似的实例方法：
+
+```python
+In [34]: obj4.isnull()
+Out[34]: 
+California     True
+Ohio          False
+Oregon        False
+Texas         False
+dtype: bool
+```
+
+我将在第7章详细讲解如何处理缺失数据。
+
+对于许多应用而言，Series最重要的一个功能是，它会根据运算的索引标签自动对齐数据：
+
+```python
+In [35]: obj3
+Out[35]: 
+Ohio      35000
+Oregon    16000
+Texas     71000
+Utah       5000
+dtype: int64
+
+In [36]: obj4
+Out[36]: 
+California        NaN
+Ohio          35000.0
+Oregon        16000.0
+Texas         71000.0
+dtype: float64
+
+In [37]: obj3 + obj4
+Out[37]: 
+California         NaN
+Ohio           70000.0
+Oregon         32000.0
+Texas         142000.0
+Utah               NaN
+dtype: float64
+```
+
+数据对齐功能将在后面详细讲解。如果你使用过数据库，你可以认为是类似join的操作。
+
+Series对象本身及其索引都有一个name属性，该属性跟pandas其他的关键功能关系非常密切：
+
+```python
+In [38]: obj4.name = 'population'
+
+In [39]: obj4.index.name = 'state'
+
+In [40]: obj4
+Out[40]: 
+state
+California        NaN
+Ohio          35000.0
+Oregon        16000.0
+Texas         71000.0
+Name: population, dtype: float64
+```
+
+Series的索引可以通过赋值的方式就地修改：
+
+```python
+In [41]: obj
+Out[41]: 
+0    4
+1    7
+2   -5
+3    3
+dtype: int64
+
+In [42]: obj.index = ['Bob', 'Steve', 'Jeff', 'Ryan']
+
+In [43]: obj
+Out[43]: 
+Bob      4
+Steve    7
+Jeff    -5
+Ryan     3
+dtype: int64
+```
+
+### DataFrame
+
+DataFrame是一个表格型的数据结构，它含有一组有序的列，每列可以是不同的值类型（数值、字符串、布尔值等）。DataFrame既有行索引也有列索引，它可以被看做由Series组成的字典（共用同一个索引）。DataFrame中的数据是以一个或多个二维块存放的（而不是列表、字典或别的一维数据结构）。有关DataFrame内部的技术细节远远超出了本书所讨论的范围。
+
+> 笔记：虽然DataFrame是以二维结构保存数据的，但你仍然可以轻松地将其表示为更高维度的数据（层次化索引的表格型结构，这是pandas中许多高级数据处理功能的关键要素，我们会在第8章讨论这个问题）。
+
+建DataFrame的办法有很多，最常用的一种是直接传入一个由等长列表或NumPy数组组成的字典：
+
+```python
+data = {'state': ['Ohio', 'Ohio', 'Ohio', 'Nevada', 'Nevada', 'Nevada'],
+        'year': [2000, 2001, 2002, 2001, 2002, 2003],
+        'pop': [1.5, 1.7, 3.6, 2.4, 2.9, 3.2]}
+frame = pd.DataFrame(data)
+```
+
+结果DataFrame会自动加上索引（跟Series一样），且全部列会被有序排列：
+
+```python
+In [45]: frame
+Out[45]: 
+   pop   state  year
+0  1.5    Ohio  2000
+1  1.7    Ohio  2001
+2  3.6    Ohio  2002
+3  2.4  Nevada  2001
+4  2.9  Nevada  2002
+5  3.2  Nevada  2003
+```
+
+如果你使用的是Jupyter notebook，pandas DataFrame对象会以对浏览器友好的HTML表格的方式呈现。
+
+对于特别大的DataFrame，head方法会选取前五行：
+
+```python
+In [46]: frame.head()
+Out[46]: 
+   pop   state  year
+0  1.5    Ohio  2000
+1  1.7    Ohio  2001
+2  3.6    Ohio  2002
+3  2.4  Nevada  2001
+4  2.9  Nevada  2002
+```
+
+如果指定了列序列，则DataFrame的列就会按照指定顺序进行排列：
+
+```python
+In [47]: pd.DataFrame(data, columns=['year', 'state', 'pop'])
+Out[47]: 
+   year   state  pop
+0  2000    Ohio  1.5
+1  2001    Ohio  1.7
+2  2002    Ohio  3.6
+3  2001  Nevada  2.4
+4  2002  Nevada  2.9
+5  2003  Nevada  3.2
+```
+
+如果传入的列在数据中找不到，就会在结果中产生缺失值：
+
+```python
+In [48]: frame2 = pd.DataFrame(data, columns=['year', 'state', 'pop', 'debt'],
+   ....:                       index=['one', 'two', 'three', 'four',
+   ....:                              'five', 'six'])
+
+In [49]: frame2
+Out[49]: 
+       year   state  pop debt
+one    2000    Ohio  1.5  NaN
+two    2001    Ohio  1.7  NaN
+three  2002    Ohio  3.6  NaN
+four   2001  Nevada  2.4  NaN
+five   2002  Nevada  2.9  NaN
+six    2003  Nevada  3.2  NaN
+
+In [50]: frame2.columns
+Out[50]: Index(['year', 'state', 'pop', 'debt'], dtype='object')
+```
+
+通过类似字典标记的方式或属性的方式，可以将DataFrame的列获取为一个Series：
+
+```python
+In [51]: frame2['state']
+Out[51]: 
+one        Ohio
+two        Ohio
+three      Ohio
+four     Nevada
+five     Nevada
+six      Nevada
+Name: state, dtype: object
+
+In [52]: frame2.year
+Out[52]: 
+one      2000
+two      2001
+three    2002
+four     2001
+five     2002
+six      2003
+Name: year, dtype: int64
+```
+
+> 笔记：IPython提供了类似属性的访问（即frame2.year）和tab补全。
+>  frame2[column]适用于任何列的名，但是frame2.column只有在列名是一个合理的Python变量名时才适用。
+
+注意，返回的Series拥有原DataFrame相同的索引，且其name属性也已经被相应地设置好了。
+
+行也可以通过位置或名称的方式进行获取，比如用loc属性（稍后将对此进行详细讲解）：
+
+```python
+In [53]: frame2.loc['three']
+Out[53]: 
+year     2002
+state    Ohio
+pop       3.6
+debt      NaN
+Name: three, dtype: object
+```
+
+列可以通过赋值的方式进行修改。例如，我们可以给那个空的"debt"列赋上一个标量值或一组值：
+
+```python
+In [54]: frame2['debt'] = 16.5
+
+In [55]: frame2
+Out[55]: 
+       year   state  pop  debt
+one    2000    Ohio  1.5  16.5
+two    2001    Ohio  1.7  16.5
+three  2002    Ohio  3.6  16.5
+four   2001  Nevada  2.4  16.5
+five   2002  Nevada  2.9  16.5
+six    2003  Nevada  3.2  16.5
+
+In [56]: frame2['debt'] = np.arange(6.)
+
+In [57]: frame2
+Out[57]: 
+       year   state  pop  debt
+one    2000    Ohio  1.5   0.0
+two    2001    Ohio  1.7   1.0
+three  2002    Ohio  3.6   2.0
+four   2001  Nevada  2.4   3.0
+five   2002  Nevada  2.9   4.0
+six    2003  Nevada  3.2   5.0
+```
+
+将列表或数组赋值给某个列时，其长度必须跟DataFrame的长度相匹配。如果赋值的是一个Series，就会精确匹配DataFrame的索引，所有的空位都将被填上缺失值：
+
+```python
+In [58]: val = pd.Series([-1.2, -1.5, -1.7], index=['two', 'four', 'five'])
+
+In [59]: frame2['debt'] = val
+
+In [60]: frame2
+Out[60]: 
+       year   state  pop  debt
+one    2000    Ohio  1.5   NaN
+two    2001    Ohio  1.7  -1.2
+three  2002    Ohio  3.6   NaN
+four   2001  Nevada  2.4  -1.5
+five   2002  Nevada  2.9  -1.7
+six    2003  Nevada  3.2   NaN
+```
+
+为不存在的列赋值会创建出一个新列。关键字del用于删除列。
+
+作为del的例子，我先添加一个新的布尔值的列，state是否为'Ohio'：
+
+```python
+In [61]: frame2['eastern'] = frame2.state == 'Ohio'
+
+In [62]: frame2
+Out[62]: 
+       year   state  pop  debt  eastern
+one    2000    Ohio  1.5   NaN     True
+two    2001    Ohio  1.7  -1.2     True
+three  2002    Ohio  3.6   NaN     True
+four   2001  Nevada  2.4  -1.5    False
+five   2002  Nevada  2.9  -1.7    False
+six    2003  Nevada  3.2   NaN    False
+```
+
+> 注意：不能用frame2.eastern创建新的列。
+
+del方法可以用来删除这列：
+
+```python
+In [63]: del frame2['eastern']
+
+In [64]: frame2.columns
+Out[64]: Index(['year', 'state', 'pop', 'debt'], dtype='object')
+```
+
+> 注意：通过索引方式返回的列只是相应数据的视图而已，并不是副本。因此，对返回的Series所做的任何就地修改全都会反映到源DataFrame上。通过Series的copy方法即可指定复制列。
+
+另一种常见的数据形式是嵌套字典：
+
+```python
+In [65]: pop = {'Nevada': {2001: 2.4, 2002: 2.9},
+....:        'Ohio': {2000: 1.5, 2001: 1.7, 2002: 3.6}}
+```
+
+如果嵌套字典传给DataFrame，pandas就会被解释为：外层字典的键作为列，内层键则作为行索引：
+
+```python
+In [66]: frame3 = pd.DataFrame(pop)
+
+In [67]: frame3
+Out[67]: 
+      Nevada  Ohio
+2000     NaN   1.5
+2001     2.4   1.7
+2002     2.9   3.6
+```
+
+你也可以使用类似NumPy数组的方法，对DataFrame进行转置（交换行和列）：
+
+```python
+In [68]: frame3.T
+Out[68]: 
+        2000  2001  2002
+Nevada   NaN   2.4   2.9
+Ohio     1.5   1.7   3.6
+```
+
+内层字典的键会被合并、排序以形成最终的索引。如果明确指定了索引，则不会这样：
+
+```python
+In [69]: pd.DataFrame(pop, index=[2001, 2002, 2003])
+Out[69]: 
+      Nevada  Ohio
+2001     2.4   1.7
+2002     2.9   3.6
+2003     NaN   NaN
+```
+
+由Series组成的字典差不多也是一样的用法：
+
+```python
+In [70]: pdata = {'Ohio': frame3['Ohio'][:-1],
+....:          'Nevada': frame3['Nevada'][:2]}
+
+In [71]: pd.DataFrame(pdata)
+Out[71]: 
+      Nevada  Ohio
+2000     NaN   1.5
+2001     2.4   1.7
+```
+
+表5-1列出了DataFrame构造函数所能接受的各种数据。
+
+| 类型                         | 说明                                                         |
+| ---------------------------- | ------------------------------------------------------------ |
+| 二维ndarray                  | 数据矩阵，还可以传入行标和列标                               |
+| 由数组、列表或元组组成的字典 | 每个序列会变成DataFrame的一列。所有序列的长度必须相同        |
+| NumPy的结构化/记录数组       | 类似于“由数组组成的字典”                                     |
+| 由Series组成的字典           | 每个Series会成为一列。如果没有显式指定索引，则各Series的索引会被合并成结果的行索引 |
+| 由字典组成的字典             | 各内层字典会成为一列。键会被合并成结果的行索引，跟“由Series组成的字典”的情况一样 |
+| 字典或Series的列表           | 各项将会成为DataFrame的一行。字典键或Series索引的并集将会成为DataFrame的列标 |
+| 由列表或元组组成的列表       | 类似于“二维ndarray”                                          |
+| 另一个DataFrame              | 该DataFrame的索引将会被沿用，除非显式指定了其他索引          |
+| NumPy的MaskedArray           | 类似于“二维ndarray”的情况，只是掩码值在结果DataFrame会变成NA/缺失值 |
+
+如果设置了DataFrame的index和columns的name属性，则这些信息也会被显示出来：
+
+```python
+In [72]: frame3.index.name = 'year'; frame3.columns.name = 'state'
+
+In [73]: frame3
+Out[73]: 
+state  Nevada  Ohio
+year
+2000      NaN   1.5
+2001      2.4   1.7
+2002      2.9   3.6
+```
+
+跟Series一样，values属性也会以二维ndarray的形式返回DataFrame中的数据：
+
+```python
+In [74]: frame3.values
+Out[74]: 
+array([[ nan,  1.5],
+       [ 2.4,  1.7],
+       [ 2.9,  3.6]])
+```
+
+如果DataFrame各列的数据类型不同，则值数组的dtype就会选用能兼容所有列的数据类型：
+
+```python
+In [75]: frame2.values
+Out[75]:
+array([[2000, 'Ohio', 1.5, nan],
+       [2001, 'Ohio', 1.7, -1.2],
+       [2002, 'Ohio', 3.6, nan],
+       [2001, 'Nevada', 2.4, -1.5],
+       [2002, 'Nevada', 2.9, -1.7],
+       [2003, 'Nevada', 3.2, nan]], dtype=object)
+```
+
+### 索引对象
