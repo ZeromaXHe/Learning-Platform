@@ -88,6 +88,9 @@ class GoBangFrame extends JFrame {
             regretButton.setEnabled(false);
             restartButton.setEnabled(false);
         }
+        if (regretStep != null) {
+            boardButtonRef[regretStep[0]][regretStep[1]].setBackground(null);
+        }
         regretStep = vo.getRegretStep();
         if (regretStep != null) {
             boardButtonRef[regretStep[0]][regretStep[1]].setText("");
