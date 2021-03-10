@@ -7,7 +7,7 @@ import java.util.LinkedList;
 /**
  * @Author: zhuxi
  * @Time: 2021/3/5 11:39
- * @Description: 测试类：{@link gobang.GoBangBoardTest}
+ * @Description: 测试类：{@link/ gobang.GoBangBoardTest}
  * @Modified By: zhuxi
  */
 public class GoBangBoard {
@@ -67,8 +67,8 @@ public class GoBangBoard {
         }
         GoBangEnum nowTurn = getNowTurn();
         board[x][y] = nowTurn.getVal();
-        stepStack.push(new int[]{x, y});
         dominateSide = calcNewDominateSide(x, y);
+        stepStack.push(new int[]{x, y});
     }
 
     /**
@@ -149,12 +149,13 @@ public class GoBangBoard {
     /**
      * 悔棋
      */
-    public void regret() {
+    public int[] regret() {
         if (stepStack.isEmpty()) {
             throw new RuntimeException("Can't regret at the start");
         }
         int[] pop = stepStack.pop();
         board[pop[0]][pop[1]] = GoBangEnum.EMPTY.getVal();
+        return pop;
     }
 
     /**
@@ -176,5 +177,21 @@ public class GoBangBoard {
         }
         sb.append(']');
         return sb.toString();
+    }
+
+    public GoBangEnum getDominateSide() {
+        return dominateSide;
+    }
+
+    public int getStepCount() {
+        return stepStack.size();
+    }
+
+    public int[] getStepStackTop() {
+        if (stepStack.isEmpty()) {
+            return null;
+        } else {
+            return stepStack.peek();
+        }
     }
 }

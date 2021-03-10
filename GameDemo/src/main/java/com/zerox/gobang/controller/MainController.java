@@ -1,6 +1,8 @@
 package com.zerox.gobang.controller;
 
 import com.zerox.gobang.entity.GoBangBoard;
+import com.zerox.gobang.entity.vo.GoBangRegretResultVO;
+import com.zerox.gobang.entity.vo.GoBangStepResultVO;
 
 /**
  * @Author: zhuxi
@@ -15,7 +17,32 @@ public class MainController {
         goBangBoard = new GoBangBoard();
     }
 
-    public void goBang(){
+    public GoBangStepResultVO buttonStep(int x, int y) {
+        GoBangStepResultVO vo = new GoBangStepResultVO();
+        vo.setButtonSide(goBangBoard.getNowTurn());
+        goBangBoard.step(x, y);
+        vo.setDominateSide(goBangBoard.getDominateSide());
+        return vo;
+    }
 
+    public GoBangRegretResultVO regret() {
+        GoBangRegretResultVO vo = new GoBangRegretResultVO();
+        try {
+            vo.setRegretStep(goBangBoard.regret());
+        } catch (Exception e) {
+            e.printStackTrace();
+            vo.setMoreRegret(false);
+            return vo;
+        }
+        vo.setMoreRegret(goBangBoard.getStepCount() != 0);
+        return vo;
+    }
+
+    public void restart() {
+        goBangBoard = new GoBangBoard();
+    }
+
+    public int[] getLastStep() {
+        return goBangBoard.getStepStackTop();
     }
 }

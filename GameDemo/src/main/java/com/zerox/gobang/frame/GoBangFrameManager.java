@@ -1,7 +1,14 @@
 package com.zerox.gobang.frame;
 
+import com.zerox.gobang.constant.GoBangEnum;
+import com.zerox.gobang.controller.MainController;
+import com.zerox.gobang.entity.vo.GoBangRegretResultVO;
+import com.zerox.gobang.entity.vo.GoBangStepResultVO;
+
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 
 /**
  * @Author: zhuxi
@@ -17,17 +24,25 @@ public class GoBangFrameManager {
             frame.setVisible(true);
         });
     }
-
 }
 
 class GoBangFrame extends JFrame {
+    private JButton[][] boardButtonRef = new JButton[15][15];
+    private MainController goBangController = new MainController();
+    private JButton regretButton;
+    private JButton restartButton;
+    private JButton info;
+    int[] lastStep;
+    int[] regretStep;
 
     public GoBangFrame() {
         Toolkit kit = Toolkit.getDefaultToolkit();
-        Dimension screenSize = kit.getScreenSize();
-        int screenWidth = screenSize.width;
-        int screenHeight = screenSize.height;
-        setSize(screenWidth / 2, screenHeight / 2);
+        /// 获取电脑屏幕大小
+//        Dimension screenSize = kit.getScreenSize();
+//        int screenWidth = screenSize.width;
+//        int screenHeight = screenSize.height;
+//        setSize(screenWidth / 2, screenHeight / 2);
+        setSize(750, 500);
 
         setTitle("五子棋");
         setLocationByPlatform(true);
@@ -35,18 +50,114 @@ class GoBangFrame extends JFrame {
         /// 设置icon
 //        Image img = new ImageIcon("icon.gif").getImage();
 //        setIconImage(img);
+        JPanel titlePanel = new JPanel();
+        titlePanel.add(new GoBandHeaderComponent());
 
-        add(new GoBandHeaderComponent());
+        regretButton = new JButton("悔棋");
+        regretButton.setEnabled(false);
+        regretButton.addActionListener(this::regretListenerLambda);
+        titlePanel.add(regretButton);
 
-        JButton button1 = new JButton("1");
-        JButton button2 = new JButton("2");
-        JButton button3 = new JButton("3");
+        restartButton = new JButton("重新开始");
+        restartButton.setEnabled(false);
+        restartButton.addActionListener(this::restartListenerLambda);
+        titlePanel.add(restartButton);
 
-        JPanel panel = new JPanel();
-        panel.add(button1);
-        panel.add(button2);
-        panel.add(button3);
-        add(panel);
+        add(titlePanel, BorderLayout.NORTH);
+
+        JPanel boardButtonPanel = new JPanel();
+        boardButtonPanel.setLayout(new GridLayout(15, 15));
+        for (int i = 0; i < 15; i++) {
+            for (int j = 0; j < 15; j++) {
+                JButton button = new JButton("");
+                button.addActionListener(new ButtonAction(i, j));
+                boardButtonPanel.add(button);
+                boardButtonRef[i][j] = button;
+            }
+        }
+        add(boardButtonPanel, BorderLayout.CENTER);
+
+        info = new JButton("【信息框】:欢迎来到五子棋！");
+        info.setEnabled(false);
+        add(info, BorderLayout.SOUTH);
+    }
+
+    private void regretListenerLambda(ActionEvent e) {
+        GoBangRegretResultVO vo = goBangController.regret();
+        if (!vo.isMoreRegret()) {
+            regretButton.setEnabled(false);
+            restartButton.setEnabled(false);
+        }
+        regretStep = vo.getRegretStep();
+        if (regretStep != null) {
+            boardButtonRef[regretStep[0]][regretStep[1]].setText("");
+            boardButtonRef[regretStep[0]][regretStep[1]].setEnabled(true);
+            boardButtonRef[regretStep[0]][regretStep[1]].setBackground(Color.ORANGE);
+            info.setText("【信息框】:悔棋坐标[" + regretStep[0] + "," + regretStep[1] + "], 即橙色格子");
+        }
+
+        lastStep = goBangController.getLastStep();
+        boardButtonRef[lastStep[0]][lastStep[1]].setBackground(Color.GREEN);
+    }
+
+    private void restartListenerLambda(ActionEvent e) {
+        goBangController.restart();
+        regretButton.setEnabled(false);
+        restartButton.setEnabled(false);
+        for (int i = 0; i < 15; i++) {
+            for (int j = 0; j < 15; j++) {
+                boardButtonRef[i][j].setEnabled(true);
+                boardButtonRef[i][j].setText("");
+                boardButtonRef[i][j].setBackground(null);
+            }
+        }
+        lastStep = null;
+        regretStep = null;
+        info.setText("【信息框】:游戏重新开始");
+    }
+
+    private class ButtonAction implements ActionListener {
+        private int x;
+        private int y;
+
+        public ButtonAction(int x, int y) {
+            this.x = x;
+            this.y = y;
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            GoBangStepResultVO vo = goBangController.buttonStep(x, y);
+            info.setText("【信息框】:" + (vo.getButtonSide() == GoBangEnum.BLACK ? "黑方" : "白方") + "行棋坐标[" + x + "," + y + "], 即绿色格子");
+            regretButton.setEnabled(true);
+            restartButton.setEnabled(true);
+
+            if (lastStep != null) {
+                boardButtonRef[lastStep[0]][lastStep[1]].setBackground(null);
+            }
+
+            if (regretStep != null) {
+                boardButtonRef[regretStep[0]][regretStep[1]].setBackground(null);
+                regretStep = null;
+            }
+
+            boardButtonRef[x][y].setText(vo.getButtonSide() == GoBangEnum.BLACK ? "X" : "O");
+            boardButtonRef[x][y].setEnabled(false);
+            boardButtonRef[x][y].setBackground(Color.GREEN);
+            lastStep = new int[]{x, y};
+            if (vo.getDominateSide() == GoBangEnum.BLACK || vo.getDominateSide() == GoBangEnum.WHITE) {
+                for (int i = 0; i < 15; i++) {
+                    for (int j = 0; j < 15; j++) {
+                        boardButtonRef[i][j].setEnabled(false);
+                    }
+                }
+                regretButton.setEnabled(false);
+                info.setText("【信息框】:" + (vo.getDominateSide() == GoBangEnum.BLACK ? "黑方" : "白方") + "胜利！");
+            } else if (vo.getDominateSide() == GoBangEnum.TIE) {
+                regretButton.setEnabled(false);
+                info.setText("【信息框】:平局！");
+            }
+        }
     }
 }
 
@@ -54,8 +165,8 @@ class GoBandHeaderComponent extends JComponent {
     public static final int MESSAGE_X = 10;
     public static final int MESSAGE_Y = 30;
 
-    private static final int DEFAULT_WIDTH = 300;
-    private static final int DEFAULT_HEIGHT = 200;
+    private static final int DEFAULT_WIDTH = 100;
+    private static final int DEFAULT_HEIGHT = 60;
 
     public void paintComponent(Graphics g) {
         g.drawString("五子棋", MESSAGE_X, MESSAGE_Y);
