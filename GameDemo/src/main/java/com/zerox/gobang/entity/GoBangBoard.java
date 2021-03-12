@@ -16,6 +16,22 @@ public class GoBangBoard {
      */
     private int[][] board;
     /**
+     * 右上向左下方向的斜线是否存在棋子
+     */
+    private boolean[] slashExistChess;
+    /**
+     * 左上向右下方向的斜线是否存在棋子
+     */
+    private boolean[] backSlashExistChess;
+    /**
+     * 每一行是否存在棋子
+     */
+    private boolean[] rowExistChess;
+    /**
+     * 每一列是否存在棋子
+     */
+    private boolean[] columnExistChess;
+    /**
      * 存储每一步的栈
      */
     private LinkedList<int[]> stepStack;
@@ -28,6 +44,11 @@ public class GoBangBoard {
         this.board = new int[15][15];
         stepStack = new LinkedList<>();
         dominateSide = GoBangEnum.EMPTY;
+
+        slashExistChess = new boolean[29];
+        backSlashExistChess = new boolean[29];
+        rowExistChess = new boolean[15];
+        columnExistChess = new boolean[15];
     }
 
     /**
@@ -62,13 +83,31 @@ public class GoBangBoard {
      * @param y
      */
     public void step(int x, int y) {
-        if (dominateSide != GoBangEnum.EMPTY || x >= 15 || y >= 15 || x < 0 || y < 0 || board[x][y] != GoBangEnum.EMPTY.getVal()) {
+        if (dominateSide != GoBangEnum.EMPTY
+                || x >= 15 || y >= 15 || x < 0 || y < 0
+                || board[x][y] != GoBangEnum.EMPTY.getVal()) {
             throw new IllegalArgumentException("Illegal movement [x,y]:" + x + "," + y);
         }
         GoBangEnum nowTurn = getNowTurn();
         board[x][y] = nowTurn.getVal();
+
+        saveExistInfo(x, y);
+
         dominateSide = calcNewDominateSide(x, y);
         stepStack.push(new int[]{x, y});
+    }
+
+    /**
+     * 保存行、列、斜线棋子存在的信息
+     *
+     * @param x
+     * @param y
+     */
+    private void saveExistInfo(int x, int y) {
+        slashExistChess[x + y] = true;
+        backSlashExistChess[x - y + 14] = true;
+        rowExistChess[x] = true;
+        columnExistChess[y] = true;
     }
 
     /**
@@ -154,8 +193,52 @@ public class GoBangBoard {
             throw new RuntimeException("Can't regret at the start");
         }
         int[] pop = stepStack.pop();
-        board[pop[0]][pop[1]] = GoBangEnum.EMPTY.getVal();
+        int x = pop[0];
+        int y = pop[1];
+        board[x][y] = GoBangEnum.EMPTY.getVal();
+
+        rollbackExistInfo(x, y);
+
         return pop;
+    }
+
+    /**
+     * 回滚行、列、斜线棋子存在的信息
+     *
+     * @param x
+     * @param y
+     */
+    private void rollbackExistInfo(int x, int y) {
+        boolean slashExist = false;
+        boolean backSlashExist = false;
+        boolean rowExist = false;
+        boolean columnExist = false;
+        for (int i = 0; i < 15; i++) {
+            if (board[x][i] != GoBangEnum.EMPTY.getVal()) {
+                rowExist = true;
+            }
+            if (board[i][y] != GoBangEnum.EMPTY.getVal()) {
+                columnExist = true;
+            }
+            if (x + y - i >= 0 && x + y - i < 15 && board[i][x + y - i] != GoBangEnum.EMPTY.getVal()) {
+                slashExist = true;
+            }
+            if (i + y - x >= 0 && i + y - x < 15 && board[i][i + y - x] != GoBangEnum.EMPTY.getVal()) {
+                backSlashExist = true;
+            }
+        }
+        if (!slashExist) {
+            slashExistChess[x + y] = false;
+        }
+        if (!backSlashExist) {
+            backSlashExistChess[x - y + 14] = false;
+        }
+        if (!rowExist) {
+            rowExistChess[x] = false;
+        }
+        if (!columnExist) {
+            columnExistChess[y] = false;
+        }
     }
 
     /**
@@ -193,5 +276,20 @@ public class GoBangBoard {
         } else {
             return stepStack.peek();
         }
+    }
+
+    /**
+     * 获取当前盘面拷贝
+     *
+     * @return
+     */
+    public int[][] getBoardCopy() {
+        int[][] result = new int[15][15];
+        for (int i = 0; i < 15; i++) {
+            for (int j = 0; j < 15; j++) {
+                result[i][j] = board[i][j];
+            }
+        }
+        return result;
     }
 }
