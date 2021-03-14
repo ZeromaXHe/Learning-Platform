@@ -28,16 +28,22 @@ public class GoBangFrameManager {
 
 class GoBangFrame extends JFrame {
     private JButton[][] boardButtonRef = new JButton[15][15];
+
     private MainController goBangController = new MainController();
+
     private JButton regretButton;
     private JButton restartButton;
     private JButton info;
+    private RegretAction regretAction;
+    private RestartAction restartAction;
+    private JPopupMenu popup;
+
     int[] lastStep;
     int[] regretStep;
 
     public GoBangFrame() {
-        Toolkit kit = Toolkit.getDefaultToolkit();
         /// 获取电脑屏幕大小
+//        Toolkit kit = Toolkit.getDefaultToolkit();
 //        Dimension screenSize = kit.getScreenSize();
 //        int screenWidth = screenSize.width;
 //        int screenHeight = screenSize.height;
@@ -46,6 +52,34 @@ class GoBangFrame extends JFrame {
 
         setTitle("五子棋");
         setLocationByPlatform(true);
+
+        JMenu optionMenu = new JMenu("游戏选项");
+        regretAction = new RegretAction("悔棋");
+        regretAction.setEnabled(false);
+        JMenuItem regretItem = optionMenu.add(regretAction);
+        regretItem.setAccelerator(KeyStroke.getKeyStroke("ctrl R"));
+        restartAction = new RestartAction("重新开始");
+        restartAction.setEnabled(false);
+        JMenuItem restartItem = optionMenu.add(restartAction);
+        restartItem.setAccelerator(KeyStroke.getKeyStroke("ctrl S"));
+
+        optionMenu.addSeparator();
+
+        optionMenu.add(new AbstractAction("退出") {
+            public void actionPerformed(ActionEvent event) {
+                System.exit(0);
+            }
+        });
+
+        // 菜单栏
+        JMenuBar menuBar = new JMenuBar();
+        setJMenuBar(menuBar);
+        menuBar.add(optionMenu);
+
+        // 右键弹出框
+        popup = new JPopupMenu();
+        popup.add(regretAction);
+        popup.add(restartAction);
 
         /// 设置icon
 //        Image img = new ImageIcon("icon.gif").getImage();
@@ -75,6 +109,7 @@ class GoBangFrame extends JFrame {
                 boardButtonRef[i][j] = button;
             }
         }
+        boardButtonPanel.setComponentPopupMenu(popup);
         add(boardButtonPanel, BorderLayout.CENTER);
 
         info = new JButton("【信息框】:欢迎来到五子棋！");
@@ -86,7 +121,9 @@ class GoBangFrame extends JFrame {
         GoBangRegretResultVO vo = goBangController.regret();
         if (!vo.isMoreRegret()) {
             regretButton.setEnabled(false);
+            regretAction.setEnabled(false);
             restartButton.setEnabled(false);
+            restartAction.setEnabled(false);
         }
         if (regretStep != null) {
             boardButtonRef[regretStep[0]][regretStep[1]].setBackground(null);
@@ -100,13 +137,17 @@ class GoBangFrame extends JFrame {
         }
 
         lastStep = goBangController.getLastStep();
-        boardButtonRef[lastStep[0]][lastStep[1]].setBackground(Color.GREEN);
+        if (lastStep != null) {
+            boardButtonRef[lastStep[0]][lastStep[1]].setBackground(Color.GREEN);
+        }
     }
 
     private void restartListenerLambda(ActionEvent e) {
         goBangController.restart();
         regretButton.setEnabled(false);
+        regretAction.setEnabled(false);
         restartButton.setEnabled(false);
+        restartAction.setEnabled(false);
         for (int i = 0; i < 15; i++) {
             for (int j = 0; j < 15; j++) {
                 boardButtonRef[i][j].setEnabled(true);
@@ -117,6 +158,28 @@ class GoBangFrame extends JFrame {
         lastStep = null;
         regretStep = null;
         info.setText("【信息框】:游戏重新开始");
+    }
+
+    class RegretAction extends AbstractAction {
+        public RegretAction(String name) {
+            super(name);
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            regretListenerLambda(e);
+        }
+    }
+
+    class RestartAction extends AbstractAction {
+        public RestartAction(String name) {
+            super(name);
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            restartListenerLambda(e);
+        }
     }
 
     private class ButtonAction implements ActionListener {
@@ -133,7 +196,9 @@ class GoBangFrame extends JFrame {
             GoBangStepResultVO vo = goBangController.buttonStep(x, y);
             info.setText("【信息框】:" + (vo.getButtonSide() == GoBangEnum.BLACK ? "黑方" : "白方") + "行棋坐标[" + x + "," + y + "], 即绿色格子");
             regretButton.setEnabled(true);
+            regretAction.setEnabled(true);
             restartButton.setEnabled(true);
+            restartAction.setEnabled(true);
 
             if (lastStep != null) {
                 boardButtonRef[lastStep[0]][lastStep[1]].setBackground(null);
@@ -155,9 +220,11 @@ class GoBangFrame extends JFrame {
                     }
                 }
                 regretButton.setEnabled(false);
+                regretAction.setEnabled(false);
                 info.setText("【信息框】:" + (vo.getDominateSide() == GoBangEnum.BLACK ? "黑方" : "白方") + "胜利！");
             } else if (vo.getDominateSide() == GoBangEnum.TIE) {
                 regretButton.setEnabled(false);
+                regretAction.setEnabled(false);
                 info.setText("【信息框】:平局！");
             }
         }
