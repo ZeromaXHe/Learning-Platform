@@ -9,6 +9,10 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
 
 /**
  * @Author: zhuxi
@@ -33,10 +37,13 @@ class GoBangFrame extends JFrame {
 
     private JButton regretButton;
     private JButton restartButton;
+    private JButton aiButton;
     private JTextArea info;
     private RegretAction regretAction;
     private RestartAction restartAction;
     private JPopupMenu popup;
+    private JProgressBar progressBar;
+    private AiWorker aiWorker;
 
     int[] lastStep;
     int[] regretStep;
@@ -92,12 +99,27 @@ class GoBangFrame extends JFrame {
         regretButton = new JButton("悔棋");
         regretButton.setEnabled(false);
         regretButton.addActionListener(this::regretListenerLambda);
-        titlePanel.add(regretButton, new GBC(0, 1).setAnchor(GBC.CENTER).setInsets(10));
+        titlePanel.add(regretButton, new GBC(0, 1).setInsets(10));
 
         restartButton = new JButton("重新开始");
         restartButton.setEnabled(false);
         restartButton.addActionListener(this::restartListenerLambda);
-        titlePanel.add(restartButton, new GBC(1, 1).setAnchor(GBC.CENTER).setInsets(10));
+        titlePanel.add(restartButton, new GBC(1, 1).setInsets(10));
+
+        aiButton = new JButton("AI行棋");
+        aiButton.setEnabled(true);
+        aiButton.addActionListener(e -> {
+            setAllBoardButtonRefEnabledByStatus(false);
+            aiButton.setEnabled(false);
+            aiWorker = new AiWorker();
+            aiWorker.execute();
+        });
+        titlePanel.add(aiButton, new GBC(0, 2).setInsets(10));
+
+
+        progressBar = new JProgressBar(0, 100);
+        progressBar.setStringPainted(true);
+        titlePanel.add(progressBar, new GBC(1, 2));
 
         add(titlePanel, BorderLayout.NORTH);
 
@@ -106,7 +128,7 @@ class GoBangFrame extends JFrame {
         for (int i = 0; i < 15; i++) {
             for (int j = 0; j < 15; j++) {
                 JButton button = new JButton("");
-                button.addActionListener(new ButtonAction(i, j));
+                button.addActionListener(new BoardButtonAction(i, j));
                 boardButtonPanel.add(button);
                 boardButtonRef[i][j] = button;
             }
@@ -136,7 +158,7 @@ class GoBangFrame extends JFrame {
             boardButtonRef[regretStep[0]][regretStep[1]].setText("");
             boardButtonRef[regretStep[0]][regretStep[1]].setEnabled(true);
             boardButtonRef[regretStep[0]][regretStep[1]].setBackground(Color.ORANGE);
-            appendInfo("\n【信息框】:悔棋坐标[" + regretStep[0] + "," + regretStep[1] + "], 即橙色格子");
+            appendInfo("【信息框】:悔棋坐标[" + regretStep[0] + "," + regretStep[1] + "], 即橙色格子");
         }
 
         lastStep = goBangController.getLastStep();
@@ -151,7 +173,7 @@ class GoBangFrame extends JFrame {
      * @param s
      */
     private void appendInfo(String s) {
-        info.append(s);
+        info.append("\n" + s);
         info.setCaretPosition(info.getText().length());
     }
 
@@ -170,7 +192,7 @@ class GoBangFrame extends JFrame {
         }
         lastStep = null;
         regretStep = null;
-        appendInfo("\n【信息框】:游戏重新开始");
+        appendInfo("【信息框】:游戏重新开始");
     }
 
     class RegretAction extends AbstractAction {
@@ -195,11 +217,62 @@ class GoBangFrame extends JFrame {
         }
     }
 
-    private class ButtonAction implements ActionListener {
+    class AiWorker extends SwingWorker<Void, Integer> {
+        FutureTask<int[]> aiFuture;
+
+        public AiWorker() {
+        }
+
+        @Override
+        protected Void doInBackground() throws Exception {
+            try {
+                aiFuture = new FutureTask<>(() -> goBangController.getBoardAiNextStep());
+                Thread t1 = new Thread(aiFuture);
+                t1.start();
+                while (!aiFuture.isDone()) {
+                    Thread.sleep(100);
+                    publish(goBangController.getBoardAiProcess());
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
+
+        /**
+         * 如果SwingWorker通过publish发布了一些数据，那么也应该实现process方法来处理这些中间结果
+         *
+         * @param chunks
+         */
+        @Override
+        protected void process(List<Integer> chunks) {
+            for (Integer chunk : chunks) {
+                progressBar.setValue(chunk);
+            }
+        }
+
+        @Override
+        protected void done() {
+            aiButton.setEnabled(true);
+            progressBar.setValue(100);
+            if (goBangController.getBoardDominateSide() == GoBangEnum.EMPTY) {
+                setAllBoardButtonRefEnabledByStatus(true);
+            }
+            try {
+                appendInfo("【信息框】aiResult:" + Arrays.toString(aiFuture.get()));
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            } catch (ExecutionException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private class BoardButtonAction implements ActionListener {
         private int x;
         private int y;
 
-        public ButtonAction(int x, int y) {
+        public BoardButtonAction(int x, int y) {
             this.x = x;
             this.y = y;
         }
@@ -207,7 +280,7 @@ class GoBangFrame extends JFrame {
         @Override
         public void actionPerformed(ActionEvent e) {
             GoBangStepResultVO vo = goBangController.buttonStep(x, y);
-            appendInfo("\n【信息框】:" + (vo.getButtonSide() == GoBangEnum.BLACK ? "黑方" : "白方") + "行棋坐标[" + x + "," + y + "], 即绿色格子");
+            appendInfo("【信息框】:" + (vo.getButtonSide() == GoBangEnum.BLACK ? "黑方" : "白方") + "行棋坐标[" + x + "," + y + "], 即绿色格子");
             regretButton.setEnabled(true);
             regretAction.setEnabled(true);
             restartButton.setEnabled(true);
@@ -227,18 +300,32 @@ class GoBangFrame extends JFrame {
             boardButtonRef[x][y].setBackground(Color.GREEN);
             lastStep = new int[]{x, y};
             if (vo.getDominateSide() == GoBangEnum.BLACK || vo.getDominateSide() == GoBangEnum.WHITE) {
-                for (int i = 0; i < 15; i++) {
-                    for (int j = 0; j < 15; j++) {
-                        boardButtonRef[i][j].setEnabled(false);
-                    }
-                }
+                setAllBoardButtonRefEnabledByStatus(false);
                 regretButton.setEnabled(false);
                 regretAction.setEnabled(false);
-                appendInfo("\n【信息框】:" + (vo.getDominateSide() == GoBangEnum.BLACK ? "黑方" : "白方") + "胜利！");
+                appendInfo("【信息框】:" + (vo.getDominateSide() == GoBangEnum.BLACK ? "黑方" : "白方") + "胜利！");
             } else if (vo.getDominateSide() == GoBangEnum.TIE) {
                 regretButton.setEnabled(false);
                 regretAction.setEnabled(false);
-                appendInfo("\n【信息框】:平局！");
+                appendInfo("【信息框】:平局！");
+            }
+        }
+    }
+
+    private void setAllBoardButtonRefEnabledByStatus(boolean boolVal) {
+        if (boolVal) {
+            for (int i = 0; i < 15; i++) {
+                for (int j = 0; j < 15; j++) {
+                    if ("".equals(boardButtonRef[i][j].getText())) {
+                        boardButtonRef[i][j].setEnabled(boolVal);
+                    }
+                }
+            }
+        } else {
+            for (int i = 0; i < 15; i++) {
+                for (int j = 0; j < 15; j++) {
+                    boardButtonRef[i][j].setEnabled(false);
+                }
             }
         }
     }

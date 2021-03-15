@@ -11,8 +11,14 @@ import java.util.Random;
  * @Modified By: zhuxi
  */
 public class GoBangAiService {
-    public int[] nextStep(int[][] currentBoard) {
-        return randomNextStep(currentBoard);
+    private int thinkProcess;
+
+    public int getThinkProcess() {
+        return thinkProcess;
+    }
+
+    public int[] nextStep(int[][] currentBoard, GoBangEnum side) {
+        return randomNextStep(currentBoard, side);
     }
 
     /**
@@ -21,13 +27,23 @@ public class GoBangAiService {
      * @param currentBoard
      * @return
      */
-    private int[] randomNextStep(int[][] currentBoard) {
+    private int[] randomNextStep(int[][] currentBoard, GoBangEnum side) {
+        thinkProcess = 0;
         Random random = new Random();
         int[] result = new int[2];
         do {
             result[0] = random.nextInt(currentBoard.length);
             result[1] = random.nextInt(currentBoard[0].length);
         } while (currentBoard[result[0]][result[1]] != GoBangEnum.EMPTY.getVal());
+        // 模拟计算时间
+        while (thinkProcess < 100) {
+            try {
+                Thread.sleep(30);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            thinkProcess++;
+        }
         return result;
     }
 

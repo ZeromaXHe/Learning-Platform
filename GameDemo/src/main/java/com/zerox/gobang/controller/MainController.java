@@ -1,5 +1,6 @@
 package com.zerox.gobang.controller;
 
+import com.zerox.gobang.constant.GoBangEnum;
 import com.zerox.gobang.entity.GoBangBoard;
 import com.zerox.gobang.entity.vo.GoBangRegretResultVO;
 import com.zerox.gobang.entity.vo.GoBangStepResultVO;
@@ -44,5 +45,17 @@ public class MainController {
 
     public int[] getLastStep() {
         return goBangBoard.getStepStackTop();
+    }
+
+    public int getBoardAiProcess() {
+        return goBangBoard.getAiProcess();
+    }
+
+    public int[] getBoardAiNextStep() {
+        return goBangBoard.nextAiStep();
+    }
+
+    public GoBangEnum getBoardDominateSide() {
+        return goBangBoard.getDominateSide();
     }
 }
