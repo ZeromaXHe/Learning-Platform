@@ -85,17 +85,19 @@ class GoBangFrame extends JFrame {
 //        Image img = new ImageIcon("icon.gif").getImage();
 //        setIconImage(img);
         JPanel titlePanel = new JPanel();
-        titlePanel.add(new GoBandHeaderComponent());
+        GridBagLayout titlePanelGridBagLayout = new GridBagLayout();
+        titlePanel.setLayout(titlePanelGridBagLayout);
+        titlePanel.add(new JLabel("五子棋"), new GBC(0, 0, 2, 1));
 
         regretButton = new JButton("悔棋");
         regretButton.setEnabled(false);
         regretButton.addActionListener(this::regretListenerLambda);
-        titlePanel.add(regretButton);
+        titlePanel.add(regretButton, new GBC(0, 1).setAnchor(GBC.CENTER).setInsets(10));
 
         restartButton = new JButton("重新开始");
         restartButton.setEnabled(false);
         restartButton.addActionListener(this::restartListenerLambda);
-        titlePanel.add(restartButton);
+        titlePanel.add(restartButton, new GBC(1, 1).setAnchor(GBC.CENTER).setInsets(10));
 
         add(titlePanel, BorderLayout.NORTH);
 
@@ -239,21 +241,5 @@ class GoBangFrame extends JFrame {
                 appendInfo("\n【信息框】:平局！");
             }
         }
-    }
-}
-
-class GoBandHeaderComponent extends JComponent {
-    public static final int MESSAGE_X = 10;
-    public static final int MESSAGE_Y = 30;
-
-    private static final int DEFAULT_WIDTH = 100;
-    private static final int DEFAULT_HEIGHT = 60;
-
-    public void paintComponent(Graphics g) {
-        g.drawString("五子棋", MESSAGE_X, MESSAGE_Y);
-    }
-
-    public Dimension getPreferredSize() {
-        return new Dimension(DEFAULT_WIDTH, DEFAULT_HEIGHT);
     }
 }
