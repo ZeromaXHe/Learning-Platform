@@ -33,7 +33,7 @@ class GoBangFrame extends JFrame {
 
     private JButton regretButton;
     private JButton restartButton;
-    private JButton info;
+    private JTextArea info;
     private RegretAction regretAction;
     private RestartAction restartAction;
     private JPopupMenu popup;
@@ -112,9 +112,10 @@ class GoBangFrame extends JFrame {
         boardButtonPanel.setComponentPopupMenu(popup);
         add(boardButtonPanel, BorderLayout.CENTER);
 
-        info = new JButton("【信息框】:欢迎来到五子棋！");
-        info.setEnabled(false);
-        add(info, BorderLayout.SOUTH);
+        info = new JTextArea("【信息框】:欢迎来到五子棋！", 3, 40);
+        info.setEditable(false);
+        JScrollPane scrollPane = new JScrollPane(info);
+        add(scrollPane, BorderLayout.SOUTH);
     }
 
     private void regretListenerLambda(ActionEvent e) {
@@ -133,13 +134,23 @@ class GoBangFrame extends JFrame {
             boardButtonRef[regretStep[0]][regretStep[1]].setText("");
             boardButtonRef[regretStep[0]][regretStep[1]].setEnabled(true);
             boardButtonRef[regretStep[0]][regretStep[1]].setBackground(Color.ORANGE);
-            info.setText("【信息框】:悔棋坐标[" + regretStep[0] + "," + regretStep[1] + "], 即橙色格子");
+            appendInfo("\n【信息框】:悔棋坐标[" + regretStep[0] + "," + regretStep[1] + "], 即橙色格子");
         }
 
         lastStep = goBangController.getLastStep();
         if (lastStep != null) {
             boardButtonRef[lastStep[0]][lastStep[1]].setBackground(Color.GREEN);
         }
+    }
+
+    /**
+     * 给信息框添加信息
+     *
+     * @param s
+     */
+    private void appendInfo(String s) {
+        info.append(s);
+        info.setCaretPosition(info.getText().length());
     }
 
     private void restartListenerLambda(ActionEvent e) {
@@ -157,7 +168,7 @@ class GoBangFrame extends JFrame {
         }
         lastStep = null;
         regretStep = null;
-        info.setText("【信息框】:游戏重新开始");
+        appendInfo("\n【信息框】:游戏重新开始");
     }
 
     class RegretAction extends AbstractAction {
@@ -194,7 +205,7 @@ class GoBangFrame extends JFrame {
         @Override
         public void actionPerformed(ActionEvent e) {
             GoBangStepResultVO vo = goBangController.buttonStep(x, y);
-            info.setText("【信息框】:" + (vo.getButtonSide() == GoBangEnum.BLACK ? "黑方" : "白方") + "行棋坐标[" + x + "," + y + "], 即绿色格子");
+            appendInfo("\n【信息框】:" + (vo.getButtonSide() == GoBangEnum.BLACK ? "黑方" : "白方") + "行棋坐标[" + x + "," + y + "], 即绿色格子");
             regretButton.setEnabled(true);
             regretAction.setEnabled(true);
             restartButton.setEnabled(true);
@@ -221,11 +232,11 @@ class GoBangFrame extends JFrame {
                 }
                 regretButton.setEnabled(false);
                 regretAction.setEnabled(false);
-                info.setText("【信息框】:" + (vo.getDominateSide() == GoBangEnum.BLACK ? "黑方" : "白方") + "胜利！");
+                appendInfo("\n【信息框】:" + (vo.getDominateSide() == GoBangEnum.BLACK ? "黑方" : "白方") + "胜利！");
             } else if (vo.getDominateSide() == GoBangEnum.TIE) {
                 regretButton.setEnabled(false);
                 regretAction.setEnabled(false);
-                info.setText("【信息框】:平局！");
+                appendInfo("\n【信息框】:平局！");
             }
         }
     }
