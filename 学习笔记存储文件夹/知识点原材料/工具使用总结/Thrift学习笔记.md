@@ -1,5 +1,3 @@
-# Thrift学习笔记
-
 # Thrift教程
 翻译自官方文档：[https://gitbox.apache.org/repos/asf?p=thrift.git;a=blob;f=tutorial/tutorial.thrift;hb=HEAD](https://gitbox.apache.org/repos/asf?p=thrift.git;a=blob;f=tutorial/tutorial.thrift;hb=HEAD)
 原作者：Mark Slee
@@ -135,6 +133,45 @@ oneway void zip()
 
 }
 
-
 这只是覆盖了基础。查看test/folder以获得更多详细的例子。在你运行这个文件后，你生成的代码会在名字为gen-<语言名>的文件夹中出现。生成的代码并不太难看。它甚至有漂亮的缩进。
-That just about covers the basics. Take a look in the test/ folder for more detailed examples. After you run this file, your generated code shows up in folders with names gen-<language>. The generated code isn't too scary to look at. It even has pretty indentation.
+That just about covers the basics. Take a look in the test/ folder for more detailed examples. After you run this file, your generated code shows up in folders with names `gen-<language>`. The generated code isn't too scary to look at. It even has pretty indentation.
+
+# Windows 下 Thrift 的安装及使用
+
+版权声明：本文为CSDN博主「彼得 潘」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/qq_43112019/article/details/92800422
+
+## 一.  Thrift 简介
+
+Thrift是一种接口描述语言和二进制通讯协议，它被用来定义和创建跨语言的服务。它被当作一个远程过程调用（RPC）框架来使用，是由Facebook为“大规模跨语言服务开发”而开发的。
+
+它通过一个代码生成引擎联合了一个软件栈，来创建不同程度的、无缝的跨平台高效服务，可以使用C#、C++（基于POSIX兼容系统）、Cappuccino、Cocoa、Delphi、Erlang、Go、Haskell、Java、Node.js、OCaml、Perl、PHP、Python、Ruby和Smalltalk。虽然它以前是由Facebook开发的，但它现在是Apache软件基金会的开源项目了。
+
+## 二. Windows 下安装
+
+1. thrift-0.12.0.exe下载地址：http://mirror.bit.edu.cn/apache/thrift/0.12.0/thrift-0.12.0.exe
+2. 将thrift-0.10.0.exe放到一个文件下，如下图。将其重命名为thrift.exe。方便调用thrift命令。
+3. 配置环境变量
+   向 Path 中添加变量值，值为 thrift.exe 的地址，如 F:\学习资料\thrift。
+4. 测试
+   命令行输入 `thrift -version`，如果输出 thrift 的版本即表明安装成功。
+
+## 三. Windows 下 thrift 的使用
+
+1. 编写 IDL 接口（新建 demo.thrift 文件，在 demo.thrift 中复制以下代码）
+
+~~~thrift
+namespace java com.imooc.thrift.demo
+namespace py thrift.demo
+
+service DemoService { 
+	void sayHello(1:string name);
+}
+~~~
+
+2. 编译
+
+在该文件下地址栏输入 cmd，弹出命令框，再输入 `thrift --gen java demo.thrift`，编译之后会生成类DemoService.java。
+
+提示：用 thrift 命令，生成对应语言的文件（一个文件可以编译成多种语言），能生成这些文件，说明 thrift 已经可以工作了。
+
