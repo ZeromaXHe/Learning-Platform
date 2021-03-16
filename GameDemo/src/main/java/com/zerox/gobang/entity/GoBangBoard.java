@@ -1,5 +1,6 @@
 package com.zerox.gobang.entity;
 
+import com.zerox.gobang.constant.GoBangAiStrategyEnum;
 import com.zerox.gobang.constant.GoBangEnum;
 import com.zerox.gobang.service.GoBangAiService;
 
@@ -63,6 +64,15 @@ public class GoBangBoard {
      */
     public int getAiProcess() {
         return aiService.getThinkProcess();
+    }
+
+    /**
+     * 设置ai策略
+     *
+     * @param strategy
+     */
+    public void setAiStrategy(GoBangAiStrategyEnum strategy) {
+        aiService.setAiStrategy(strategy);
     }
 
     /**

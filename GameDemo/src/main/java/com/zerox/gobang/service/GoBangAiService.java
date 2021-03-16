@@ -1,5 +1,6 @@
 package com.zerox.gobang.service;
 
+import com.zerox.gobang.constant.GoBangAiStrategyEnum;
 import com.zerox.gobang.constant.GoBangEnum;
 
 import java.util.Random;
@@ -12,13 +13,46 @@ import java.util.Random;
  */
 public class GoBangAiService {
     private int thinkProcess;
+    private GoBangAiStrategyEnum strategy = GoBangAiStrategyEnum.RANDOM;
 
     public int getThinkProcess() {
         return thinkProcess;
     }
 
     public int[] nextStep(int[][] currentBoard, GoBangEnum side) {
-        return randomNextStep(currentBoard, side);
+        switch (strategy) {
+            case RANDOM:
+                return randomNextStep(currentBoard, side);
+            case FIRST_EMPTY:
+                return firstEmptyNextStep(currentBoard, side);
+            default:
+                throw new IllegalArgumentException("策略配置错误");
+        }
+    }
+
+    private int[] firstEmptyNextStep(int[][] currentBoard, GoBangEnum side) {
+        thinkProcess = 0;
+        int[] result = new int[2];
+        loop:
+        for (int i = 0; i < 15; i++) {
+            for (int j = 0; j < 15; j++) {
+                if (currentBoard[i][j] == GoBangEnum.EMPTY.getVal()) {
+                    result[0] = i;
+                    result[1] = j;
+                    break loop;
+                }
+            }
+        }
+        // 模拟计算时间
+        while (thinkProcess < 100) {
+            try {
+                Thread.sleep(30);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            thinkProcess++;
+        }
+        return result;
     }
 
     /**
@@ -65,5 +99,9 @@ public class GoBangAiService {
      */
     private int valueLine(int[] line) {
         return 0;
+    }
+
+    public void setAiStrategy(GoBangAiStrategyEnum strategy) {
+        this.strategy = strategy;
     }
 }

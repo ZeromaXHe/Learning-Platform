@@ -1,5 +1,6 @@
 package com.zerox.gobang.controller;
 
+import com.zerox.gobang.constant.GoBangAiStrategyEnum;
 import com.zerox.gobang.constant.GoBangEnum;
 import com.zerox.gobang.entity.GoBangBoard;
 import com.zerox.gobang.entity.vo.GoBangRegretResultVO;
@@ -57,5 +58,9 @@ public class MainController {
 
     public GoBangEnum getBoardDominateSide() {
         return goBangBoard.getDominateSide();
+    }
+
+    public void setBoardAiStrategy(GoBangAiStrategyEnum strategy) {
+        goBangBoard.setAiStrategy(strategy);
     }
 }

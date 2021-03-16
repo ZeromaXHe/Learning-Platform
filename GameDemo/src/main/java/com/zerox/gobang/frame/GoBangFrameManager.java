@@ -1,11 +1,13 @@
 package com.zerox.gobang.frame;
 
+import com.zerox.gobang.constant.GoBangAiStrategyEnum;
 import com.zerox.gobang.constant.GoBangEnum;
 import com.zerox.gobang.controller.MainController;
 import com.zerox.gobang.entity.vo.GoBangRegretResultVO;
 import com.zerox.gobang.entity.vo.GoBangStepResultVO;
 
 import javax.swing.*;
+import javax.swing.border.Border;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -42,8 +44,11 @@ class GoBangFrame extends JFrame {
     private RegretAction regretAction;
     private RestartAction restartAction;
     private JPopupMenu popup;
+
     private JProgressBar progressBar;
     private AiWorker aiWorker;
+    private JRadioButton randomStrategyButton;
+    private JRadioButton firstEmptyStrategyButton;
 
     int[] lastStep;
     int[] regretStep;
@@ -106,20 +111,38 @@ class GoBangFrame extends JFrame {
         restartButton.addActionListener(this::restartListenerLambda);
         titlePanel.add(restartButton, new GBC(1, 1).setInsets(10));
 
+        JPanel aiPanel = new JPanel();
+        aiPanel.setLayout(new GridBagLayout());
+
         aiButton = new JButton("AI行棋");
         aiButton.setEnabled(true);
         aiButton.addActionListener(e -> {
             setAllBoardButtonRefEnabledByStatus(false);
             aiButton.setEnabled(false);
+            // TODO: 按钮的状态估计得用状态模式重构一下，不然代码就很恶心了。没法继续往下写。接下来的任务就是重构这里，然后再把ai行棋的和棋局上按钮下棋的操作绑定起来
             aiWorker = new AiWorker();
             aiWorker.execute();
         });
-        titlePanel.add(aiButton, new GBC(0, 2).setInsets(10));
-
+        aiPanel.add(aiButton, new GBC(0, 0).setInsets(10));
 
         progressBar = new JProgressBar(0, 100);
         progressBar.setStringPainted(true);
-        titlePanel.add(progressBar, new GBC(1, 2));
+        aiPanel.add(progressBar, new GBC(1, 0));
+
+        ButtonGroup aiStrategyButtonGroup = new ButtonGroup();
+        randomStrategyButton = new JRadioButton("随机策略", true);
+        randomStrategyButton.addActionListener(e -> goBangController.setBoardAiStrategy(GoBangAiStrategyEnum.RANDOM));
+        aiStrategyButtonGroup.add(randomStrategyButton);
+        firstEmptyStrategyButton = new JRadioButton("填充首空策略", false);
+        firstEmptyStrategyButton.addActionListener(e -> goBangController.setBoardAiStrategy(GoBangAiStrategyEnum.FIRST_EMPTY));
+        aiStrategyButtonGroup.add(firstEmptyStrategyButton);
+        aiPanel.add(randomStrategyButton, new GBC(0,1));
+        aiPanel.add(firstEmptyStrategyButton, new GBC(1,1));
+
+        Border etched = BorderFactory.createEtchedBorder();
+        Border aiPanelBorder = BorderFactory.createTitledBorder(etched, "AI选项");
+        aiPanel.setBorder(aiPanelBorder);
+        titlePanel.add(aiPanel, new GBC(2, 0, 2, 2));
 
         add(titlePanel, BorderLayout.NORTH);
 
