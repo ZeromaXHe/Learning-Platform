@@ -144,3 +144,9 @@ java.lang.NoClassDefFoundError:com/intellij/uiDesigner/core/GridLayoutManager
   <version>7.0.3</version>
 </dependency>
 ```
+
+# IntelliJ IDEA 出现 "cannot access class"错误的解决方法
+
+如果明明有这个类存在但仍然提示cannot access，这可能是IDE的bug，可以清除缓存并重启：
+
+尝试 File->Invalidate Caches /Restart ...
