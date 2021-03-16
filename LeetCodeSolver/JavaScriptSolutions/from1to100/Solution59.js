@@ -24,6 +24,7 @@
  * @return {number[][]}
  */
 var generateMatrix = function (n) {
+    // js初始化二维数组
     var result = [];
     for (let i = 0; i < n; i++) {
         result.push([]);
