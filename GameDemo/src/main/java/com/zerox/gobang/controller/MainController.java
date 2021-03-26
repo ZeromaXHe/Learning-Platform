@@ -2,9 +2,10 @@ package com.zerox.gobang.controller;
 
 import com.zerox.gobang.constant.GoBangAiStrategyEnum;
 import com.zerox.gobang.constant.GoBangEnum;
-import com.zerox.gobang.entity.GoBangBoard;
 import com.zerox.gobang.entity.vo.GoBangRegretResultVO;
 import com.zerox.gobang.entity.vo.GoBangStepResultVO;
+import com.zerox.gobang.service.GoBangAiService;
+import com.zerox.gobang.service.GoBangBasicFuncService;
 
 /**
  * @Author: zhuxi
@@ -13,54 +14,54 @@ import com.zerox.gobang.entity.vo.GoBangStepResultVO;
  * @Modified By: zhuxi
  */
 public class MainController {
-    private GoBangBoard goBangBoard;
+
+    private GoBangBasicFuncService basicFuncService;
+    private GoBangAiService aiService;
 
     public MainController() {
-        goBangBoard = new GoBangBoard();
+        basicFuncService = new GoBangBasicFuncService();
+        aiService = new GoBangAiService();
     }
 
     public GoBangStepResultVO buttonStep(int x, int y) {
-        GoBangStepResultVO vo = new GoBangStepResultVO();
-        vo.setButtonSide(goBangBoard.getNowTurn());
-        goBangBoard.step(x, y);
-        vo.setDominateSide(goBangBoard.getDominateSide());
-        return vo;
+        return basicFuncService.buttonStep(x, y);
     }
 
     public GoBangRegretResultVO regret() {
-        GoBangRegretResultVO vo = new GoBangRegretResultVO();
-        try {
-            vo.setRegretStep(goBangBoard.regret());
-        } catch (Exception e) {
-            e.printStackTrace();
-            vo.setMoreRegret(false);
-            return vo;
-        }
-        vo.setMoreRegret(goBangBoard.getStepCount() != 0);
-        return vo;
+        return basicFuncService.regret();
     }
 
     public void restart() {
-        goBangBoard = new GoBangBoard();
+        basicFuncService.restart();
     }
 
     public int[] getLastStep() {
-        return goBangBoard.getStepStackTop();
-    }
-
-    public int getBoardAiProcess() {
-        return goBangBoard.getAiProcess();
-    }
-
-    public int[] getBoardAiNextStep() {
-        return goBangBoard.nextAiStep();
+        return basicFuncService.getLastStep();
     }
 
     public GoBangEnum getBoardDominateSide() {
-        return goBangBoard.getDominateSide();
+        return basicFuncService.getBoardDominateSide();
     }
 
+    /**
+     * 获取Ai思考的进度
+     *
+     * @return
+     */
+    public int getBoardAiProcess() {
+        return aiService.getThinkProcess();
+    }
+
+    public int[] getBoardAiNextStep() {
+        return aiService.nextStep();
+    }
+
+    /**
+     * 设置ai策略
+     *
+     * @param strategy
+     */
     public void setBoardAiStrategy(GoBangAiStrategyEnum strategy) {
-        goBangBoard.setAiStrategy(strategy);
+        aiService.setAiStrategy(strategy);
     }
 }

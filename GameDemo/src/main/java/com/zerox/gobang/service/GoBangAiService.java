@@ -2,6 +2,7 @@ package com.zerox.gobang.service;
 
 import com.zerox.gobang.constant.GoBangAiStrategyEnum;
 import com.zerox.gobang.constant.GoBangEnum;
+import com.zerox.gobang.dao.GoBangBoard;
 
 import java.util.Random;
 
@@ -19,7 +20,10 @@ public class GoBangAiService {
         return thinkProcess;
     }
 
-    public int[] nextStep(int[][] currentBoard, GoBangEnum side) {
+    public int[] nextStep() {
+        GoBangBoard goBangBoard = GoBangBoard.getInstance();
+        int[][] currentBoard = goBangBoard.getBoardCopy();
+        GoBangEnum side = goBangBoard.getNowTurn();
         switch (strategy) {
             case RANDOM:
                 return randomNextStep(currentBoard, side);

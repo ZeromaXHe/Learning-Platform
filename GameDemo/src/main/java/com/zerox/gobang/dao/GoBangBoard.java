@@ -1,8 +1,6 @@
-package com.zerox.gobang.entity;
+package com.zerox.gobang.dao;
 
-import com.zerox.gobang.constant.GoBangAiStrategyEnum;
 import com.zerox.gobang.constant.GoBangEnum;
-import com.zerox.gobang.service.GoBangAiService;
 
 import java.util.LinkedList;
 
@@ -42,7 +40,7 @@ public class GoBangBoard {
      */
     private GoBangEnum dominateSide;
 
-    private GoBangAiService aiService;
+    private static GoBangBoard instance = new GoBangBoard();
 
     public GoBangBoard() {
         this.board = new int[15][15];
@@ -53,35 +51,14 @@ public class GoBangBoard {
         backSlashExistChess = new boolean[29];
         rowExistChess = new boolean[15];
         columnExistChess = new boolean[15];
-
-        aiService = new GoBangAiService();
     }
 
-    /**
-     * 获取Ai思考的进度
-     *
-     * @return
-     */
-    public int getAiProcess() {
-        return aiService.getThinkProcess();
+    public static GoBangBoard getInstance() {
+        return instance;
     }
 
-    /**
-     * 设置ai策略
-     *
-     * @param strategy
-     */
-    public void setAiStrategy(GoBangAiStrategyEnum strategy) {
-        aiService.setAiStrategy(strategy);
-    }
-
-    /**
-     * 判断ai的下一步
-     *
-     * @return
-     */
-    public int[] nextAiStep() {
-        return aiService.nextStep(getBoardCopy(), getNowTurn());
+    public static void resetInstance() {
+        instance = new GoBangBoard();
     }
 
     /**

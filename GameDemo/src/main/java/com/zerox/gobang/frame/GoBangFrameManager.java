@@ -60,42 +60,50 @@ class GoBangFrame extends JFrame {
 //        int screenWidth = screenSize.width;
 //        int screenHeight = screenSize.height;
 //        setSize(screenWidth / 2, screenHeight / 2);
+        /// 设置icon
+//        Image img = new ImageIcon("icon.gif").getImage();
+//        setIconImage(img);
         setSize(750, 500);
-
         setTitle("五子棋");
         setLocationByPlatform(true);
 
-        JMenu optionMenu = new JMenu("游戏选项");
-        regretAction = new RegretAction("悔棋");
-        regretAction.setEnabled(false);
-        JMenuItem regretItem = optionMenu.add(regretAction);
-        regretItem.setAccelerator(KeyStroke.getKeyStroke("ctrl R"));
-        restartAction = new RestartAction("重新开始");
-        restartAction.setEnabled(false);
-        JMenuItem restartItem = optionMenu.add(restartAction);
-        restartItem.setAccelerator(KeyStroke.getKeyStroke("ctrl S"));
+        initMenu();
+        initTitlePanel();
+        initPopUp();
+        initBoardButtonPanel();
+        initInfoTextArea();
+    }
 
-        optionMenu.addSeparator();
+    private void initInfoTextArea() {
+        info = new JTextArea("【信息框】:欢迎来到五子棋！", 3, 40);
+        info.setEditable(false);
+        JScrollPane scrollPane = new JScrollPane(info);
+        add(scrollPane, BorderLayout.SOUTH);
+    }
 
-        optionMenu.add(new AbstractAction("退出") {
-            public void actionPerformed(ActionEvent event) {
-                System.exit(0);
+    private void initBoardButtonPanel() {
+        JPanel boardButtonPanel = new JPanel();
+        boardButtonPanel.setLayout(new GridLayout(15, 15));
+        for (int i = 0; i < 15; i++) {
+            for (int j = 0; j < 15; j++) {
+                JButton button = new JButton("");
+                button.addActionListener(new BoardButtonAction(i, j));
+                boardButtonPanel.add(button);
+                boardButtonRef[i][j] = button;
             }
-        });
+        }
+        boardButtonPanel.setComponentPopupMenu(popup);
+        add(boardButtonPanel, BorderLayout.CENTER);
+    }
 
-        // 菜单栏
-        JMenuBar menuBar = new JMenuBar();
-        setJMenuBar(menuBar);
-        menuBar.add(optionMenu);
-
+    private void initPopUp() {
         // 右键弹出框
         popup = new JPopupMenu();
         popup.add(regretAction);
         popup.add(restartAction);
+    }
 
-        /// 设置icon
-//        Image img = new ImageIcon("icon.gif").getImage();
-//        setIconImage(img);
+    private void initTitlePanel() {
         JPanel titlePanel = new JPanel();
         GridBagLayout titlePanelGridBagLayout = new GridBagLayout();
         titlePanel.setLayout(titlePanelGridBagLayout);
@@ -111,6 +119,13 @@ class GoBangFrame extends JFrame {
         restartButton.addActionListener(this::restartListenerLambda);
         titlePanel.add(restartButton, new GBC(1, 1).setInsets(10));
 
+        JPanel aiPanel = initAiPanel();
+        titlePanel.add(aiPanel, new GBC(2, 0, 2, 2));
+
+        add(titlePanel, BorderLayout.NORTH);
+    }
+
+    private JPanel initAiPanel() {
         JPanel aiPanel = new JPanel();
         aiPanel.setLayout(new GridBagLayout());
 
@@ -136,33 +151,38 @@ class GoBangFrame extends JFrame {
         firstEmptyStrategyButton = new JRadioButton("填充首空策略", false);
         firstEmptyStrategyButton.addActionListener(e -> goBangController.setBoardAiStrategy(GoBangAiStrategyEnum.FIRST_EMPTY));
         aiStrategyButtonGroup.add(firstEmptyStrategyButton);
-        aiPanel.add(randomStrategyButton, new GBC(0,1));
-        aiPanel.add(firstEmptyStrategyButton, new GBC(1,1));
+        aiPanel.add(randomStrategyButton, new GBC(0, 1));
+        aiPanel.add(firstEmptyStrategyButton, new GBC(1, 1));
 
         Border etched = BorderFactory.createEtchedBorder();
         Border aiPanelBorder = BorderFactory.createTitledBorder(etched, "AI选项");
         aiPanel.setBorder(aiPanelBorder);
-        titlePanel.add(aiPanel, new GBC(2, 0, 2, 2));
+        return aiPanel;
+    }
 
-        add(titlePanel, BorderLayout.NORTH);
+    private void initMenu() {
+        JMenu optionMenu = new JMenu("游戏选项");
+        regretAction = new RegretAction("悔棋");
+        regretAction.setEnabled(false);
+        JMenuItem regretItem = optionMenu.add(regretAction);
+        regretItem.setAccelerator(KeyStroke.getKeyStroke("ctrl R"));
+        restartAction = new RestartAction("重新开始");
+        restartAction.setEnabled(false);
+        JMenuItem restartItem = optionMenu.add(restartAction);
+        restartItem.setAccelerator(KeyStroke.getKeyStroke("ctrl S"));
 
-        JPanel boardButtonPanel = new JPanel();
-        boardButtonPanel.setLayout(new GridLayout(15, 15));
-        for (int i = 0; i < 15; i++) {
-            for (int j = 0; j < 15; j++) {
-                JButton button = new JButton("");
-                button.addActionListener(new BoardButtonAction(i, j));
-                boardButtonPanel.add(button);
-                boardButtonRef[i][j] = button;
+        optionMenu.addSeparator();
+
+        optionMenu.add(new AbstractAction("退出") {
+            public void actionPerformed(ActionEvent event) {
+                System.exit(0);
             }
-        }
-        boardButtonPanel.setComponentPopupMenu(popup);
-        add(boardButtonPanel, BorderLayout.CENTER);
+        });
 
-        info = new JTextArea("【信息框】:欢迎来到五子棋！", 3, 40);
-        info.setEditable(false);
-        JScrollPane scrollPane = new JScrollPane(info);
-        add(scrollPane, BorderLayout.SOUTH);
+        // 菜单栏
+        JMenuBar menuBar = new JMenuBar();
+        setJMenuBar(menuBar);
+        menuBar.add(optionMenu);
     }
 
     private void regretListenerLambda(ActionEvent e) {

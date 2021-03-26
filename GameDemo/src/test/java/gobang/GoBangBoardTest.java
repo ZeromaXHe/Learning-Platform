@@ -1,6 +1,6 @@
 package gobang;
 
-import com.zerox.gobang.entity.GoBangBoard;
+import com.zerox.gobang.dao.GoBangBoard;
 import org.junit.Test;
 
 /**
