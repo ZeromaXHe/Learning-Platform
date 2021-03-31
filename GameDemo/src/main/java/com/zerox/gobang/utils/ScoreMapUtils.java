@@ -13,11 +13,11 @@ import java.util.function.ToIntBiFunction;
  * @Modified By: zhuxi
  */
 public class ScoreMapUtils {
-    final static int SCORE_1 = 10;
-    final static int SCORE_2 = 100;
-    final static int SCORE_3 = 1000;
-    final static int SCORE_4 = 10000;
-    final static int SCORE_5 = 100000;
+    private final static int SCORE_1 = 10;
+    private final static int SCORE_2 = 100;
+    private final static int SCORE_3 = 1000;
+    private final static int SCORE_4 = 10000;
+    private final static int SCORE_5 = 100000;
 
     public static HashMap<Integer, Integer> initScoreMap() {
         HashMap<Integer, Integer> scoreMap = new HashMap<>();
