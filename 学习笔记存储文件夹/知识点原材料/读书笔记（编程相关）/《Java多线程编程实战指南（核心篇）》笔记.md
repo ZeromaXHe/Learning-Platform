@@ -460,6 +460,121 @@ synchronized (someObject) {
 
 调用Object.notify()所唤醒的线程仅是相应对象上的一个任意等待线程，所以这个被唤醒的线程可能不是我们想要唤醒的那个线程。因此，有时候我们需要借助Object.notify()的兄弟——Object.notifyAll()，它可以唤醒相应对象上的所有等待线程。由于等待线程和通知线程在其实现等待和通知的时候必须是调用同一个对象的wait方法、notify方法，而这两个方法都要求其执行线程必须持有该方法所属对象的内部锁，因此等待线程和通知线程是同步在同一对象之上的两种线程。
 
+> **注意**
+>
+> 等待线程和通知线程必须调用同一个对象的wait方法、notify方法来实现等待和通知。调用一个对象的notify方法所唤醒的线程仅是该对象上的一个任意等待线程。notify方法调用应该尽可能地放在靠近临界区结束的地方。
+
+> **扩展阅读** Object.wait()/notify()的内部实现
+>
+> 我们知道Java虚拟机会为每个对象维护一个入口集（Entry Set）用于存储申请该对象内部锁的线程。此外，Java虚拟机还会为每个对象维护一个被称为等待集（Wait Set）的队列，该队列用于存储该对象上的等待线程。Object.wait()将当前线程暂停并释放相应内部锁的同时会将当前线程（的引用）存入该方法所属对象的等待集中。执行一个对象的notify方法会使该对象的等待集中的一个任意线程被唤醒。被唤醒的线程仍然会停留在相应对象的等待集之中，直到该线程再次持有相应内部锁的时候（此时Object.wait()调用尚未返回）Object.wait()会使当前线程从其所在的等待集移除，接着Object.wait()调用就返回了。Object.wait()/notify()实现的等待/通知中的几个关键动作，包括将当前线程加入等待集、暂停当前线程、释放锁以及将唤醒后的等待线程从等待集中移除等，都是在Object.wait()中实现的。Object.wait()的部分内部实现相当于如下伪代码：
+>
+> ~~~java
+> public void wait() {
+>     // 执行线程必须持有当前对象对应的内部锁
+>     if(!Thread.holdsLock(this)){
+>         throws new IllegalMonitorStateException();
+>     }
+>     
+>     if(当前线程不在等待集中){
+>         // 将当前线程加入当前对象的等待集中
+>         addToWaitSet(Thread.currentThread());
+>     }
+>     
+>     atomic {
+>         // 原子操作开始
+>         // 释放当前对象的内部锁
+>         releaseLock(this);
+>         // 暂停当前线程
+>         block(Thread.currentThread()); // 语句①
+>         // 原子操作结束
+>     }
+>     
+>     // 再次申请当前对象的内部锁
+>     aquireLock(this); // 语句②
+>     // 将当前线程从当前对象的等待集中移除
+>     removeFromWaitSet(Thread.currentThread());
+>     return; // 返回
+> }
+> ~~~
+>
+> 等待线程在语句①被执行之后就被暂停了。被唤醒的线程在其占用处理器继续运行的时候会继续执行其暂停前调用的Object.wait()中的其他指令，即从上述代码中的语句②开始继续执行：先再次申请Object.wait()所属对象的内部锁，接着将当前线程从相应的等待集中移除，然后Object.wait()调用才返回！
+
+### 5.1.2 wait/notify的开销及问题
+
+下面我们看wait/notify实现的等待/通知时可能遇到的问题及其解决方法。
+
+- 过早唤醒（Wakeup too soon）问题。设一组等待/通知线程同步在对象someObject之上，初始状态下所有保护条件都不成立。接着，线程N1更新了共享遍历state1使得保护条件1得以成立，此时为了唤醒使用该保护条件的所有等待线程（线程W1和线程W2），N1执行了someObject.notifyAll()。由于someObject.notifyAll()唤醒的是someObject上的所有等待线程，因此这时线程W2也会被唤醒。然而W2所使用的保护条件2此时并没有成立，这就使得该线程被唤醒之后仍然需要继续等待。这种等待线程在其所需的保护条件并未成立的情况下被唤醒的现象就被称为过早唤醒（Wakeup too soon）。过早唤醒使得那些本来无须被唤醒的等待线程也被唤醒了，从而造成资源浪费。过早唤醒问题可以利用JDK 1.5 引入的java.util.concurrent.locks.Condition 接口来解决，5.2节会介绍该接口。
+- 信号丢失（Missed Signal）问题。如果等待线程在执行Object.wait() 前没有先判断保护条件是否已然成立，那么有可能出现这种情形——通知线程在该等待线程进入临界区之前就已经更新了相关共享变量，使得相应的保护条件成立并进行了通知，但是此时等待线程还没有被暂停，自然也就无所谓唤醒了。这就可能造成等待线程直接执行Object.wait()而被暂停的时候，该线程由于没有其他线程进行通知而一直处于等待状态。这种现象就相当于等待线程错过了一个本来“发送”给他的“信号”，因此被称为**信号丢失**（Missed Signal）。只要将对保护条件的判断和Object.wait()调用放在一个循环语句之中就可以避免上述场景的信号丢失。信号丢失的另外一个表现在应该调用Object.notify()的地方却调用了Object.notify()。比如，对于使用同一个保护条件的多个等待线程，如果通知线程在侦测到这个保护条件成立后调用的是Object.notify()，那么这些等待线程最多只有一个线程能够被唤醒，甚至一个也没有被唤醒——被唤醒的线程是Object.notify()所属对象上使用其他保护条件的一个等待线程！也就是说，尽管通知线程在调用Object.notify()前可能考虑（判断）了某个特定的保护条件是否成立，但是Object.notify()本身在其唤醒线程时是不考虑任何保护条件的！这就可能使得通知线程执行Object.notify()进行的通知对于使用相应保护条件的等待线程来说丢失了。这种情形下，避免信号丢失的一个方法是在必要的时候使用Object.notifyAll()来通知。总的来说，信号丢失本质上是一种代码错误，而不是Java标准库API自身的问题。
+- 欺骗性唤醒（Spurious Wakeup）问题。等待线程也可能在没有其他任何线程执行Object.notify()/notifyAll() 的情况下被唤醒。这种现象被称为**欺骗性唤醒**（Spurious Wakeup）。由于欺骗性唤醒的作用，等待线程被唤醒的时候该线程所需的保护条件可能仍然未成立，因为此时没有任何线程对相对共享变量进行过更新。可见，欺骗性唤醒也会导致过早唤醒。欺骗性唤醒虽然在实践中出现的概率非常低，但是由于操作系统是允许这种现象产生的，因此 Java 平台同样也允许这种现象的存在。欺骗性唤醒是Java平台对操作系统妥协的一种结果。只要我们将对保护条件的判断和Object.wait() 调用行放在一个循环语句之中，欺骗性唤醒就不会对我们造成实际的影响。
+  欺骗性唤醒和信号丢失问题的规避方法前文已经提及：将等待线程对保护条件的判断、Object.wait()的调用放在相应对象所引导的临界区中的一个循环语句之中即可。
+- 上下文切换问题。wait/notify的使用可能导致较多的上下文切换。
+  - 首先，等待线程执行Object.wait() 至少会导致该线程对相应对象内部锁的两次申请与释放。通知线程在执行Object.notify()/notifyAll() 时需要持有相应对象的内部锁，因此 Object.notify()/notifyAll() 调用会导致一次锁的申请。而锁的申请与释放可能导致上下文切换。
+  - 其次，等待线程从被暂停到唤醒这个过程本身就会导致上下文切换。
+  - 再次，被唤醒的等待线程在继续运行时需要再次申请相应对象的内部锁，此时等待线程可能需要和相应对象的入口集中的其他线程以及其他新来的活跃线程（即申请相应的内部锁且处于RUNNABLE状态的线程）争用相应的内部锁，而这又可能导致上下文切换。
+  - 最后，过早唤醒问题也会导致额外的上下文切换，这是因为被过早唤醒的线程仍然需要继续等待，即再次经历被暂停和唤醒的过程。
+
+以下方法有助于避免或者减少 wait/notify 导致过多的上下文切换。
+
+- 在保证程序正确性的前提下（5.1.3节会介绍），使用Object.notify() 替代 Object.notifyAll()。Object.notify()调用不会导致过早唤醒，因此减少了相应的上下文切换开销。
+- 通知线程在执行完 Object.notify()/notifyAll() 之后尽快释放相应的内部锁。这样可以避免被唤醒的线程在 Object.wait() 调用返回前再次申请相应内部锁时，由于该锁尚未被通知线程释放而导致该线程被暂停（以等待再次获得锁的机会）。
+
+### 5.1.3 Object.notify()/notifyAll()的选用
+
+Object.notify() 可能导致信号丢失这样的正确性问题，而 Object.notifyAll() 虽然效率不太高（把不需要唤醒的等待线程也给唤醒了），但是其在正确性方面有保障。因此实现通知的一种比较流行的保守性方法是优先使用 Object.notifyAll() 以保障正确性，只有在有证据表明使用Object.notify()足够的情况下才使用Object.notify()——Object.notify() 只有在下列条件全部满足的情况下才能够用于替代notifyAll方法。
+
+**条件1** 一条通知仅需要唤醒至多一个线程。这一点容易理解，但是光满足这一点还不足以用Object.notify() 去替代 Object.notifyAll()。在不同的等待线程可能使用不同的保护条件的情况下，Object.notify() 唤醒的一个任意线程可能并不是我们需要唤醒的那一个（种）线程。因此，这个问题还需要通过满足条件2来排除。
+
+**条件2** 相应对象的等待集中仅包含同质等待线程。所谓**同质等待线程**指这些线程使用同一个保护条件，并且这些线程在Object.wait() 调用返回之后的处理逻辑一致。最为典型的同质线程是使用同一个Runnable接口实例创建的不同线程（实例）或者从同一个Thread子类的new出来的多个实例。
+
+> **注意**
+>
+> Object.notify()唤醒的是其所属对象上的一个任意等待线程。Object.notify() 本身在唤醒线程时是不考虑保护条件的。 Object.notifyAll() 方法唤醒的是其所属对象上的所有等待线程。使用Object.notify() 替代 Object.notifyAll() 时需要确保以下两个条件同时得以满足：
+>
+> - 一次通知仅需要唤醒至多一个线程。
+> - 相应对象上的所有等待线程都是同质等待线程。
+
+### 5.1.4 wait/notify 与 Thread.join()
+
+Thread.join() 可以使当前线程等待目标线程结束之后才继续运行。Thread.join()还有另外一个如下声明的版本：
+
+~~~java
+public final void join(long millis) throws InterruptedException
+~~~
+
+join(long) 允许我们指定一个超时时间。如果目标线程没有在指定的时间内终止，那么当前线程也会继续运行。join(long) 实际上就是使用了 wait/notify 来实现的，如下所示：
+
+~~~java
+public final synchronized void join(long millis) throws InterruptedException {
+    long base = System.currentTimeMillis();
+    long now = 0;
+    
+    if(millis < 0){
+        throw new illegalArgumentException("timeout value is negative");
+    }
+    
+    if(millis == 0){
+        while(isAlive()){
+            wait(0);
+        }
+    } else {
+        while(isAlive()){
+            long delay = millis - now;
+            if(delay <= 0){
+                break;
+            }
+            wait(delay);
+            now = System.currentTimeMillis() - base;
+        }
+    }
+}
+~~~
+
+join(long) 是一个同步方法。它检测到目标线程未结束的时候会调用 wait 方法来暂停当前线程，直到目标线程已终止。这里，当前线程相当于等待线程，其所需的保护条件是“目标线程已终止”（Thread.isAlive()为false）。Java虚拟机会在目标线程的run方法运行结束后执行该线程（对象）的notifyAll方法来通知所有的等待线程。可见这里的目标线程充当了同步对象的角色，而Java虚拟机中notifyAll方法的执行线程则是通知线程。另外，join(long)正是按照清单5-2所展示的实现等待超时空控制的方法来使用 wait(long) 方法的。
+
+Thread.join() 调用相当于 Thread.join(0) 调用。
+
+## 5.2 Java条件变量
+
 
 
 # 第12章 Java多线程程序的性能调校
