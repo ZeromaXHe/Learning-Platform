@@ -2906,8 +2906,8 @@ Java 泛型的卓越特性之一是在虚拟机中泛型类型的擦除。令人
  作为一个简单的补救， 可以使用 getOrDefault 方法：
  `counts,put(word, counts.getOrDefault(word, 0)+ 1);`
 
- 另一种方法是首先调用 putlfAbsent 方法。只有当键原先存在时才会放入一个值。
- `counts.putlfAbsent (word, 0);`
+ 另一种方法是首先调用 putIfAbsent 方法。只有当键原先存在时才会放入一个值。
+ `counts.putIfAbsent (word, 0);`
  `counts.put (word, counts.get(word)+ 1); // Now we know that get will succeed`
 
  不过还可以做得更好。merge 方法可以简化这个常见的操作。如果键原先不存在，下面的调用：
