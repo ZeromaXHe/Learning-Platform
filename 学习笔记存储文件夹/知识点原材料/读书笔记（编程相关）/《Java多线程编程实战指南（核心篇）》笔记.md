@@ -405,6 +405,55 @@ public class SynchronizedMethodExample{
 
 Java虚拟机会为每个内部锁分配一个入口集（Entry Set），用于记录等待获得相应内部锁的线程。多个线程申请同一个锁的时候，只有一个申请者能够成为该锁的持有线程（即申请锁的操作成功），而其他申请者的申请操作会失败。这些申请失败的线程并不会抛出异常，而是会被暂停（生命周期状态变为BLOCKED）并被存入相应锁的入口集中等待再次申请锁的机会。入口集中的线程就被称为相应内部锁的等待线程。当这些线程申请的锁被其持有线程释放的时候，该锁的入口集中的一个任意线程会被Java虚拟机唤醒，从而得到再次申请锁的机会。由于Java虚拟机对内部锁的调度仅支持非公平调度，被唤醒的等待线程占用处理器运行时可能还有其他新的活跃线程（处于RUNNABLE状态，且未进入过入口集）与该线程抢占这个被释放锁，因此被唤醒的线程不一定就能成为该锁的持有线程。另外，Java虚拟机如何从一个锁的入口集中选择一个等待线程，作为下一个可以参与再次申请相应锁的线程，这个细节与Java虚拟机的具体实现有关：这个被选中的线程有可能是入口集中等待时间最长的线程，也可能是等待时间最短的线程，或者完全是随机的一个线程。因此，我们不能依赖这个具体的选择算法。
 
+# 第4章 牛刀小试：玩转线程
+
+## 4.5 合理设置线程数
+
+在本章的第一个案例中，工作者线程的数量是通过程序的参数指定的。线程数不宜过小，线程数过小可能导致无法充分利用处理器资源；线程数也不宜过大，线程数过大会增加上下文切换以及其他开销。那么，我们如何设置一个合理的线程数呢？在回答这个问题之前，我们先看一下线程数与多线程程序相对于单线程程序的提速（Speedup）之间的关系。
+
+### 4.5.1 Amdahl's定律
+
+Amdahl's定律（Amdahl's Law）描述了线程数与多线程程序相对于单线程程序的提速之间的关系。在一个处理器上一个时刻只能够运行一个线程的情况下，处理器的数量就等同于并行线程的数量。设处理器的数量为N，程序中必须串行（即无法并发化）的部分耗时占程序全部耗时的比率为P，那么将这样一个程序改为多线程程序，我们能够获得的理论上的最大提速$S_{max}$与N、P之间的关系就是Amdahl's 定律内容，如下4-2所示。
+$$
+S_{max} = \frac{1}{P+\frac{1-P}{N}}
+$$
+了解该公式的推导过程有助于我们更好地理解多线程编程的本质。我们知道，一个程序的算法中有些部分是可以并行化的，而有些部分则只能够是串行的。设P为这个程序的串行部分的耗时比率，T(1)为该程序的单线程版运行总耗时，T(N)为该程序的多线程版运行总耗时，那么将该程序由单线程改为多线程所得到的提速$S_{max}$可以表示为：
+$$
+S_{max} = \frac{T(1)}{T(N)}
+$$
+为方便起见，设T(1)为1，则该程序中的串行部分耗时为P，可并行部分耗时为1-P。将这个程序改为多线程程序的时候，该程序的可并行部分耗时会被N个并行线程平均分摊，因此该程序的多线程版的并行部分总耗时为(1-P)/N（串行部分仍然是P！）。由此，我们可以得出T(N) = P + (1-P)/N。将 T(N) 及 T(1) = 1 代入式（4-2）即可得到Amdahl‘s 定律的公式表示。
+
+从上述推导过程可以看出，多线程程序的提速主要来自多个线程对程序中可并行化部分的耗时均摊。
+
+由Amdahl's定律的公式可知：
+$$
+\lim_{N\rightarrow\infty} S_{max} = \lim_{N\rightarrow\infty} \frac{1}{P+\frac{1-P}{N}} = \frac{1}{P}
+$$
+即当N趋向于无穷大的时候，$S_{max}$趋向于1/P。由此可见，最终决定多线程程序提速的因素是整个计算中串行部分的耗时比率P，而不是线程数N！P的值越大，即程序中不可并行化的部分所占比率越大，那么提速越小。因此，为使多线程程序能够获得较大的提速，我们应该从算法入手，减少程序中必须串行的部分，而不是仅寄希望于增加线程数（或者处理器的数目）！
+
+### 4.5.2 线程数设置的原则
+
+设$N_{cpu}$表示一个系统的处理器数目，$N_{cpu}$的具体值可以通过如下Java代码获取：
+
+~~~java
+int nCPU = Runtime.getRuntime().availableProcessors();
+~~~
+
+线程数的合理值可以根据如下规则设置。
+
+- 对于CPU密集型线程，考虑到这类线程执行任务时消耗的主要是处理器资源，我们可以将这类线程的线程数设置为$N_{cpu}$个。因为CPU密集型线程也可能由于某些原因（比如缺页中断/Page Fault）而被切出，此时为了避免处理器资源浪费，我们也可以为这类线程设置一个额外的线程，即将线程数设置为$N_{cpu}+1$。
+- 对于I/O密集型线程，考虑到I/O操作可能导致上下文切换，为这样的线程设置过多的线程数会导致过多的额外系统开销。因此如果一个这样的工作者线程就足以满足我们的要求，那么就不要设置更多的线程数。例如，在本章的第2个实战案例中我们仅使用一个工作者线程去负责所有日志文件的读取。如果一个工作者线程仍然不够用，那么我们可以考虑将这类线程的数量设置为$2 \times N_{cpu}$。这是因为I/O密集型线程在等待I/O操作返回结果时是不占用处理器资源的，因此我们可以为每个处理器安排一个额外的线程以提高处理器资源的利用率。
+
+> **提示**
+>
+> 对于CPU密集型线程，线程数通常可以设置为$N_{cpu}+1$；对于I/O密集型线程，优先考虑将线程数设置为1，仅在一个线程不够用的情况下将线程数向$2\times N_{cpu}$靠近。
+
+商用软件往往会规定某个软件在其运行过程中对处理器的使用率不能超过某个阈值（如75%）。因此，如果要进一步“精确”地设置线程数，我们可能需要考虑目标处理器使用率，即我们期望软件运行过程中会保持多少平均CPU使用率。另外，如果任务本身是混合型而不太好将其拆分成CPU密集型和I/O密集型地子任务的话，也可以考虑不拆分。此时，我们可以参考式（4-5）来设置线程数：
+$$
+N_{threads} = N_{cpu} \times U_{cpu} \times (1+\frac{WT}{ST})
+$$
+其中，$N_{threads}$为线程数的合理大小，$N_{cpu}$为CPU数目，$U_{cpu}$为目标CPU使用率（$0 \lt U_{cpu} \leq 1$），WT（Wait Time）为程序花费在等待（例如等待I/O操作结果）上的时长，ST（Service Time）为程序实际占用处理器执行计算的时长。在实践中，我们可以使用jvisualvm提供的监控数据计算出WT/ST的值。
+
 # 第5章 线程间协作
 
 ## 5.1 等待与通知：wait/notify
@@ -576,6 +625,208 @@ Thread.join() 调用相当于 Thread.join(0) 调用。
 ## 5.2 Java条件变量
 
 
+
+# 第6章 保障线程安全的设计技术
+
+## 6.4 我有我地盘：线程持有对象
+
+如果多个线程需要共享同一个非线程安全对象，那么我们往往需要借助锁来保障线程安全。事实上，我们也可以选择不共享非线程安全对象——对于一个非线程安全对象，每个线程都创建一个该对象的实例，各个线程仅访问各自创建的实例，且一个线程不能访问另外一个线程创建的实例。这种各个线程创建各自的实例，一个实例只能被一个线程访问的对象就被称为**线程特有对象**（TSO，Thread Specific Object），相对应的线程就被称为该线程特有对象的**持有线程**。线程特有对象既保障了对非线程安全对象的访问的线程安全，又避免了锁的开销。另外，对于特定类型的线程特有对象，一个线程往往只需要该对象的一个实例，这个实例可以被该线程（同一个线程）所执行的多个方法（包括不同类的方法）共享，因此线程持有对象也有利于减少对象的创建次数。线程持有对象可能是有状态对象，但是由于这个对象并不会被多个线程共享，因此线程特有对象也具有固有的线程安全性。
+
+`ThreadLocal<T>`类相当于线程访问其线程特有对象的代理（Proxy），即各个线程通过这个对象可以创建并访问各自的线程特有对象，其类型参数T指定了相应线程特有对象的类型。一个线程可以使用不同的ThreadLocal实例来创建并访问其不同的线程特有对象。多个线程使用同一个`ThreadLocal<T>`实例所访问到的对象是类型T的不同实例，即这些线程各自的线程特有对象实例。因此，ThreadLocal类也可以理解为当前线程访问其线程特有对象的代理对象，这种代理与被代理的关系如图6-2所示
+
+~~~mermaid
+graph LR
+	subgraph ThreadLocal1
+		n11(.)
+		n12(.)
+		n13(.)
+	end
+	subgraph ThreadLocal2
+		n21(.)
+		n22(.)
+		n23(.)
+	end
+	线程1-->n11-.->tsoX1
+	线程1-->n21-.->tsoY1
+	线程2-->n12-.->tsoX2
+	线程2-->n22-.->tsoY2
+	线程3-->n13-.->tsoX3
+	线程3-->n23-.->tsoY3
+~~~
+
+从图6-2可以看出，ThreadLocal实例为每个访问它的线程（即当前线程）都关联了一个该线程的线程特有对象。换句话说，每个`ThreadLocal<T>`实例都有一个（且只有一个）当前线程的持有对象T的实例与之关联，这种关联关系就像一个变量总是有一个（且只有一个）值与之关联一样（尽量变量的值是可以改变的），因此ThreadLocal实例也被称为**线程局部变量**（Thread-local Variable）。ThreadLocal类的方法如表6-1所示。
+
+| 方法                       | 功能                                                         |
+| -------------------------- | ------------------------------------------------------------ |
+| public T get()             | 获取与该线程局部变量关联的当前线程的线程特有对象             |
+| public void set(T value)   | 重新关联该线程局部变量所对应的当前线程的线程持有对象         |
+| protected T initialValue() | 该方法的返回值（对象）就是初始状态下该线程局部变量所对应的当前线程的线程特有对象 |
+| public void remove()       | 删除该线程局部变量与相应的当前线程的线程特有对象之间的关联关系 |
+
+设tlVar为任意一个线程局部变量。初始状态下，tlVar并没有与之关联的线程特有对象。当一个线程初次执行tlVar.get()的时候，tlVar.get()会调用tlVar.initialValue()。tlVar.initialValue()的返回值就会成为tlVar所关联的当前线程（即tlVar.get()的执行线程）的线程特有对象。这个线程后续再次执行 tlVar.get() 所返回的线程特有对象始终都是同一个对象（即tlVar.initialValue()的返回值），除非这个线程中途执行了tlVar.set(T)。由于ThreadLocal的initialValue方法的返回值为null，因此要设置线程局部变量关联的初始线程特有对象。我们需要创建ThreadLocal的子类（通常是匿名子类）并在子类中覆盖（Override）initialValue方法，然后在该方法中返回初始线程特有对象。从Java 8开始，ThreadLocal 引入了一个名为withInitial的静态方法，该方法使得我们能够用一个Lambda表达式（返回值）作为相应线程局部变量所关联的初始线程特有对象。例如，清单6-7中的线程局部变量SDF的初始值可写作`ThreadLocal.withInitial(()->new SimpleDateFormat("yyyy-MM-dd"))`。
+
+使用ThreadLocal，我们可以将清单6-5中的非线程安全Servlet改造成线程安全的，如清单6-7所示。在这个例子中，ThreadLocal不仅使我们在无须借助锁的情况下实现了线程安全，还减少了对象创建的次数——doPost方法的各个执行线程各自仅创建各自的一个SimpleDateFormat实例。相反，如果我们直接在doPost方法中创建并使用SimpleDateFormat实例的话固然可以确保线程安全，但是那样就意味着每次执行doPost方法都会导致新的SimpleDateFormat实例被创建。
+
+~~~java
+public class ServletWithThreadLocal extends HttpServlet {
+    final static ThreadLocal<SimpleDateFormat> SDF = new ThreadLocal<SimpleDateFormat>() {
+        @Override
+        protected SimpleDateFormat initialValue() {
+            return new SimpleDateFormat("yyyy-MM-dd");
+        }
+    };
+    
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        final SimpleDateFormat sdf = SDF.get();
+        String strExpiryDate = req.getParameter("expirtyDate");
+        try (PrintWriter pwr = resp.getWritter()) {
+            sdf.parse(strExpiryDate);
+            // 省略其他代码
+            pwr.printf("[%s]expirtyDate:%s", Thread.currentThread().getName(), strExpiryDate);
+        } catch (ParseException e) {
+            throw new ServletException(e);
+        } // try结束
+    }
+}
+~~~
+
+线程局部变量通常是会被声明为某个类的静态变量，正如清单6-7所示。这是因为：如果把线程局部变量声明为某个类的实例变量，那么每创建该类的一个实例都会导致新的ThreadLocal实例被创建。这就可能导致当前线程中同一个类型的线程持有对象会被多次创建。而这即便不会导致错误，也会导致重复创建对象带来的浪费。
+
+> **注意**
+>
+> ThreadLocal实例通常会被作为某个类的静态字段使用。
+
+由于线程安全的对象内部往往需要使用锁，因此，多个线程共享线程安全的对象可能导致锁的争用。所以，有时候为了避免锁的争用导致的开销（主要是上下文切换），我们也特意将线程安全的对象作为线程特有对象来使用，从而避免了锁的开销，又减少了对象创建的次数。
+
+JDK 1.7中引入的标准库类java.util.concurrent.ThreadLocalRandom的初衷与该案例所要实现的目标相似。ThreadLocalRandom也是Random的一个子类，它相当于`ThreadLocal<Random>`。不过，ThreadLocalRandom所产生的随机数并非强随机数。
+
+### 6.4.1 线程特有对象可能导致的问题及其规避
+
+使用线程特有对象可能会导致如下几个问题：
+
+- 退化与数据错乱。由于线程和任务之间可以是一对多的关系，即一个线程可以先后执行多个任务，因此线程特有对象就相当于一个线程所执行的多个任务之间的共享对象。如果线程持有对象是个有状态对象且其状态会随着相应线程所执行的任务而改变，那么这个线程所执行的下一个任务可能“看到”来自前一个任务的数据，而这个数据可能与该任务并不匹配，从而导致数据错乱。因此，在一个线程可以执行多个任务的情况下（比如在生产者-消费者模式中）使用线程特有对象，我们需要确保每个任务的处理逻辑被执行前相应的线程特有对象的状态不受前一个被执行的任务影响。这通常可以通过在任务处理逻辑被执行前为线程局部变量重新关联一个线程特有对象（通过调用ThreadLocal.set(T)实现）或者重置线程特有对象的状态来实现。例如，清单6-9中的XAbstractTask子类的多个实例可以由一个线程负责执行（比如使用第5章的TaskRunner来执行，代码参见清单5-14），因此我们在preRun方法中将线程特有对象HashMap的内容清空，以避免前一个任务（XAbstratTask子类实例）执行时更改了线程特有对象的状态对当前执行的任务造成影响。从清单6-9中可以看出，在线程可以被重复使用来执行多个任务的情况下使用线程特有对象即使不会造成数据错乱，也可能导致这种线程特有对象实际上“退化”成为任务特有对象——被执行的任务可能更改了线程特有对象的状态，而这些状态一旦对其他任务可见又可能导致数据错乱，因此每个任务实际上需要的是状态会受该任务影响并且独立于其他任务的一个对象。
+
+  ~~~java
+  public abstract class XAbstractTask implements Runnable {
+      static ThreadLocal<HashMap<String, String>> configHolder = new ThreadLocal<HashMap<String, String>>() {
+          @Override
+          protected HashMap<String, String> initialValue() {
+              return new HashMap<String, String>();
+          }
+      };
+      
+      // 该方法总是会在任务处理逻辑被执行前执行
+      protected void preRun() {
+          // 清空线程持有对象HashMap实例，以保证每个任务执行前HashMap的内容是“干净”的
+          configHolder.get().clear();
+      }
+      
+      protected void postRun() {
+          // 什么也不做
+      }
+      
+      // 暴露给子类用于实现任务处理逻辑
+      protected abstract void doRun();
+      
+      @Override
+      public final void run() {
+          try {
+              preRun();
+              doRun();
+          } finally {
+              postRun();
+          }
+      }
+  }
+  ~~~
+
+- ThreadLocal可能导致内存泄漏、伪内存泄漏。在Web应用中使用ThreadLocal极易导致内存泄漏、伪内存泄漏的问题。下面以Tomcat服务器环境为例分析ThreadLocal可能导致内存泄漏、伪内存泄漏的原因，并在此基础上给出规避措施。
+
+  > **内存泄漏**（Memory Leak）指由于对象永远无法被垃圾回收导致其占用的Java虚拟机内存无法被释放。持续的内存泄漏会导致Java虚拟机可用内存逐渐减少，并最终可能导致Java虚拟机内存溢出（Out of Memory），直到Java虚拟机宕机。
+  >
+  > **伪内存泄漏**（Memory Pseudo-leak）类似于内存泄漏。所不同的是，伪内存泄漏中对象所占用的内存在其不再被使用后的相当长时间仍然无法被回收，甚至可能永远无法被回收。也就是说，伪内存泄漏中对象占用的内存空间可能会被回收，也可能永远无法被回收（此时，就变成了内存泄漏）。
+
+我们先简单了解一下ThreadLocal的内部实现机制。在Java平台中，每个线程（Thread实例）内部会维护一个类似HashMap的对象，我们称之为ThreadLocalMap。每个ThreadLocalMap内部会包含若干Entry（条目，一个键Key-值Value对）。因此，我们可以说每个线程都拥有若干这样的条目，相应的线程就被称为这些条目的**属主线程**。Entry的Key是一个ThreadLocal实例，Value是一个线程特有对象。因此，Entry的作用相当于为其属主线程建立起一个ThreadLocal实例与一个线程特有对象之间的对应关系。由于Entry对ThreadLocal实例的引用（通过Key引用）是一个弱引用（Weak Reference），因此它不会阻止被引用的ThreadLocal实例被垃圾回收。当一个ThreadLocal实例没有对其可达的（Reachable）强引用时，这个实例可以被垃圾回收，即其所在的Entry的Key会被置为null。此时，相应的Entry就成为**无效条目**（State Entry）。另一方面，由于Entry对线程特有对象的引用是强引用，因此如果无效条目本身有对它的可达强引用，那么无效条目也会阻止其引用的线程特有对象被垃圾回收。有鉴于此，当ThreadLocalMap中有新的ThreadLocal到线程特有对象的映射（对应）关系被创建（相当于有新的Entry被添加到ThreadLocalMap）的时候，ThreadLocalMap会将无效条目清理掉，这打破了无效条目对线程特有对象的强引用，从而使相应的线程特有对象能够被垃圾回收。但是，这个处理也有一个缺点——一个线程访问过线程局部变量之后如果该线程有对其可达的强引用，并且该线程在相当长时间内（甚至一直）处于非运行状态，那么该线程的ThreadLocalMap可能就不会有任何变化，因此相应的ThreadLocalMap中的无效条目也不会被清理，这就可能导致这些线程的各个Entry所引用的线程特有对象都无法被垃圾回收，即导致了伪内存泄漏。
+
+线程对象对ThreadLocal和线程特有对象的引用关系如图6-3所示（图中虚线表示弱引用，实线表示强引用）。
+
+~~~mermaid
+graph LR
+	Thread --threadLocals--> ThreadLocalMap --entries--> Entry -.Key.-> ThreadLocal
+	Entry --Value--> TSO
+~~~
+
+清单6-10展示了一个使用ThreadLocal并可能导致内存泄漏的Servlet。
+
+~~~java
+/**
+ * 该类可能导致内存泄漏！
+ */
+@WebServlet("/memoryLeak")
+public class ThreadLocalMemoryLeak extends HttpServlet {
+    private static final long serialVersionUID = 4364376277297114653L;
+    final static ThreadLocal<Counter> counterHolder = new ThreadLocal<Counter>(){
+        @Override
+        protected Counter initialValue() {
+            Counter tsoCounter = new Counter();
+            return tsoCounter;
+        }
+    };
+    
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        doProcess(req, resp);
+        try (PrintWriter pwr = resp.getWriter()) {
+            pwr.printf("Thread %s, counter:%d",
+                      Thread.currentThread().getName(),
+                      countHolder.get().getAndIncrement());
+        }
+    }
+    
+    void doProcess(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        counterHolder.get().getAndIncrement();
+        // 省略其他代码
+    }
+}
+
+// 非线程安全
+class Counter {
+    private int i = 0;
+    public int getAndIncrement() {
+        return i++;
+    }
+}
+~~~
+
+在Tomcat环境下，Web应用自身定义的类（Custom Class）由类加载器（Class Loader）WebAppClassLoader负责加载，而Java标准库类（例如HashMap）由类加载器StandardClassLoader负责加载。每个类（类本身也是一种对象）都会持有对加载该类的类加载器的强引用，并且类加载器本身又会持有其加载过的所有类的强引用。另外，每个对象（实例）都会持有对其相应类的强引用。由于Servlet类ThreadLocalMemoryLeak及其使用的线程持有对象Counter类都是由WebAppClassLoader负责加载的，并且counterHolder（`ThreadLocal<Counter>`）是ThreadLocalMemoryLeak的一个静态字段，因此我们可以得出图6-4所示的引用关系（图中实线表示强引用）。
+
+~~~mermaid
+graph TB
+	tsoCounter[tsoCounter:线程持有对象Counter] --class--> Counter[Counter:Web应用自定义类] --> WebAppClassLoader
+	subgraph t
+		WebAppClassLoader[WebAppClassLoader:类加载器] --loadedClasses--> ThreadLocalMemoryLeak[ThreadLocalMemoryLeak:Servlet子类] --静态变量--> countHolder[countHolder:线程局部变量]
+	end
+~~~
+
+由图6-4中可以看出，由Web应用自身定义的线程特有对象（tsoCounter）特有对线程局部变量（counterHolder）的可达利用。并且线程（对象）又持有对其线程特有对象的可达引用（如图6-3所示），因此，结合图6-3、图6-4中的引用关系可知，此时线程（对象）不仅持有了对其线程特有对象的可达强引用（见图6-4）。所以，只要系统中还存在对这个线程对象的可达强引用，即线程本身没有被垃圾回收掉，那么这个线程访问过的所有线程局部变量以及相应的线程特有对象都不会被垃圾回收掉！由于Tomcat中的一个工作者线程（负责调用Servlet.service方法进行请求处理，service方法最终会调用doXXX方法）可以为多个Web应用服务，因此当ThreadLocalMemoryLeak所在的Web应用被停止的时候（不是Web服务器被停止）执行过ThreadLocalMemoryLeak.service方法的工作者线程并不会被停止，故而这些线程对象并不会被垃圾回收掉，进而使其所引用的所有线程局部变量及相应的线程特有对象并不会被垃圾回收掉，即导致了内存泄漏。进一步来说，此时的内存泄漏还会导致与当前Web应用相应的类加载器WebAppClassLoader所加载的所有类（以及这些类的静态变量所引用的所有对象）都无法被垃圾回收，而这最终可能导致Java虚拟机的非堆内存（Non-heap）空间中的永久代（Permanent Generation， Java 8 中它被元数据空间 Metaspace 所取代）内存溢出（Out of memory），即Java虚拟机会抛出java.lang.OutOfMemoryError(具体消息为“PermGen space”)。所幸的是，Apache Tomcat以及IBM WebSphere Application Server都提供了一套内存泄漏的检查机制以及一定程度的自动规避机制（不过，我们最好不要依赖于这种自动规避机制）。
+
+如果线程局部变量关联的线程特有对象是一个Java标准库类（如清单6-7所使用的java.text.SimpleDateSimple）实例，那么由于Java 标准库类是由类加载器StandardClassLoader加载的，StandardClassLoader并不会持有对应用自身定义的类（ThreadLocalMemoryLeak）的引用，因此图6-4所示的引用关系中虚线框中的引用关系并不存在，即导致上述内存泄漏的前提不满足。所以，线程局部变量关联的线程特有对象类型如果是 Java 标准库类，那么它并不会导致内存泄漏。但是，由于图6-3中的引用关系——线程（对象）持有对线程特有对象（TSO）的可达强引用，因此只要相应的线程（对象）没有被垃圾回收掉，那么相应的线程特有对象也不会被垃圾回收掉。可见，这种情况下，线程局部变量可能导致伪内存泄漏。
+
+由于ThreadLocal可能导致内存泄漏、伪内存泄漏的最小前提是线程（对象）持有对线程特有对象的可达强引用（见图6-3中的实线所表示的引用关系）。因此，我们只要打破这种引用，即通过在当前线程中调用ThreadLocal.remove()将线程特有对象从其所属的Entry中剥离（清理），便可以使线程特有对象以及线程局部变量都可以被垃圾回收。如果我们仅仅是打破线程特有对象对ThreadLocal的引用关系（如图6-4所示），那么只有线程局部变量可以被垃圾回收，而伪内存泄漏仍然存在，即线程特有对象可能仍然无法被来及回收。
+
+对于同一个ThreadLocal实例，ThreadLocal.remove()能够奏效的前提是，其执行线程与ThreadLocal.get()/set(T) 的执行线程必须是同一个线程。由于ThreadLocal.get()/remove()/set(T) 这几个方法都是针对当前线程（即这些方法的执行线程）的，因此即使是针对同一个ThreadLocal实例，我们也无法通过在一个线程中调用ThreadLocal.remove()来将另外一个线程的线程特有对象从所属的Entry中剥离。换而言之，我们无法通过在一个线程中执行ThreadLocal.remove()来规避另外一个线程因使用ThreadLocal而导致的伪内存泄漏！
+
+在Web应用中使用线程特有对象可能导致线程持有对象的“退化”：在上述例子中，为了避免ThreadLocal导致的伪内存泄漏（或内存泄漏），我们在每个请求处理结束后都将该请求的处理线程的线程特有对象（Counter实例）清理掉。因此，不同的请求即使是先后由同一个（任意的）服务器工作者线程来负责处理的，这个（任意的）线程每次执行ThreadLocalMemoryLeak.doGet方法（以对请求进行处理）的时候都会创建新的Counter实例。这就意味着：首先，不同的服务器工作者线程不会访问相同的Counter实例，即Counter实例不会被多个服务器工作者线程共享，这说明该例子对Counter的使用方式（线程局部变量）与直接将Counter实例定义为一个静态变量（`final static Counter COUNTER = new Counter();`）还是不同的。其次，这些服务器工作者线程所访问的线程特有对象（Counter实例）实际上已“退化”成“请求特有对象”——每一个请求都对应一个Counter实例。
+
+### 6.4.2 线程特有对象的典型应用场景
+
+典型应用场景如下。
+
+- **场景一** 需要使用非线程安全对象，但又不希望因此而引入锁。如果多个线程需要使用非线程安全的对象，而我们又不希望该对象被多个线程共享（因为共享往往意味着需要引入锁以保证线程安全），此时可以使用线程特有对象，使得各个线程拥有其特有的非线程安全对象实例。
+- **场景二** 使用线程安全对象，但希望避免其使用的锁的开销和相关问题。线程安全的对象虽然可以被多个线程共享，但是由于其可能使用了锁来保证线程安全，而某些情况下我们可能不希望看到锁的开销以及由锁可能引起的相关问题（如死锁）。此时，我们可以将线程安全对象当作非线程安全的对象来看待。因此，这种场景就转化成场景一。只不过此时使用线程特有对象的主要意图在于避免锁的开销，当然线程安全也是由保障的。
+- **场景三** 隐式参数传递（Implicit Parameter Passing）。线程特有对象在一个具体的线程中，它是线程全局可见的。一个类的方法中设置的线程特有对象对于该方法调用的任何其他方法（包括其他类的方法）都是可见的。这就可以形成隐式传递参数的效果，即一个类的方法调用另一个类的方法时，前者向后者传递数据可以借助ThreadLocal而不必通过方法参数传递。不过，也有的观点认为隐式参数传递使得系统难于理解。隐式参数传递的实现通常是使用一个只包括静态方法的类或者单例类（包装类）来封装对线程特有对象的访问，其他相应访问线程特有对象的代码只需要调用包装类的静态方法或者实例方法即可以访问线程特有对象。
+- **场景四** 特定于线程的单例（Singleton）模式。广为使用的单例模式所实现的效果是在一个Java虚拟机中的一个类加载器下某个类有且只有一个实例。如果我们希望对于某个类每个线程有且仅有该类的一个实例，那么就可以使用线程持有对象。
 
 # 第12章 Java多线程程序的性能调校
 
