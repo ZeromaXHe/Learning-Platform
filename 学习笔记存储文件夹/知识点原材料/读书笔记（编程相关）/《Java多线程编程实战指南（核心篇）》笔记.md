@@ -624,6 +624,322 @@ Thread.join() 调用相当于 Thread.join(0) 调用。
 
 ## 5.2 Java条件变量
 
+总的来说，Object.wait()/notify()过于底层，并且还存在过早唤醒问题以及Object.wait(long)无法区分其返回是由于等待超时还是被通知线程唤醒等问题。但是，了解wait/notify 有助于我们理解和维护现有系统，以及学习和使用JDK 1.5 中引入的新的标准库类 java.util.concurrent.locks.Condition 接口。
+
+Condition接口可作为wait/notify的替代品来实现等待/通知，它为解决过早唤醒问题提供了支持，并解决了Object.wait(long) 不能区分其返回是否是由等待超时而导致的问题。Condition接口定义的await方法、signal方法和signalAll方法分别相当于Object.wait()、Object.notify() 和 Object.notifyAll()。
+
+Lock.newCondition() 的返回值就是一个Condition实例，因此调用任意一个显式锁实例的newCondition 方法可以创建一个相应的Condition接口。Object.wait()/notify()要求其执行线程持有创建该Condition实例的显式锁。Condition实例也被称为**条件变量**（Condition Variable）或者**条件队列**（Condition Queue），每个Condition实例内部都维护了一个用于存储等待线程的队列（等待队列）。设 cond1 和 cond2 是两个不同的Condition实例，一个线程执行cond1.wait()会导致其被暂停（线程生命周期状态变更为WAITING）并被存入cond1的等待队列。cond1.signal() 会使 cond1 的等待队列中的一个任意线程被唤醒。cond1.signalAll()会使cond1的等待队列中的所有线程被唤醒，而cond2的等待队列中的任何一个线程不受此影响。
+
+Condition接口的使用方法与wait/notify 的使用方法相似，如下代码模板所示：
+
+~~~java
+class ConditionUsage {
+    private final Lock lock = new ReentrantLock();
+    private final Condition condition = lock.newCondition();
+    public void aGuaredMethod() throws InterruptedException {
+        lock.lock();
+        try {
+            while (保护条件不成立) {
+                condition.await();
+            }
+            // 执行目标动作
+            doAction();
+        } finally {
+            lock.unlock();
+        }
+    }
+    
+    private void doAction() {
+        // ...
+    }
+    
+    public void anNotificationMethod() throws InterruptedException {
+        lock.lock();
+        try {
+            // 更新共享变量
+            changeState();
+            condition.signal();
+        } finally {
+            lock.unlock();
+        }
+    }
+    
+    private void changeState() {
+        // ...
+    }
+}
+~~~
+
+可见，Condition.await()/signal() 的执行线程需要持有创建相应条件变量的显式锁。对保护条件的判断、Condition.await()的调用也同样放在一个循环语句之中，并且该循环语句与目标动作的执行放在同一个显示锁所引导的临界区之中，这同样也是考虑到了欺骗性唤醒问题、信号丢失问题。Condition.await() 与 Object.wait() 类似，它使当前线程暂停的同时也使当前线程释放其持有的相应显式锁，并且这时 Condition.await() 调用也同样未返回。被唤醒的等待线程继续运行的时候也需要再次申请相应的显式锁，被唤醒的等待线程再次获得相应的显式锁后 Condition.await() 调用才返回。上述模板代码中的 aGuaredMethod 方法是一个受保护方法，anNotificationMethod 方法是一个通知方法。
+
+应用代码是这样解决过早唤醒问题的：在应用代码这一层次上建立保护条件与条件变量之间的对应关系，即让使用不同保护条件的等待线程调用不同的条件变量的await方法来实现其等待；并让通知线程在更新了共享变量之后，仅调用涉及了这些共享变量的保护条件所对应的条件变量的signal/signalAll 方法来实现通知。
+
+> **注意**
+>
+> Condition接口本身只是对解决过早唤醒问题提供了支持。要真正解决过早唤醒问题，我们需要通过应用代码维护保护条件与条件变量之间的对应关系，即使用不同的保护条件的等待线程需要调用不同的条件变量的await方法来实现其等待，并使通知线程在更新了相关共享变量之后，仅调用与这些共享变量有关的保护条件所对应的条件变量的signal/signalAll 方法来实现通知。
+
+Condition接口还解决了 Object.wait(long) 存在的问题 —— Object.wait(long) 无法区分其返回是由于等待超时还是被通知的。 Condition.awaitUtil(Date deadline) 可以用于实现带超时时间限制的等待，并且该方法的返回值能够区分该方法调用是由于等待超时而返回还是由于其他线程执行了相应条件变量的signal/signalAll方法而返回。Condition.awaitUtil(Date deadline)的唯一参数 deadline 表示等待的最后期限（Deadline）。过了这个时间点就算等待超时。Condition.awaitUtil(Date) 返回值 true表示进行的等待尚未达到最后期限，即此时方法的返回是由于其他线程执行了相应条件变量的signal/signalAll 方法。由于Condition.await()/awaitUtil(Date) 与 Object.wait() 类似，等待线程因执行Condition.awaitUtil(Date) 而被暂停的同时，其持有的相应显式锁（即创建相应条件变量的显式锁）也会被释放，等待线程被唤醒之后得以继续运行时需要再次申请相应的显式锁，然后等待线程对Condition.await()/awaitUtil(Date) 的调用才能够返回。在等待线程被唤醒到其再次申请相应的显式锁的这段时间内，其他线程（或者通知线程本身）可能已经抢先获得相应的显式锁并在其临界区中更新了相应共享变量而使得等待线程所需的保护条件重新不成立。因此，Condition.awaitUtil(Date) 返回 true（等待未超时）的情况下我们可以选择继续等待，如清单5-3所示。
+
+~~~java
+public class TimeoutWaitWithCondition {
+    private static final Lock lock = new ReentrantLock();
+    private static final Condition condition = lock.newCondition();
+    private static boolean ready = false;
+    protected static final Random random = new Random();
+    
+    public static void main(String[] args) throws InterruptedException {
+        Thread t = new Thread() {
+            @Override
+            public void run() {
+                for (;;) {
+                    lock.lock();
+                    try {
+                        ready = random.nextInt(100) < 5 ? true : false;
+                        if (ready) {
+                            condition.signal();
+                        }
+                    } finally {
+                        lock.unlock();
+                    }
+                    
+                    // 使当前线程暂停一段（随机）时间
+                    Tools.randomPause(500);
+                } // for 循环结束
+            }
+        };
+        t.setDaemon(true);
+        t.start();
+        waiter(1000);
+    }
+    
+    public static void waiter(final long timeOut) throws InterruptedException {
+        if (timeOut < 0) {
+            throw new IllegalArgumentException();
+        }
+        // 计算等待的最后期限
+        final Date deadline = new Date(System.currentTimeMillis() + timeOut);
+        // 是否继续等待
+        boolean continueToWait = true;
+        lock.lock();
+        try {
+            while (!ready) {
+                Debug.info("still not ready, continue to wait:%s", continueToWait);
+                // 等待未超时，继续等待
+                if (!continueToWait) {
+                    // 等待超时退出
+                    Debug.error("Wait timed out, unable to execution target action!");
+                    return;
+                }
+                continueToWait = condition.awaitUtil(deadline);
+            } // while 循环结束
+            
+            // 执行目标动作
+            guarededAction();
+        } finally {
+            lock.unlock();
+        }
+    }
+    
+    private static void guarededAction() {
+        Debug.info("Take some action.");
+        // ...
+    }
+}
+~~~
+
+在上述代码中，我们根据系统当前时间和等待超时时间限制（timeOut）来计算出等待的最后期限（deadline）,并以此为参数去调用Condition.awaitUtil(Date)。这里Condition.awaitUtil(Date) 调用与 Condition.await() 调用一样，也要放在一个循环语句之中。如果 Condition.awaitUtil(Date) 调用返回 false（表示等待超时），那么等待方法就直接返回，否则等待方法可以继续等待。
+
+使用条件变量所产生的开销与wait/notify 方法基本相似；不过由于条件变量的使用可以避免过早唤醒问题，因此其使用导致的上下文切换要比 wait/notify 少一些。
+
+## 5.3 倒计时协调器：CountDownLatch
+
+Thread.join() 实现的是一个线程等待另外一个线程结束。有时候一个线程可能只需要等待其他线程执行的特定操作结束即可，而不必等待这些线程终止。当然，此时我们也可以使用条件变量来实现。不过，此时我们可以使用更加直接的工具类——java.util.concurrent.CountDownLatch。
+
+CountDownLatch 可以用来实现一个（或者多个）线程等待其他线程完成一组特定的操作之后才继续运行。这组操作被称为**先决操作**。
+
+CountDownLatch 内部会维护一个用于表示未完成的先决操作数量的计数器。CountDownLatch.countDown()每被执行一次就会使相应实例的计数器值减少1。CountDownLathc.await() 相当于一个受保护方法，其保护条件为“计数器值为0”（代表所有先决操作已执行完毕），目标操作是一个空操作。因此，当计数器值不为0时 CountDownLatch.await() 的执行线程会被暂停，这些线程就被称为相应 CountDownLatch 上的等待线程。CountDownLatch.countDown() 相当于一个通知方法，它会在计数器值达到 0 的时候唤醒相应实例上的所有等待线程。计数器的初始值是在CountDownLatch的构造参数中指定的，如下声明所示：
+
+~~~java
+public CountDownLatch(int count)
+~~~
+
+count 参数用于表示先决操作的数量或者需要被执行的次数。当计数器的值达到 0 之后，该计数器的值就不再发生变化。此时，调用CountDownLatch.countDown() 并不会导致异常的抛出，并且后续执行 CountDownLatch.await()的线程也不会被暂停。因此，CountDownLatch的使用是一次性的：一个CountDownLatch实例只能够实现一次等待和唤醒。
+
+可见，CountDownLatch内部封装了对“全部先决操作已执行完毕”（计数器值为0）这个保护条件的等待与通知逻辑，因此客户端代码在使用CountDownLatch实现等待/通知的时候调用await、countDown方法都无须加锁。
+
+~~~java
+public class ServerStarter {
+    public static void main(String[] args) {
+        // 省略其他代码
+        
+        // 启动所有服务
+        ServiceManager.startServices();
+        
+        // 执行其他操作
+        
+        // 在所有其他操作执行结束后，检查服务启动状态
+        boolean allIsOK;
+        // 检测全部服务的启动状态
+        allIsOK = ServiceManager.checkServiceStatus();
+        
+        if (allIsOK) {
+            System.out.println("All services were successfully started!");
+            // 省略其他代码
+        } else {
+            // 个别服务启动失败，退出JVM
+            System.err.println("Some service(s) failed to start, exiting JVM...");
+            System.exit(1);
+        }
+        // ...
+    }
+}
+~~~
+
+~~~java
+public class ServiceManager {
+    static volatile CountDownLatch latch;
+    static Set<Service> services;
+    
+    public static void startServices() {
+        services = getServices();
+        for(Service service: services) {
+            service.start();
+        }
+    }
+    
+    public static boolean checkServiceStatus() {
+        boolean allIsOK = true;
+        // 等待服务启动结束
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            return false;
+        }
+        
+        for (Service service : services){
+            if(!service.isStarted()){
+                allIsOK = false;
+                break;
+            }
+        }
+        
+        return allIsOK;
+    }
+    
+    static Set<Service> getServices() {
+        // 模拟实际代码
+        latch = new CountDownLatch(3);
+        HashSet<Service> servicesSet = new HashSet<Service>();
+        servicesSet.add(new SampleServiceC(latch));
+        servicesSet.add(new SampleServiceA(latch));
+        servicesSet.add(new SampleServiceB(latch));
+        return servicesSet;
+    }
+}
+~~~
+
+~~~java
+public abstract class AbstractService implements Service {
+    protected boolean started = false;
+    protected final CountDownLatch latch;
+    
+    public AbstractService(CountDownLatch latch) {
+        this.latch = latch;
+    }
+    
+    @Override
+    public boolean isStarted() {
+        return started;
+    }
+    
+    // 留给子类实现的抽象方法，用于实现服务器的启动逻辑
+    protected abstract void doStart() throws Exception;
+    
+    @Override
+    public void start() {
+        new ServiceStarter().start();
+    }
+    
+    @Override
+    public void stop() {
+        // 默认什么也不做
+    }
+    
+    class ServiceStarter extends Thread {
+        @Override
+        public void run() {
+            final String serviceName = AbstractService.this.getClass().getSimpleName();
+            Debug.info("Starting %s", serviceName);
+            try {
+                doStart();
+                started = true;
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                latch.countDown();
+                Debug.info("Done Starting %s", serviceName);
+            }
+        }
+    }
+}
+~~~
+
+如果CountDownLatch内部计数器由于程序的错误而永远无法达到0，那么相应实例上的等待线程会一直处于WAITING状态。避免该问题的出现有两种方法。
+
+其一，确保所有CountDownLatch.countDown() 调用都位于代码中正确的位置。例如本案例，如果我们把CountDownLatch.countDown() 调用放在 doStart() 调用之后而不是finally块中（见清单5-6），那么某个服务启动过程中出现异常（如运行时异常）会导致main线程执行到ServiceManager.checkServiceStatus()时，该线程一直处于WAITING状态。
+
+其二，等待线程在等待先决操作完成的时候指定一个时间限制。此时我们可以使用CountDownLatch.await() 的另外一个版本，其声明如下：
+
+~~~java
+public boolean await(long timeout, TimeUnit unit) throws InterruptedException
+~~~
+
+CountDownLatch.await(long, TimeUnit) 允许指定一个超时时间，在该时间内如果相应CountDownLatch 实例的计数器值仍然未达到 0， 那么所有执行该实例的await 方法的线程都会被唤醒。该方法的返回值可用于区分其返回是否是由于等待超时。
+
+> **注意**
+>
+> CountDownLatch 内部计数器值达到0后其值就恒定不变，后续执行该CountDownLatch实例的await方法的任何一个线程都不会被暂停。为了避免等待线程永远被暂停，CountDownLatch.countDown()调用必须放在代码中总是可以被执行到的地方，例如finally块中。
+
+对于同一个CountDownLatch 实例 latch，latch.countDown() 的执行线程在执行该方法之前所执行的任何内存操作对等待线程在latch.await() 调用返回之后的代码是可见的且有序的。
+
+前文我们说过CountDownLatch 的构造器中的参数既可以表示先决操作的数量，也可以表示先决操作需要被执行的次数。在上述实战案例中，CountDownLatch 的构造器中的参数的含义就属于前者。而后者表示我们可以在一个线程中多次调用同一个CountDownLatch 实例的countDown 方法，以使相应实例的内部计数器值达到 0，如清单5-7所示。
+
+~~~java
+public class CountDownLatchExample {
+    private static final CountDownLatch latch = new CountDownLatch(4);
+    private static int data;
+    
+    public static void main(String[] args) throws InterruptedException {
+        Thread workerThread = new Thread() {
+            @Override
+            public void run() {
+                for (int i = 1; i < 10; i++) {
+                    data = i;
+                    latch.countDown();
+                    // 使当前线程暂停（随机）一段时间
+                    Tools.randomPause(1000);
+                }
+            }
+        };
+        workerThread.start();
+        latch.await();
+        Debug.info("It's done. data=%d", data);
+    }
+}
+~~~
+
+我们在创建 CountDownLatch 实例 latch 的时候指定的构造器参数为4。尽管 latch.countDown() 一共会被子线程workerThread 执行 10 次，但是该程序的输出总是如下：
+
+~~~
+It's done. data=4
+~~~
+
+这里程序输出的 data 为 4 而不是 10 是由于：首先， latch.countDown() 被 workerThread 执行了 4 次之后，main 线程对 latch.countDown() 的调用就返回了，从而使该线程被唤醒。其次，workerThread 在执行 latch.countDown() 前所执行的操作（更新共享变量 data）的结果对等待线程（main 线程）从 latch.await() 返回之后的代码可见，因此 main 线程被唤醒时能够读取到此前 workerThread 在 latch.countDown() 调用返回前的操作结果——data被更新为 4。
+
+这里，latch.countDown() 被 workerThread 执行的次数大于4次并不会导致异常，也不会导致latch内部状态（计数器值）的变更。
+
+## 5.4 栅栏（CyclicBarrier）
+
 
 
 # 第6章 保障线程安全的设计技术
@@ -827,6 +1143,10 @@ graph TB
 - **场景二** 使用线程安全对象，但希望避免其使用的锁的开销和相关问题。线程安全的对象虽然可以被多个线程共享，但是由于其可能使用了锁来保证线程安全，而某些情况下我们可能不希望看到锁的开销以及由锁可能引起的相关问题（如死锁）。此时，我们可以将线程安全对象当作非线程安全的对象来看待。因此，这种场景就转化成场景一。只不过此时使用线程特有对象的主要意图在于避免锁的开销，当然线程安全也是由保障的。
 - **场景三** 隐式参数传递（Implicit Parameter Passing）。线程特有对象在一个具体的线程中，它是线程全局可见的。一个类的方法中设置的线程特有对象对于该方法调用的任何其他方法（包括其他类的方法）都是可见的。这就可以形成隐式传递参数的效果，即一个类的方法调用另一个类的方法时，前者向后者传递数据可以借助ThreadLocal而不必通过方法参数传递。不过，也有的观点认为隐式参数传递使得系统难于理解。隐式参数传递的实现通常是使用一个只包括静态方法的类或者单例类（包装类）来封装对线程特有对象的访问，其他相应访问线程特有对象的代码只需要调用包装类的静态方法或者实例方法即可以访问线程特有对象。
 - **场景四** 特定于线程的单例（Singleton）模式。广为使用的单例模式所实现的效果是在一个Java虚拟机中的一个类加载器下某个类有且只有一个实例。如果我们希望对于某个类每个线程有且仅有该类的一个实例，那么就可以使用线程持有对象。
+
+## 6.5 装饰器模式
+
+
 
 # 第12章 Java多线程程序的性能调校
 
