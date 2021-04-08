@@ -1189,3 +1189,299 @@ It is good practice to use the property change support-based constructors for ma
 One last thing to mention is that in Listing 3-25 you’ll also notice the getter and setter methods are final. Making the getter and setter final prevents any derived classes from overriding and possibly changing the underlying property
 
 ### Property Change Support
+
+*Property change support* is the ability to add handler code that will respond when a property changes. JavaFX property objects contain an addListener() method. This method will accept two types of functional interfaces, ChangeListener and InvalidationListener. Recall that functional interfaces are single abstract methods which are expressed using the Java lambda syntax. All JavaFX properties are descendants of the ObservableValue and Observable interfaces (method overloading), which provide the addListener() methods for ChangeListener and InvalidationListener, respectively. One last thing to point out is that it is important to clean up listeners by removing them. To remove them you will invoke the removeListener() method by passing into it a referenced (named) listener as opposed to an anonymous inner class or anonymous lambda expression.
+
+Listing 3-27 shows how to create a ChangeListener to be registered with a property. As the property’s value changes, the change() method will be invoked. I’ve provided the implementations for both the anonymous inner class and lambda expression-style syntax for you to compare.
+
+~~~java
+SimpleIntegerProperty xProperty = new SimpleIntegerProperty(0);
+
+// Adding a change listener (anonymous inner class)
+xProperty.addListener(new ChangeListener<Number>(){
+    @Override
+    public void changed(ObservableValue<? extends Number> ov, Number oldVal, Number newVal) {
+        // code goes here
+    }
+});
+
+// Adding a change listener (lambda expression)
+xProperty.addListener((ObservableValue<? extends Number> ov, Number oldVal, Number newVal) -> {
+    // code goes here
+});
+~~~
+
+Listing 3-28 shows how to create an InvalidationListener to be registered with a property. As the property’s value changes, the invalidated () method will be invoked. I’ve provided the implementations for both the anonymous inner class and lambda expression-style syntax for you to compare.
+
+~~~java
+// Adding a invalidation listener (anonymous inner class)
+xProperty.addListener(new InvalidationListener() {
+    @Override
+    public void invalidated(Observable o) {
+        // code goes here
+    }
+});
+
+// Adding a invalidation listener (lambda expression)
+xProperty.addListener((Observable o) -> {
+    // code goes here
+});
+~~~
+
+Often developers become confused about the difference between a ChangeListener and an InvalidationListener. In Listing 3-28 you’ll notice that using a ChangeListener you will get the Observable (ObservableValue), the old value, and the new value, while using the InvalidationListener only gets the Observable object (property).
+
+In the Javadoc documentation, the difference between a ChangeListener and InvalidationListener is described as follows:
+
+“A change event indicates that the value has changed. An invalidation event is generated, if the current value is not valid anymore. This distinction becomes important, if the *ObservableValue* supports lazy evaluation, because for a lazily evaluated value one does not know if an invalid value really has changed until it is recomputed. For this reason, generating change events requires eager evaluation while invalidation events can be generated for eager and lazy implementations.”
+
+The InvalidationListener provides a way to mark values as invalid but does not recompute the value until it is needed. This is often used in UI layouts or custom controls, where you can avoid unnecessary computations when nodes don’t need to be redrawn/repositioned during a layout request or draw cycle. When using the ChangeListener, you normally want eager evaluation such as the validation of properties on a form-type application. That doesn’t mean you can’t use InvalidationListeners for validation of properties; it just depends on your performance requirements and exactly when you need the new value to be recomputed (evaluated). When you access the observable value, it causes the InvalidationListener to be eager.
+
+## Binding
+
+Simply put, binding has the idea of at least two values (properties) being synchronized. This means that when a dependent variable changes, the other variable changes. JavaFX provides many binding options that enable the developer to synchronize between properties in domain objects and GUI controls. In this section you will learn about three binding strategies when binding property objects.
+
+In this section you will be focusing on the following JavaFX API packages:
+
+- javafx.beans.binding.*
+- javafx.beans.property.*
+
+Binding of properties is quite easy to do. The only requirement is that the property invoking the bind must be a read/writeable property. To bind a property to another property, you will invoke the bind() method. This method will bind in one direction (unidirectional). For instance, when property A binds to property B the change in property B will update property A, but not the other way. If A is bound to B you can’t update A, as you’ll get a RuntimeException: A bound value cannot be set.
+
+The following are three additional binding strategies to consider using in JavaFX’s Properties API:
+
+- Bidirectional binding on a Java Bean
+- High-level binding using the Fluent API
+- Low-level binding using javafx.beans.binding.* binding objects
+
+### Bidirectional Binding
+
+Bidirectional binding allows you to bind properties with the same type allowing changes on either end while keeping a value synchronized. When binding bi-directionally, it’s required that both properties must be read/writable. It’s pretty easy to bind two properties bidirectionally through the use of the bindBidirectional() method. To demonstrate, I’ve created a simple example. 
+
+Listing 3-29 is a Contact bean having a property firstName that is bound bidirectionally to a local variable fname of type StringProperty.
+
+~~~java
+Contact contact = new Contact("John", "Doe");
+StringProperty fname = new SimpleStringProperty();
+fname.bindBidirectional(contact.firstNameProperty());
+
+contact.firstNameProperty().set("Play");
+fname.set("Jane");
+
+System.out.println("contact.firstNameProperty = " + contact.firstNameProperty().get() );
+System.out.println("fname = " + fname.get() );
+~~~
+
+The output of this code snippet is as follows:
+
+~~~
+contact.firstNameProperty = Jane
+fname = Jane
+~~~
+
+### High-level Binding
+
+Introduced in JavaFX 2.0 is a fluent interface API to bind properties. The fluent APIs are methods that allow you to perform operations on properties using English-like method names. For example, if you have a numeric property, there would be methods like multiply(), divide(), subtract(), and so on. Another example would be a string property having methods like isEqualTo(), isNotEqualTo(), concat(), and similar. As an example, Listing 3-30 shows how to create a property that represents the formula for the area of a rectangle.
+
+~~~java
+// Area = width * height
+IntegerProperty width = new SimpleIntegerProperty(10);
+IntegerProperty height = new SimpleIntegerProperty(10);
+ 
+NumberBinding area = width.multiply(height);
+~~~
+
+This code demonstrates high-level binding by using the fluent API from the javafx.beans.binding.IntegerExpression parent interface. This example binds by using the multiply() method, which returns a NumberBinding containing the computed value. What’s nice is that the binding is lazy-evaluated, which means the computation (multiplying) doesn’t occur unless you invoke the property’s (area) value via the get() (or getValue())method. For all available fluent interfaces, please see the Javadoc for javafx.beans.binding.* packages.
+
+### Low-level Binding
+
+When using low-level binding, you would use a derived NumberBinding class, such as a DoubleBinding class for values of type Double. With a DoubleBinding class you will override its computeValue() method so that you can use the familiar operators such as * and – to formulate complex math equations. The difference between high-and low-level binding is that high-level uses methods such as multiply(), subtract() instead of the operators * and –. Listing 3-31 shows how to create a low-level binding for the formula for the volume of a sphere.
+
+~~~java
+DoubleProperty radius = new SimpleDoubleProperty(2);
+DoubleBinding volumeOfSphere = new DoubleBinding() {
+    {
+        super.bind(radius); // initial bind
+    }
+    @Override
+    protected double computeValue() {
+        // Math.pow() (power) cubes the radius
+        return (4 / 3 * Math.PI * Math.pow(radius.get(), 3));
+    }
+};
+~~~
+
+If you’ve gotten this far, you are definitely ready to begin building GUIs. So far you’ve had a chance to learn about lambda expressions, properties, and bindings. Next, I want to close out this chapter with an example showing how to build a snazzy-looking logon dialog window that makes use of shapes, lambda expressions, properties, and bindings (with a hint of UI controls).
+
+## A Logon Dialog Example
+
+### Login Dialog Source Code
+
+Listing 3-32 is the source code for the JavaFX example logon dialog application
+
+~~~java
+package jfx8ibe;
+import javafx.application.*;
+import javafx.beans.property.*;
+import javafx.geometry.Pos;
+import javafx.scene.*;
+import javafx.scene.control.PasswordField;
+import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.*;
+import javafx.scene.text.*;
+import javafx.stage.*;
+/**
+ * A login form to demonstrate lambdas, properties, and bindings.
+ * @author cdea
+ */
+public class FormValidation extends Application {
+
+    private final static String MY_PASS = "password1";
+    private final static BooleanProperty GRANTED_ACCESS = new SimpleBooleanProperty(false);
+    private final static int MAX_ATTEMPTS = 3;
+    private final IntegerProperty ATTEMPTS = new SimpleIntegerProperty(0);
+
+    @Override
+    public void start(Stage primaryStage) {
+        // create a model representing a user
+        User user = new User();
+
+        // create a transparent stage
+        primaryStage.initStyle(StageStyle.TRANSPARENT);
+
+        Group root = new Group();
+        Scene scene = new Scene(root, 320, 112, Color.rgb(0, 0, 0, 0));
+        primaryStage.setScene(scene);
+        
+        // all text, borders, svg paths will use white
+        Color foregroundColor = Color.rgb(255, 255, 255, .9);
+
+        // rounded rectangular background
+        Rectangle background = new Rectangle(320, 112);
+        background.setX(0);
+        background.setY(0);
+        background.setArcHeight(15);
+        background.setArcWidth(15);
+        background.setFill(Color.rgb(0, 0, 0, .55));
+        background.setStrokeWidth(1.5);
+        background.setStroke(foregroundColor);
+
+        // a read only field holding the user name.
+        Text userName = new Text();
+        userName.setFont(Font.font("SanSerif", FontWeight.BOLD, 30));
+        userName.setFill(foregroundColor);
+        userName.setSmooth(true);
+        userName.textProperty()
+            .bind(user.userNameProperty());
+
+        // wrap text node
+        HBox userNameCell = new HBox();
+        userNameCell.prefWidthProperty()
+            .bind(primaryStage.widthProperty()
+                  .subtract(45));
+        userNameCell.getChildren().add(userName);
+
+        // pad lock
+        SVGPath padLock = new SVGPath();
+        padLock.setFill(foregroundColor);
+        padLock.setContent("M24.875,15.334v-4.876c0-4.894-3.981-8.875-8.875-8.875s-8.875,3.981-8.875,8.875v4.876H5.042v15.083h21.916V15.334H24.875zM10.625,10.458c0-2.964,2.411-5.375,5.375-5.375s5.375,2.411,5.375,5.375v4.876h-10.75V10.458zM18.272,26.956h-4.545l1.222-3.667c-0.782-0.389-1.324-1.188-1.324-2.119c0-1.312,1.063-2.375,2.375-2.375s2.375,1.062,2.375,2.375c0,0.932-0.542,1.73-1.324,2.119L18.272,26.956z");
+
+        // first row
+        HBox row1 = new HBox();
+        row1.getChildren()
+            .addAll(userNameCell, padLock);
+
+        // password text field
+        PasswordField passwordField = new PasswordField();
+        passwordField.setFont(Font.font("SanSerif", 20));
+        passwordField.setPromptText("Password");
+        passwordField.setStyle("-fx-text-fill:black; "
+                               + "-fx-prompt-text-fill:gray; "
+                               + "-fx-highlight-text-fill:black; "
+                               + "-fx-highlight-fill: gray; "
+                               + "-fx-background-color: rgba(255, 255, 255, .80); ");
+        passwordField.prefWidthProperty()
+            .bind(primaryStage.widthProperty()
+                  .subtract(55));
+        user.passwordProperty()
+            .bind(passwordField.textProperty());
+
+        // error icon
+        SVGPath deniedIcon = new SVGPath();
+        deniedIcon.setFill(Color.rgb(255, 0, 0, .9));
+        deniedIcon.setStroke(Color.WHITE);//
+        deniedIcon.setContent("M24.778,21.419 19.276,15.917 24.777,10.415 21.949,7.585 16.447,13.087 10.945,7.585 8.117,10.415 13.618,15.917 8.116,21.419 10.946,24.248 16.447,18.746 21.948,24.248z");
+        deniedIcon.setVisible(false);
+
+        SVGPath grantedIcon = new SVGPath();
+        grantedIcon.setFill(Color.rgb(0, 255, 0, .9));
+        grantedIcon.setStroke(Color.WHITE);//
+        grantedIcon.setContent("M2.379,14.729 5.208,11.899 12.958,19.648 25.877,6.733 28.707,9.561 12.958,25.308z");
+        grantedIcon.setVisible(false);
+
+        StackPane accessIndicator = new StackPane();
+        accessIndicator.getChildren()
+            .addAll(deniedIcon, grantedIcon);
+        accessIndicator.setAlignment(Pos.CENTER_RIGHT);
+
+        grantedIcon.visibleProperty().bind(GRANTED_ACCESS);
+
+        // second row
+        HBox row2 = new HBox(3);
+        row2.getChildren()
+            .addAll(passwordField, accessIndicator);
+        HBox.setHgrow(accessIndicator, Priority.ALWAYS);
+
+        // user hits the enter key
+        passwordField.setOnAction(actionEvent -> {
+            if (GRANTED_ACCESS.get()) {
+                System.out.printf("User %s is granted access.\n",
+                                  user.getUserName());
+                System.out.printf("User %s entered the password: %s\n",
+                                  user.getUserName(), user.getPassword());
+                Platform.exit();
+            } else {
+                deniedIcon.setVisible(true);
+            }
+            ATTEMPTS.set(ATTEMPTS.add(1).get());
+            System.out.println("Attempts: " + ATTEMPTS.get());
+        });
+        // listener when the user types into the password field
+        passwordField.textProperty().addListener((obs, ov, nv) -> {
+            boolean granted = passwordField.getText()
+                .equals(MY_PASS);
+            GRANTED_ACCESS.set(granted);
+            if (granted) {
+                deniedIcon.setVisible(false);
+            }
+        });
+
+        // listener on number of attempts
+        ATTEMPTS.addListener((obs, ov, nv) -> {
+            if (MAX_ATTEMPTS == nv.intValue()) {
+                // failed attemps
+                System.out.printf("User %s is denied access.\n",
+                                  user.getUserName());
+                Platform.exit();
+            }
+        });
+
+        VBox formLayout = new VBox(4);
+        formLayout.getChildren().addAll(row1, row2);
+        formLayout.setLayoutX(12);
+        formLayout.setLayoutY(12);
+        root.getChildren().addAll(background, formLayout);
+        primaryStage.show();
+    }
+    public static void main(String[] args) {
+        launch(args);
+    }
+}
+~~~
+
+### Explanation of the Code
+
+The JavaFX application in Listing 3-32 simulates a logon dialog window. The code mainly demonstrates binding JavaFX JavaBeans properties with UI controls by reusing the User class that was shown earlier, in Listing 3-25.
+
+# Chapter 4: Layouts and UI Controls
+
