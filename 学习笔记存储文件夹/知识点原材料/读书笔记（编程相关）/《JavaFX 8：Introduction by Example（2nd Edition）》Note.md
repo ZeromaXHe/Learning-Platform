@@ -408,3 +408,784 @@ Learning about how to draw lines will help you apply the same knowledge to any S
 
 ## Drawing Shapes
 
+Drawing rectangles on the scene graph is quite easy. Just as you learned in a geometry classroom, you specify a width, height, and an (x, y) location (upper-left corner) to position the rectangle on the scene graph. To draw a rectangle in JavaFX you use the `javafx.scene.shape.Rectangle` class. In addition to common attributes, the Rectangle class also implements an *arc width* and *arc height*. This feature will draw rounded corners on a rectangle. Figure 2-3 shows a rounded rectangle, which has both an *arc width* and an *arc height*.
+
+Following is a code snippet that draws a rectangle positioned at (50, 50) with a width of 100, a height of 130, an arc width of 10, and an arc height of 40.
+
+~~~java
+Rectangle roundRect = new Rectangle();
+roundRect.setX(50);
+roundRect.setY(50);
+roundRect.setWidth(100);
+roundRect.setHeight(130);
+roundRect.setArcWidth(10);
+roundRect.setArcHeight(40);
+~~~
+
+## Drawing Complex Shapes
+
+Learning about simple shapes is great, but to create more complex shapes you need to see what other built-in shapes that the JavaFX API has to offer. Exploring the Java documentation (`javafx.scene.shape.*`), you will discover many derived shape classes to choose from. The following are all the currently supported shapes:
+
+- Arc
+- Circle
+- CubicCurve
+- Ellipse
+- Line
+- Path
+- Polygon
+- Polyline
+- QuadCurve
+- Rectangle
+- SVGPath
+- Text (which is considered to be a type of shape)
+
+> cubic	英[ˈkjuːbɪk] 美[ˈkjuːbɪk]
+> adj.	立方的; 用立方单位度量(或表示)的; 立方形的;
+
+### A Complex Shape Example
+
+The DrawingShape.java code shown in Listing 2-2 demonstrates the drawing of the shapes you see in Figure 2-4. The first complex shape involves a cubic curve (CubicCurve) that is drawn in the shape of a sine wave. The next shape is an ice cream cone; it uses the Path class, which contains path elements (javafx.scene.shape.PathElement). The third shape is a Quadratic Bézier curve (QuadCurve) forming a smile. Our final shape is a delectable donut; to create this donut shape you will create two (Ellipse) shapes (one smaller and one larger) and subtract one. For brevity, Listing 2-2 shows just the start() method, containing the main JavaFX elements. To get the full code listing, download the example code from the book’s web site.
+
+> quadratic	英[kwɒˈdrætɪk] 美[kwɑːˈdrætɪk]
+> adj.	平方的; 二次方的;
+>
+> Bézier curve
+> 贝塞尔曲线
+>
+> delectable	英[dɪˈlektəbl] 美[dɪˈlektəbl]
+> adj.	美味可口的; 香甜的; 宜人的; 妩媚动人的; 有迷惑力的; 有吸引力的;
+
+~~~java
+@Override
+public void start(Stage primaryStage) {
+    primaryStage.setTitle("Chapter 2 Drawing Shapes");
+    Group root = new Group();
+    Scene scene = new Scene(root, 306, 550, Color.WHITE);
+    // Sine wave
+    CubicCurve cubicCurve = new CubicCurve(
+        50, // start x point
+        75, // start y point
+        80, // control x1 point
+        -25, // control y1 point
+        110, // control x2 point
+        175, // control y2 point
+        140, // end x point
+        75); // end y point
+    cubicCurve.setStrokeType(StrokeType.CENTERED);
+    cubicCurve.setStroke(Color.BLACK);
+    cubicCurve.setStrokeWidth(3);
+    cubicCurve.setFill(Color.WHITE);
+
+    root.getChildren().add(cubicCurve);
+    // Ice cream cone
+    Path path = new Path();
+    path.setStrokeWidth(3);
+
+    // create top part beginning on the left
+    MoveTo moveTo = new MoveTo();
+    moveTo.setX(50);
+    moveTo.setY(150);
+
+    // curve ice cream (dome)
+    QuadCurveTo quadCurveTo = new QuadCurveTo();
+    quadCurveTo.setX(150);
+    quadCurveTo.setY(150);
+    quadCurveTo.setControlX(100);
+    quadCurveTo.setControlY(50);
+
+    // cone rim
+    LineTo lineTo1 = new LineTo();
+    lineTo1.setX(50);
+    lineTo1.setY(150);
+    // left side of cone
+    LineTo lineTo2 = new LineTo();
+    lineTo2.setX(100);
+    lineTo2.setY(275);
+    // right side of cone
+    LineTo lineTo3 = new LineTo();
+    lineTo3.setX(150);
+    lineTo3.setY(150);
+
+    path.getElements().addAll(moveTo, quadCurveTo, lineTo1, lineTo2 , lineTo3);
+
+    path.setTranslateY(30);
+
+    root.getChildren().add(path);
+
+    // A smile
+    QuadCurve quad = new QuadCurve(
+        50, // start x point
+        50, // start y point
+        125,// control x point
+        150,// control y point
+        150,// end x point
+        50);// end y point
+    quad.setTranslateY(path.getBoundsInParent().getMaxY());
+    quad.setStrokeWidth(3);
+    quad.setStroke(Color.BLACK);
+    quad.setFill(Color.WHITE);
+
+    root.getChildren().add(quad);
+
+    // outer donut
+    Ellipse bigCircle = new Ellipse(
+        100, // center x
+        100, // center y
+        50, // radius x
+        75/2); // radius y
+    bigCircle.setStrokeWidth(3);
+    bigCircle.setStroke(Color.BLACK);
+    bigCircle.setFill(Color.WHITE);
+
+    // donut hole
+    Ellipse smallCircle = new Ellipse(
+        100, // center x
+        100, // center y
+        35/2, // radius x
+        25/2); // radius y
+
+    // make a donut
+    Shape donut = Path.subtract(bigCircle, smallCircle);
+    donut.setStrokeWidth(1.8);
+    donut.setStroke(Color.BLACK);
+
+    // orange glaze
+    donut.setFill(Color.rgb(255, 200, 0));
+
+    // add drop shadow
+    DropShadow dropShadow = new DropShadow(
+        5, // radius
+        2.0f, // offset X
+        2.0f, // offset Y
+        Color.rgb(50, 50, 50, .588));
+
+    donut.setEffect(dropShadow);
+
+    // move slightly down
+    donut.setTranslateY(quad.getBoundsInParent().getMinY() + 30);
+
+    root.getChildren().add(donut);
+    primaryStage.setScene(scene);
+    primaryStage.show();
+}
+~~~
+
+Four shapes are drawn in Figure 2-4. Each shape will be detailed further in the following sections, which describe the code and the reasoning behind the creation of each of the four shapes.
+
+### The Cubic Curve
+
+In Listing 2-2 the first shape, drawn as a sine wave, is really a javafx.scene.shape.CubicCurve class. To create a cubic curve, you simply look for the appropriate constructor to be instantiated. A cubic curve’s main parameters to set are startX, startY, controlX1 (control point1 X), controlY1 (control point1 Y), controlX2 (control point2 X), and controlY2 (control point2 Y), endX, endY. Figure 2-5 shows a cubic curve with control points influencing the curve.
+
+The startX, startY, endX, and endY parameters are the starting and ending points of a curved line, and controlX1, controlY1, controlX2, and controlY2 are control points. The control point (controlX1, controlY1) is a point in screen space that will influence the line segment between the start point (startX, startY) and the midpoint of the line. The point (controlX2, controlY2) is another control point that will influence the line segment between the midpoint of the line and its end point (endX, endY). A control point is a point that pulls the curve toward the direction of itself. A definition of a control point is a line perpendicular to a tangent line on the curve. In our example, we simply have a control point 1 above the line to pull the curve upward to form a hill and control point 2 below the line to pull the curve downward to form a valley.
+
+> perpendicular 英[ˌpɜːpənˈdɪkjələ(r)] 美[ˌpɜːrpənˈdɪkjələr]
+> adj.	垂直的; 成直角的; 垂直式的(英国14、15世纪盛行的建筑风格，以使用垂直线和大拱为特征);
+> n.	垂直线(或位置、方向);
+>
+> tangent	英[ˈtændʒənt] 美[ˈtændʒənt]
+> n.	切线; 正切;
+
+
+
+> **Note** All older JavaFX 2.x Builder classes are deprecated in JavaFX 8. Be advised that the previous edition of this book used Builder classes. Shape classes using deprecated builder classes should be converted in favor of constructors and setter methods when specifying properties.
+
+
+
+### The Ice Cream Cone
+
+The ice cream cone shape is created using the javafx.scene.shape.Path class. Each path element is created and added to the Path object. Also, each element is not considered a graph node (`javafx.scene.Node`). This means that path elements do not extend from the `javafx.scene.shape.Shape` class and they cannot be child nodes in a scene graph to be displayed. Figure 2-6 shows an ice cream cone shape.
+
+Path elements actually extend from the `javafx.scene.shape.PathElement` class, which is used only in the context of a Path object. So you won’t be able to instantiate a LineTo class to be put in the scene graph. Just remember that the classes with To as a suffix are path elements, not Shape nodes.
+
+For example, the `MoveTo` and `LineTo` object instances are `Path` elements added to a `Path` object, not shapes that can be added to the scene. Following are Path elements added to a Path object to draw an ice cream cone:
+
+~~~java
+// Ice cream
+Path path = new Path();
+
+MoveTo moveTo = new MoveTo();
+moveTo.setX(50);
+moveTo.setY(150);
+
+...// Additional Path Elements created.
+LineTo lineTo1 = new LineTo();
+lineTo1.setX(50);
+lineTo1.setY(150);
+
+...// Additional Path Elements created.
+
+path.getElements().addAll(moveTo, quadCurveTo, lineTo1, lineTo2 , lineTo3);
+~~~
+
+### The Smile
+
+To render the smile shape, the code uses the javafx.scene.shape.QuadCurve class. This is similar to the cubic curve example described earlier in the first shape. Instead of two control points you only have one control point. Again, a control point influences a line by pulling the midpoint toward it. Shown in Figure 2-7 is a QuadCurve shape with a control point below its starting and ending points to form a smile.
+
+The following code draws a quadratic curve with a stroke thickness of three pixels filled with the color white:
+
+~~~java
+// A smile
+QuadCurve quad = new QuadCurve(
+    50, // start x point
+    50, // start y point
+    125,// control x point
+    150,// control y point
+    150,// end x point
+    50);// end y point
+
+quad.setStrokeWidth(3);
+quad.setStroke(Color.BLACK);
+quad.setFill(Color.WHITE);
+~~~
+
+### The Donut
+
+Last is our tasty donut shape with an interesting drop shadow effect shown in Figure 2-8. This custom shape was created using geometric operations such as subtract, union, intersection, and so on. With any two shapes you can perform geometric operations to form an entirely new shape object. All of the operations can be found in the javafx.scene.shape.Path class.
+
+To create the donut shape, you begin by creating two circular ellipse (javafx.scene.shape.Ellipse) instances. Subtracting the smaller ellipse (donut hole) from the larger ellipse area creates a newly derived Shape object, which is returned using the static Path.subtract() method. The following code snippet creates the donut shape using the Path.subtract() method:
+
+~~~java
+// outer donut
+Ellipse bigCircle = ...//Outer shape area
+// donut hole
+Ellipse smallCircle = ...// Inner shape area
+// make a donut
+Shape donut = Path.subtract(bigCircle, smallCircle);
+~~~
+
+Next is applying a drop shadow effect to the donut shape. A common technique is to draw the shape filled black while the original shape is laid on top slightly offset to appear as a shadow. However, in JavaFX the code will be drawing the donut shape once and use the setEffect() method to apply a DropShadow object instance. To cast the shadow offset, call the setOffsetX() and setOffsetY() methods. Typically if the light source is from the upper left, the shadow is shown from the lower right of the shape.
+
+One last thing to point out is that all shapes in the example are initially drawn to be positioned underneath one another. Looking back at Listing 2-2, you’ll notice that as each shape was created, its translateY property was set to reposition or shift each shape from its original position. For example, if a shape’s upper-left bounding box point is created at (100, 100) and you want it to be moved to (101, 101), the translateX and translateY properties would be set to 1.
+
+As each shape is rendered beneath another in this example, you may invoke the getBoundsInParent() method to return the information about the bounding region of a node, such as its width and height. The getBoundsInParent() calculation for the height and width includes the node’s actual dimensions (width and height) plus any effects, translations, and transformations. For example, a shape that has a drop shadow effect increases its width by including the shadow.
+
+Figure 2-9 is a dashed red rectangle surrounding a Rectangle node inside a parent node better known as the *bounding rectangle in parent* (Bounds in Parent). You will notice that the width and height calculations include *transforms*, *translates*, and *effects* applied to the shape. In the figure, the transform operation is a rotation and the effect is a drop shadow.
+
+## Painting Colors
+
+### An Example of Color
+
+> **Note** The example to follow touches on basic techniques for creating solid colors, gradient colors, and translucent colors. There are also advanced strategies, such as the ImagePattern API and Blend API. You can read about those, if you are interested, in the API documentation viewable through Javadoc.
+
+> translucent	英[trænzˈluːsnt] 美[trænzˈluːsnt]
+> adj.	半透明的;
+
+In JavaFX, all shapes can be filled with simple colors and gradient colors. As a reminder, according to the Javadoc all shape nodes are filled with the color black by default except for Line, Polyline, and Path class (descendents of java.scene.shape.Shape). Listing 2-3 uses the following main classes that will be used to fill the shape nodes shown in Figure 2-10:
+
+- javafx.scene.paint.Color
+- javafx.scene.paint.Stop
+- javafx.scene.paint.RadialGradient
+- javafx.scene.paint.LinearGradient
+
+~~~java
+@Override
+public void start(Stage primaryStage) {
+    primaryStage.setTitle("Chapter 2 Painting Colors");
+    Group root = new Group();
+    Scene scene = new Scene(root, 350, 300, Color.WHITE);
+    
+    // Red ellipse with radial gradient color
+    Ellipse ellipse = new Ellipse(100, // center X
+                                  50 + 70/2, // center Y
+                                  50, // radius X
+                                  70/2); // radius Y
+    RadialGradient gradient1 = new RadialGradient(
+        0, // focusAngle
+        .1, // focusDistance
+        80, // centerX
+        45, // centerY
+        120, // radius
+        false, // proportional
+        CycleMethod.NO_CYCLE, // cycleMethod
+        new Stop(0, Color.RED), // stops
+        new Stop(1, Color.BLACK)
+    );
+    
+    ellipse.setFill(gradient1);
+    root.getChildren().add(ellipse);
+    double ellipseHeight = ellipse.getBoundsInParent()
+        .getHeight();
+    
+    // thick black line behind second shape
+    Line blackLine = new Line();
+    blackLine.setStartX(170);
+    blackLine.setStartY(30);
+    blackLine.setEndX(20);
+    blackLine.setEndY(140);
+    blackLine.setFill(Color.BLACK);
+    blackLine.setStrokeWidth(10.0f);
+    blackLine.setTranslateY(ellipseHeight + 10);
+    
+    root.getChildren().add(blackLine);
+    
+    // A rectangle filled with a linear gradient with a translucent color.
+    Rectangle rectangle = new Rectangle();
+    rectangle.setX(50);
+    rectangle.setY(50);
+    rectangle.setWidth(100);
+    rectangle.setHeight(70);
+    rectangle.setTranslateY(ellipseHeight + 10);
+    
+    LinearGradient linearGrad = new LinearGradient(
+        0, // start X
+        0, // start Y
+        0, // end X
+        1, // end Y
+        true, // proportional
+        CycleMethod.NO_CYCLE, // cycle colors
+        // stops
+        new Stop(0.1f, Color.rgb(255, 200, 0, .784)),
+        new Stop(1.0f, Color.rgb(0, 0, 0, .784)));
+    
+    rectangle.setFill(linearGrad);
+    root.getChildren().add(rectangle);
+    
+    // A rectangle filled with a linear gradient with a reflective cycle.
+    Rectangle roundRect = new Rectangle();
+    roundRect.setX(50);
+    roundRect.setY(50);
+    roundRect.setWidth(100);
+    roundRect.setHeight(70);
+    roundRect.setArcWidth(20);
+    roundRect.setArcHeight(20);
+    roundRect.setTranslateY(ellipseHeight + 10 +
+                            rectangle.getHeight() + 10);
+    
+    LinearGradient cycleGrad = new LinearGradient(
+        50, // start X
+        50, // start Y
+        70, // end X
+        70, // end Y
+        false, // proportional
+        CycleMethod.REFLECT, // cycleMethod
+        new Stop(0f, Color.rgb(0, 255, 0, .784)),
+        new Stop(1.0f, Color.rgb(0, 0, 0, .784))
+    );
+    
+    roundRect.setFill(cycleGrad);
+    root.getChildren().add(roundRect);
+    
+    primaryStage.setScene(scene);
+    primaryStage.show();
+}
+~~~
+
+When specifying color values, the PaintingColors.java code uses the colors in the default RGB color space. To create a color, the code uses the Color.rgb() method. This method takes three integer values, representing red, green, and blue components. Another overloaded method takes three integer values and a fourth parameter with a data type of double. This fourth parameter is the alpha channel, which sets the opacity of the color. This value is between zero (0) and one (1).
+
+> **Note** Keep in mind that there are other ways to create color, such as by specifying hue, saturation, and brightness (HSB). To create a color using HSB, you would invoke the Color.hsb() method. Another way to specify color values that is common to web development in HTML and CSS is the use of RGB hexadecimal values. Developers who are familiar with this convention can use the Color.web() method.
+
+After drawing the ellipse shape, the code invokes the setFill() method using a radial gradient to give the appearance of a 3D spherical object. Next, it creates a rectangle filled with a yellow semitransparent linear gradient. Added behind the yellow rectangle is a thick black line to demonstrate the semitransparent color. Finally, the code implements a rounded rectangle filled with a green-and-black reflective linear gradient resembling 3D tubes in a diagonal direction. Each shape and its associated color fill will be discussed in more detail in the following sections.
+
+### Gradient Color
+
+Creating a gradient color in JavaFX involves five things:
+
+1. A starting point to begin the first stop color.
+2. The end point, representing the end stop color.
+3. The proportional property to specify whether to use standard screen coordinates or unit square coordinates.
+4. The Cycle method to specify one of the three enums: NO_CYCLE, REFLECT, or REPEAT.
+5. An array of stop (Stop) colors. Each stop containing a color will begin by painting the first stop color, then interpolating to the second stop color, and so on.
+
+> interpolating 英[ɪnˈtɜːpəleɪtɪŋ] 美[ɪnˈtɜːrpəleɪtɪŋ]
+> v.	插话; 插嘴; (在文章中)插入，添加内容; 插值; 内插;
+
+When dealing with either linear or radial gradient color, pay special attention to the proportional attribute. By setting this attribute to false, you can draw a line (the gradient axis) having a beginning point (start X, start Y) and an end point (end X, end Y) based on standard screen (x, y) coordinates.
+
+However, if the proportional attribute is set to a value of true, the gradient axis line beginning and ending points will be represented as unit square coordinates. This means that x, y coordinates for begin and end points must be between 0.0 and 1.0 (double). This strategy is more compact and easier to define than screen coordinates on the scene graph.
+
+### Radial Gradient
+
+The amazing thing about colors with gradients is that they can often make shapes appear three-dimensional. Gradient paint allows you to interpolate between two or more colors, which gives depth to the shape. JavaFX provides two types of gradients: a radial (RadialGradient) and a linear (LinearGradient) gradient. For our ellipse shape you will be using a radial gradient (RadialGradient).
+
+Table 2-2 presents the JavaFX 8 Javadoc definitions found for the RadialGradient class. 
+
+| Property      | Data Type    | Description                                                  |
+| ------------- | ------------ | ------------------------------------------------------------ |
+| focusAngle    | Double       | Angle in degrees from the center of the gradient to the focus point to which the first color is mapped. |
+| focusDistance | Double       | Distance from the center of the gradient to the focus point to which the first color is mapped. |
+| centerX       | Double       | X coordinate of the center point of the gradient’s circle.   |
+| centerY       | Double       | Y coordinate of the center point of the gradient’s circle.   |
+| radius        | Double       | Radius of the circle defining the extents of the color gradient. |
+| proportional  | boolean      | Coordinates and sizes are proportional to the shape this gradient fills. |
+| cycleMethod   | CycleMethod  | Cycle method applied to the gradient.                        |
+| Stops         | `List<Stop>` | Gradient’s color specification.                              |
+
+In our example the focus angle is set to zero, the distance is set to .1, center X and Y are set to (80, 45), the radius is set to 120 pixels, proportional is set to false, the cycle method is set to the no cycle (CycleMethod.NO_CYCLE), and two color stop values set to red (Color.RED) and black (Color.BLACK). These settings give a radial gradient to our ellipse by starting with the color red with a center position of (80, 45) (upper left of the ellipse) that interpolates to the color black with a distance of 120 pixels (radius).
+
+### Semitransparent Gradient
+
+Next, you will see how to create the rectangle, which has a yellow semitransparent linear gradient. For our yellow rectangle you will use a linear gradient (LinearGradient) paint.
+
+Table 2-3 presents the JavaFX 8 Javadoc definitions found for the LinearGradient class. 
+
+| Property     | Data Type    | Description                                                  |
+| ------------ | ------------ | ------------------------------------------------------------ |
+| startX       | Double       | X coordinate of the gradient axis start point.               |
+| startY       | Double       | Y coordinate of the gradient axis start point.               |
+| endX         | Double       | X coordinate of the gradient axis end point.                 |
+| endY         | Double       | Y coordinate of the gradient axis end point.                 |
+| proportional | Boolean      | Whether the coordinates are proportional to the shape which this gradient fills. When set to true use unit square coordinates, otherwise use scene/screen coordinate system. |
+| cycleMethod  | CycleMethod  | Cycle method applied to the gradient.                        |
+| stops        | `List<Stop>` | Gradient’s color specification.                              |
+
+To create a linear gradient paint, you specify startX, startY, endX, and endY for the start and end points. The start and end point coordinates denote where the gradient pattern begins and stops.
+
+To create the second shape in Figure 2-10, the yellow rectangle, you set the start X and Y to (0.0, 0.0), end X and Y to (0.0, 1.0), proportional to true, the cycle method to no cycle (CycleMethod.NO_CYCLE), and two color stop values to yellow (Color.YELLOW) and black (Color.BLACK) with an alpha transparency of .784.These settings give a linear gradient to our rectangle from top to bottom with a starting point of (0.0, 0.0) (the top left of a unit square) that interpolates to the color black to an end point of (0.0, 1.0) (the bottom left of a unit square).
+
+### Reflective Cycle Gradients
+
+Finally, at the bottom of Figure 2-10 you’ll notice a rounded rectangle with a repeating pattern of a gradient using green and black in a diagonal direction. This is a simple linear gradient paint that is the same as the linear gradient paint (LinearGradient) except that the start X, Y and end X, Y values are set in a diagonal position, and the cycle method is set to reflect (CycleMethod.REFLECT). When specifying the cycle method to reflect (CycleMethod.REFLECT), the gradient pattern will repeat or cycle between the stop colors. The following code snippet implements the rounded rectangle having a cycle method of reflect (CycleMethod.REFLECT):
+
+~~~java
+LinearGradient cycleGrad = new LinearGradient(
+    50, // start X
+    50, // start Y
+    70, // end X
+    70, // end Y
+    false, // proportional
+    CycleMethod.REFLECT, // cycleMethod
+    new Stop(0f, Color.rgb(0, 255, 0, .784)),
+    new Stop(1.0f, Color.rgb(0, 0, 0, .784))
+);
+~~~
+
+## Drawing Text
+
+Another basic JavaFX node is the Text node. Text nodes allow you to display a string of characters onto the scene graph. To create Text nodes on the JavaFX scene graph you will use the `javafx.scene.text.Text` class. Because all JavaFX scene nodes extend from `javafx.scene.Node` they will inherit many capabilities such as the ability to be scaled, translated, or rotated.
+
+Based on the Java inheritance hierarchy, the Text node’s direct parent is a `javafx.scene.shape.Shape` class which provides even more capabilities than the Node class. Because a Text node is both a Node and a Shape object it is able to perform geometric operation between two shape areas such as subtract, intersect, or union. You can also clip viewport areas with a shape similar to stenciled letters.
+
+> stencil	英[ˈstensl] 美[ˈstensl]
+> n.	(印文字或图案用的)模板; (用模板印的)文字或图案;
+> v.	用模板印(文字或图案);
+
+To demonstrate drawing text, in this section you will look at a basic example of how to draw text nodes on the scene graph. This example will touch on the following three capabilities:
+
+- Positioning Text nodes using (x, y) coordinates
+- Setting a Text node’s stroke color
+- Rotating a Text node about its pivot point
+
+The DrawingText.java code shown in Listing 2-4 creates 100 Text nodes with randomly generated values for the following attributes:
+
+- x, y coordinates
+- RGB fill color
+- Angle of rotation (degrees).
+
+The code first creates a loop to generate random (x, y) coordinates to position Text nodes. In the loop, it creates random RGB color components between 0 and 255 to be applied to the Text nodes. Setting all components to zero produces black. Setting all three RGB values to 255 produces the color white.
+
+~~~java
+@Override
+public void start(Stage primaryStage) {
+    primaryStage.setTitle("Chapter 2 Drawing Text");
+    Group root = new Group();
+    Scene scene = new Scene(root, 300, 250, Color.WHITE);
+    Random rand = new Random(System.currentTimeMillis());
+    for (int i = 0; i < 100; i++) {
+        int x = rand.nextInt((int) scene.getWidth());
+        int y = rand.nextInt((int) scene.getHeight());
+        int red = rand.nextInt(255);
+        int green = rand.nextInt(255);
+        int blue = rand.nextInt(255);
+        
+        Text text = new Text(x, y, "JavaFX 8");
+        
+        int rot = rand.nextInt(360);
+        text.setFill(Color.rgb(red, green, blue, .99));
+        text.setRotate(rot);
+        root.getChildren().add(text);
+    }
+    primaryStage.setScene(scene);
+    primaryStage.show();
+}
+~~~
+
+The rotation angle (in degrees) is a randomly generated value from 0–360 degrees, which causes the baseline of the text to be tilted. According to the API documentation the setRotate() method will rotate about the pivot point, which is the center of the untransformed layout bounds (layoutBounds) property. Basically, the pivot point is the center of a node that has no transforms (scaling, translating, shearing, rotating, and so on) applied.
+
+> **Note** If you need to use a combination of transforms, such as rotate, scale, and translate, take a look at the `getTransforms().add(...)` method. For more details on the difference between bounds in local, bounds in parent, and layout bounds, please see the Javadoc documentation.
+
+The following code is used in DrawingText.java to create random values for a Text node’s x and y position (baseline), color, and rotation:
+
+~~~java
+int x = rand.nextInt((int) scene.getWidth());
+int y = rand.nextInt((int) scene.getHeight());
+int red = rand.nextInt(255);
+int green = rand.nextInt(255);
+int blue = rand.nextInt(255);
+int rot = rand.nextInt(360);
+~~~
+
+Once the random values are generated, they are applied to the Text nodes, which will be drawn onto the scene graph. Each Text node maintains a text origin property that contains the starting point of its baseline. In Latin-based alphabets, the baseline is an imaginary line underneath letters, similar to books on a bookshelf. However, some letters, such as the lowercase *j*, extend below the baseline. When specifying the x and y coordinate of the Text node you will be positioning the start of the baseline. In Figure 2-12, the x and y coordinate is located left of the lowercase j on the baseline in the text node “javafx 8.”
+
+The following code snippet applies (x, y) coordinates, color (RGB) with an opacity .99 and a rotation (angle in degrees) to the Text node:
+
+~~~java
+Text text = new Text(x, y, "JavaFX 8");
+text.setFill(Color.rgb(red, green, blue, .99));
+text.setRotate(rot);
+
+root.getChildren().add(text);
+~~~
+
+### Changing Text Fonts
+
+JavaFX’s Font API enables you to change font styles and font sizes in the same way as word processing applications. To demonstrate it, I created a JavaFX application that displays four text nodes with the string value of “JavaFX 8 Intro by Example,” each having a different font style. In addition to the font styles I also added effects such as a drop shadow (DropShadow) and reflection (Reflection).
+
+Figure 2-13 shows the example’s output, and Listing 2-5 shows the ChangingTextFonts.java source code.
+
+~~~java
+@Override
+public void start(Stage primaryStage) {
+    primaryStage.setTitle("Chapter 2 Changing Text Fonts");
+    
+    System.out.println("Font families: ");
+    Font.getFamilies()
+        .stream()
+        .forEach( i -> System.out.println(i));
+    System.out.println("Font names: ");
+    Font.getFontNames()
+        .stream()
+        .forEach( i -> System.out.println(i));
+    Group root = new Group();
+    Scene scene = new Scene(root, 580, 250, Color.WHITE);
+    
+    // Serif with drop shadow
+    Text text2 = new Text(50, 50, "JavaFX 8: Intro. by Example");
+    Font serif = Font.font("Serif", 30);
+    text2.setFont(serif);
+    text2.setFill(Color.RED);
+    DropShadow dropShadow = new DropShadow();
+    dropShadow.setOffsetX(2.0f);
+    dropShadow.setOffsetY(2.0f);
+    dropShadow.setColor(Color.rgb(50, 50, 50, .588));
+    text2.setEffect(dropShadow);
+    root.getChildren().add(text2);
+    
+    // SanSerif
+    Text text3 = new Text(50, 100, "JavaFX 8: Intro. by Example");
+    Font sanSerif = Font.font("SanSerif", 30);
+    text3.setFont(sanSerif);
+    text3.setFill(Color.BLUE);
+    root.getChildren().add(text3);
+    
+    // Dialog
+    Text text4 = new Text(50, 150, "JavaFX 8: Intro. by Example");
+    Font dialogFont = Font.font("Dialog", 30);
+    text4.setFont(dialogFont);
+    text4.setFill(Color.rgb(0, 255, 0));
+    root.getChildren().add(text4);
+    
+    // Monospaced
+    Text text5 = new Text(50, 200, "JavaFX 8: Intro. by Example");
+    Font monoFont = Font.font("Monospaced", 30);
+    text5.setFont(monoFont);
+    text5.setFill(Color.BLACK);
+    root.getChildren().add(text5);
+    
+    // Reflection
+    Reflection refl = new Reflection();
+    refl.setFraction(0.8f);
+    refl.setTopOffset(5);
+    text5.setEffect(refl);
+    
+    primaryStage.setScene(scene);
+    primaryStage.show();
+}
+~~~
+
+With Text nodes JavaFX takes a retained-mode approach, in which nodes are using vector-based graphics rendering instead of an immediate mode rendering. The immediate mode uses bitmap graphic rendering strategies. By using vector-based graphics you will have nifty advantages over bitmap graphics. The major advantage is that it allows you to scale shapes and apply different effects without pixilation (the jaggies). For example, in an immediate mode rendering the image becomes grainy when scaled larger; however, in retained mode you will have smooth (anti-aliased) shapes. It’s nice to be able to see beautiful type fonts (typography) that are smooth at all sizes.
+
+> nifty	英[ˈnɪfti] 美[ˈnɪfti]
+> adj.	有技巧的; 精确的; 实用的; 灵便的;
+> n.	俏皮话; 漂亮话;
+>
+> jaggy	
+> 网络	锯齿; 边缘部分锯齿; 向行驶的线路很少锯齿; 无锯齿;
+>
+> grainy	英[ˈɡreɪni] 美[ˈɡreɪni]
+> adj.	有颗粒的; 粒状的; 有纹的; 表面粗糙的; 粒面的;
+>
+> typography 英[taɪˈpɒɡrəfi] 美[taɪˈpɑːɡrəfi]
+> n.	印刷术; 排印; 版面设计;
+
+ChangingTextFonts.java focuses on the following JavaFX classes to be applied to the Text node. The code uses the Serif, SanSerif, Dialog, and Monospaced fonts along with the drop shadow and reflection effects.
+
+- javafx.scene.text.Font
+- javafx.scene.effect.DropShadow
+- javafx.scene.effect.Reflection
+
+The code begins by setting the title on the stage. Next, you will notice the new Java 8 language lambdas feature at work, where the code lists the current system’s available font families and font names. If you are new to lambdas, in Chapter 3 you will take a closer look at the concept, but for right now you can think of it as an elegant way to iterate over collections. The font family and font name list will be printed on the console output. This is very convenient for you to later experiment with different font styles. The following lines list the available fonts on the current system using Java 8’s lambda syntax (as we’ll discuss in Chapter 3):
+
+~~~java
+System.out.println("Font families: ");
+Font.getFamilies()
+    .stream()
+    .forEach( i -> System.out.println(i));
+System.out.println("Font names: ");
+Font.getFontNames()
+    .stream()
+    .forEach( i -> System.out.println(i));
+~~~
+
+A fter listing the available fonts, the code creates a root node with a background color for its scene. Before drawing the first Text node, let’s quickly discuss how to obtain a font. To obtain a font the code invokes the static method font() from the Font class. When calling the font() method, you can specify the font name and the point size to return a suitable font to the caller. A font name is a string value that represents a system’s supported font types. Secondly, is the point size or standard sizing value for fonts. Please refer to the Javadoc documentation to see the other ways to obtain system fonts. The following lines show the creation of a Text node instance and obtaining a 30 point Serif font. Once the font is obtained the Text node setFont() method is used to apply the font.
+
+~~~java
+Text text = new Text(50, 50, "JavaFX 8: Intro. by Example");
+Font serif = Font.font("Serif", 30);
+text.setFont(serif);
+~~~
+
+> **Note** Although, the example listing 2-5 uses absolute positioning of text nodes at some point you may want to display text nodes with the ability to wrap several text nodes while keeping their own font formatting in the same layout. To achieve this behavior refer to JavaFX 8’s new TextFlow API. 
+
+### Applying Text Effects
+
+In the first Text node in the ChangingTextFonts.java example, the code adds a drop shadow effect. In JavaFX a drop shadow is an actual effect (DropShadow) object and is applied to a single Text node instance without the need of multiple images layered. The DropShadow object is set to be positioned based on an x, y offset in relation to the Text node. You also have the ability to set the color of the shadow; here the code will set the shadow color to gray with 0.588 opacity. Opacity is a range between 0 and 1 (double) where 0 is transparent and 1 is fully opaque. The following is an example of setting a Text node’s effect property with a drop shadow effect (DropShadow):
+
+~~~java
+DropShadow dropShadow = new DropShadow();
+dropShadow.setOffsetX(2.0f);
+dropShadow.setOffsetY(2.0f);
+dropShadow.setColor(Color.rgb(50, 50, 50, .588));
+text2.setEffect(dropShadow);
+~~~
+
+Although this example is about setting text fonts, it also demonstrates applying a drop shadow effect to Text nodes. The ChangingTextFonts.java example includes yet another effect. While creating the last Text node using the monospaced font, I’ve applied the popular reflection effect. Calling the setFraction() method with 0.8f is essentially specifying that you want 80 percent of the reflection to be shown. The reflection values range from zero (0%) to one (100%). In addition to the fraction to be shown, the reflection’s gap or top offset can be set. In other words the space between the opaque node portion and the reflection portion is adjusted by the setTopOffset() method. The top offset defaults to zero. The following code snippet implements a reflection of 80% with a float value of 0.8f and a top offset of five pixels:
+
+~~~java
+Reflection refl = new Reflection();
+refl.setFraction(0.8f);
+refl.setTopOffset(5);
+text5.setEffect(refl);
+~~~
+
+# Chapter 3: Lambdas and Properties
+
+## Properties and Binding
+
+Properties are basically wrapper objects for JavaFX-based object attributes such as String or Integer. Properties allow developers to add listener code to respond when the wrapped value of an object has changed or is flagged as invalid. Also, property objects can be bound to one another. Binding behavior allows properties to update or synchronize their values based on a changed value from another property.
+
+### UI Patterns（UI模式）
+
+Before discussing JavaFX’s properties and bindings APIs, I would like to share with you a little bit about UI patterns. When developing GUI applications you will inevitably encounter UI architectural framework concepts such as model view controller (MVC), model view presenter (MVP), or model view view-model (MVVM).
+
+Depending on who you talk to, you might get different explanations; however, these concepts all address the issue of how best to handle synchronization between the model and view. What this means is that when a user interacts (input) with the UI (view) the underlying backend data store (the model) is automatically updated, and vice-versa.
+
+Without trying to oversimplify the concepts, I will refer you to the actual UI patterns that are involved. The main UI patterns involved are the *Supervising Controller*, *Presentation Model,* and *Mediator*. If you are interested in understanding more about UI patterns, please read “GUI Architectures” by Martin Fowler 
+
+Because these patterns have been heavily discussed over the years, the JavaFX team has designed and implemented APIs to overcome problems that arose with these UI scenarios. In this section you will be learning how to use JavaFX properties and bindings to synchronize between your GUI and your data objects. Of course, I can’t possibly cover all of the use-case scenarios involving the UI patterns just mentioned, but hopefully I can give you the basics to get you on the right path.
+
+### Properties
+
+Before the JavaFX properties API, Java Swing developers adhered to the JavaBean convention (specification), which specifies that objects will contain privately scoped instance variables which have associated getter (accessor) and setter (mutator) methods. For instance, a User class might have a private instance variable password of type String. The associated getter and setter would be the getPassword() and setPassword() methods, respectively. Listing 3-22 shows a User class that follows the older JavaBean convention.
+
+~~~java
+public class User {
+    private String password;
+    public String getPassword() {
+        return password;
+    }
+    public void setPassword(String password) {
+        this.password = password;
+    }
+}
+~~~
+
+As a developer who follows the JavaBean convention, you will quickly see the naming convention for the property, which is based on the getter and setter method names and not the private variable name. In other words, if the getter method were named getPwd(), the property would be named pwd and would have nothing to do with the attribute named password.
+
+The JavaBeans specification also provided an API that has the concept of property change support (java.beans.PropertyChangeSupport), which allowed the developer to add handler (listener) code when the property changed. At the time, this solved only part of the issue of property change support. The JavaBeans API started showing its age when it came to binding variables and working with the Collections API. Although the JavaBeans API became a standard way to build domain objects, it still lacked robust ways to synchronize the domain models and views within a GUI application as described earlier.
+
+Through the years the JavaBean specification and API gave rise to many third-party tools and frameworks to ease the developer experience. However, wiring up GUI components to JavaBeans using unidirectional or bidirectional binding still got pretty complicated. At times, developers would have resources that were not properly released, which led to object leaks. Developers quickly realized they needed a better way to bind and unbind GUI controls to be wired up to properties.
+
+### Types of JavaFX Properties
+
+Let’s fast forward to JavaFX’s Properties API to see how it handles the common issues. We’ll first discuss the different types of JavaFX-based properties. There are two types to be concerned about:
+
+- Read/Writable
+- Read-Only
+
+In short, JavaFX’s properties are wrapper objects holding actual values while providing change support, invalidation support, and binding capabilities. I will address binding later, but for now let’s examine commonly used property classes.
+
+Properties are wrapper objects that have the ability to make values accessible as read/writable or read-only. All wrapper property classes are located in the javafx.beans.property.* package namespace. Listed here are commonly used property classes. To see all of the property classes, please refer to the documentation in Javadoc.
+
+-	javafx.beans.property.SimpleBooleanProperty
+-	javafx.beans.property.ReadOnlyBooleanWrapper
+-	javafx.beans.property.SimpleIntegerProperty
+-	javafx.beans.property.ReadOnlyIntegerWrapper
+-	javafx.beans.property.SimpleDoubleProperty
+-	javafx.beans.property.ReadOnlyDoubleWrapper
+-	javafx.beans.property.SimpleStringProperty
+-	javafx.beans.property.ReadOnlyStringWrapper
+
+The properties that have a prefix of Simple and a suffix of Property are the read/writable property classes, and the classes with a prefix of ReadOnly and a suffix of Wrapper are the read-only properties. Later, you will see how to create a JavaFX bean using these commonly used properties, but for now let’s examine read/writable properties.
+
+#### Read/Writable Properties
+
+Read/writable properties are, as the name suggests, property values that can be both read and modified. As an example, let’s look at JavaFX string properties. To create a string property that is capable of both readable and writable access to the wrapped value, you will use the `javafx.beans.property.SimpleStringProperty` class. Listing 3-23 is a code snippet that demonstrates an instance of a SimpleStringProperty class and modifies the property via the set() method.
+
+~~~java
+StringProperty password = new SimpleStringProperty("password1");
+password.set("1234");
+System.out.println("Modified StringProperty " + password.get() ); // 1234
+~~~
+
+Here a declared variable password of type StringProperty is assigned to an instance of a SimpleStringProperty class. It’s always a good idea when declaring variables to be more abstract in object-oriented languages. Thus, referencing a StringProperty exposes fewer methods of the implementation class (SimpleStringProperty). Also notice that the actual value is the string “password1”, which is passed into the constructor of the SimpleStringProperty class. You will later discover other convenient constructor methods when working with JavaBeans and Property objects.
+
+In the case of reading the value back, you would invoke the get() method (or getValue()), which returns the actual wrapped value(String) to the caller. To modify the value you simply call the set() method (or setValue()) by passing in a string. 
+
+#### Read-Only Properties
+
+To make a property read-only you would use the wrapper classes that are prefixed with ReadOnly from the javafx.beans.property.* package. To create a property to be read-only you will need to take two steps. First is to instantiate a read-only wrapper class and invoke the method getReadOnlyProperty() to return a true read-only property object. Listing 3-24 creates a read-only string property.
+
+~~~java
+ReadOnlyStringWrapper userName = new ReadOnlyStringWrapper("jamestkirk");
+ReadOnlyStringProperty readOnlyUserName = userName.getReadOnlyProperty();
+~~~
+
+This code snippet actually takes two steps to obtain a read-only string property. You will notice the call to getReadOnlyProperty(), which returns a read-only copy (synchronized) of the property. According to the Javadoc API, the ReadOnlyStringWrapper class “creates two properties that are synchronized. One property is read-only and can be passed to external users. The other property is read- and writable and should be used internally only.” Knowing that the other property can be read and written could allow a malicious developer to cast the object to type StringProperty, which then could be modified at will. From a security perspective you should be aware of the proper steps to create a true read-only property.
+
+### JavaFX JavaBean
+
+Now that you’ve seen the JavaBean specification’s approach to creating domain objects, I will rewrite the earlier JavaBean User class to use JavaFX properties instead. In the process of rewriting the bean I also wanted to add an additional read-only property called userName to demonstrate the read-only property behavior. Listing 3-25 shows the User class rewritten to use JavaFX properties.
+
+~~~java
+import javafx.beans.property.*;
+public class User {
+    private final static String USERNAME_PROP_NAME = "userName";
+    private final ReadOnlyStringWrapper userName;
+    private final static String PASSWORD_PROP_NAME = "password";
+    private StringProperty password;
+    public User() {
+        userName = new ReadOnlyStringWrapper(this, USERNAME_PROP_NAME, System.getProperty("user.name"));
+        password = new SimpleStringProperty(this, PASSWORD_PROP_NAME, "");
+    }
+
+    public final String getUserName() {
+        return userName.get();
+    }
+    public ReadOnlyStringProperty userNameProperty() {
+        return userName.getReadOnlyProperty();
+    }
+
+    public final String getPassword() {
+        return password.get();
+    }
+    public final void setPassword(String password) {
+        this.password.set(password);
+    }
+    public StringProperty passwordProperty() {
+        return password;
+    }
+}
+~~~
+
+You may notice some obvious differences in the way I instantiated the ReadOnlyStringWrapper and SimpleStringProperty classes. Similar to the JavaBean property change support, JavaFX properties have constructors that will allow you to specify the bean itself, its property name, and its value. As a simple example, Listing 3-26 shows the instantiations of a read-only and a read-writable property using the JavaFX property change support-based constructors. The userName variable is assigned a read-only property, and the password variable is assigned a read/writable property.
+
+~~~java
+userName = new ReadOnlyStringWrapper(this, USERNAME_PROP_NAME, System.getProperty("user.name"));
+password = new SimpleStringProperty(this, PASSWORD_PROP_NAME, "");
+~~~
+
+It is good practice to use the property change support-based constructors for many reasons, such as third-party tooling and testing. But most of all, when dealing with property change support, you will need access to the bean and its other properties.
+
+One last thing to mention is that in Listing 3-25 you’ll also notice the getter and setter methods are final. Making the getter and setter final prevents any derived classes from overriding and possibly changing the underlying property
+
+### Property Change Support
