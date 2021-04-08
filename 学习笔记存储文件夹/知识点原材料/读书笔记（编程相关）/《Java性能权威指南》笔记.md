@@ -191,3 +191,138 @@ public class FibonacciTest {
 
 ### 2.1.2 宏基准测试
 
+假设业务处理的算法有所改进，处理量达到了200 RPS，系统能承受的负载也相应增加。LDAP系统可以处理这些增加的负载：目前为止一切都好，数据将以200 RPS的速率注入业务处理模块，而它也将以200 RPS的速率输出。
+
+但数据库只能以100 RPS的速率装载数据。虽然向数据库发送请求的速率为200 RPS，输出到其他模块的速率却只有100 RPS。即便业务逻辑处理的效率加倍，系统整体的吞吐量仍然只能达到100 RPS。所以，除非花时间改善环境其他方面的效率，否则业务逻辑做再多改进也是无效的。
+
+> **多JVM时的全系统测试**
+>
+> 全应用测试有个很重要的场景，就是同一台机器上同时运行多个应用。许多JVM的默认调优都是默认假定整个机器的资源都归JVM使用。如果单独测试，优化效果很好。如果在其他应用（包括但不限于Java程序）运行的时候进行测试，性能会有很大的不同。
+
+本例子中，优化业务处理并不完全是浪费时间：在系统其他性能瓶颈上曾经付出的努力，终究会有好处。进一步说，这中间有个优先顺序：不进行整体应用的测试，就不可能知道哪部分的优化会产生回报。
+
+### 2.1.3 介基准测试
+
+我的调优工作包括Java SE和EE，每种都会有一组类似微基准测试的测试。对于Java SE工程师来说，这个术语意思是样本甚至比2.1.1节的还要小：测量很小的东西。Java EE工程师则将这个术语用于其他地方：测量某方面性能的基准测试，但仍然要执行大量代码。
+
+介基准测试并不局限于Java EE：它是一个术语，我用来表示做一些实际工作，但不是完整应用的基准测试。
+
+### 2.1.4 代码示例
+
+贯穿全书的许多例子都来自于一个示例应用，计算某只股票在一段时间内的“历史”最高价和最低价，以及标准差。因为所有数据皆为虚构，价格和股票代码也是随机生成，所以这里的历史标上了引号。
+
+基本接口StockPrice表示某股票某天的价格区间：
+
+~~~java
+public interface StockPrice {
+    String getSymbol();
+    Date getDate();
+    BigDecimal getClosingPrice();
+    BigDecimal getHigh();
+    BigDecimal getLow();
+    BigDecimal getOpeningPrice();
+    boolean isYearHigh();
+    boolean isYearLow();
+    Collection<? extends StockOptionPrice> getOptions();
+}
+~~~
+
+通常，那些示例应用都是对一组股价进行处理，这些股价表示一段时间内的股票历史（比如1年或25年，取决于具体的示例）：
+
+~~~java
+public interface StockPriceHistory {
+    StockPrice getPrice(Date d);
+    Collection<StockPrice> getPrices(Date startDate, Date endDate);
+    Map<Date, StockPrice> getAllEntries();
+    Map<BigDecimal, ArrayList<Date>> getHistogram();
+    BigDecimal getAveragePrice();
+    Date getFirstDate();
+    BigDecimal getHighPrice();
+    Date getLastDate();
+    BigDecimal getLowPrice();
+    BigDecimal getStdDev();
+    String getSymbol();
+}
+~~~
+
+这个接口的基本实现是从数据库载入股价：
+
+~~~java
+public class StockPriceHistoryImpl implements StockPriceHistory {
+    ...
+    public stockPriceHistoryImpl (String s, Date startDate, Date endDate, EntityManager em) {
+        Date curDate = new Date(startDate.getTime());
+        symbol = s;
+        while(!curDate.after(endDate)){
+            stockPriceImpl sp = em.find(StockPriceImpl.class, new StockPricePK(s, (Date) curDate.clone()));
+            if(sp != null) {
+                Date d = (Date) curDate.clone();
+                if(firstDate == null){
+                    firstDate = d;
+                }
+                prices.put(d, sp);
+                lastDate = d;
+            }
+            curDate.setTime(curDate.getTime() + msPerDay);
+        }
+    }
+}
+~~~
+
+计算标准差需要知晓BigDecimal数的平方根。标准Java API不支持这个函数，示例将采用以下方法。
+
+~~~java
+public static BigDecimal sqrtB(BigDecimal bd) {
+    BigDecimal initial = bd;
+    BigDecimal diff;
+    do {
+        BigDecimal sDivX = bd.divide(initial, 8, RoundingMode.FLOOR);
+        BigDecimal sum = sDivX.add(initial);
+        BigDecimal div = sum.divide(TWO, 8, RoundingMode.FLOOR);
+        diff =  div.substract(initial).abs();
+        diff.setScale(8, RoundingMode.FLOOR);
+        initial = div;
+    } while(diff.compareTo(error) > 0);
+    return initial;
+}
+~~~
+
+这是巴比伦平方根计算法的实现。它不是最有效的实现，特别是初始值可以估算得更好，可以少几轮迭代。这是经过深思熟虑的，因为计算需要花费一些时间（模拟业务逻辑）
+
+## 2.2 原则2：理解批处理流逝时间、吞吐量和响应时间
+
+### 2.2.1 批处理流逝时间
+
+虚拟机会花几分钟（或更长时间）全面优化代码并以最高性能执行。由于这个（以及其他）原因，研究Java的性能优化就要密切注意代码优化的热身期：大多数时候，应该在运行代码执行足够长时间，已经编译并优化之后再测量性能。
+
+> **其他影响应用热身的因素**
+>
+> 通常认为的应用热身，指的就是等待编译器优化运行代码，不过基于代码的运行时长还有其他一些影响性能的因素。
+>
+> 例如，JPA通常都会缓存从数据库读取的数据。与此类似，应用程序读文件时，操作系统就会将文件载入内存。
+
+### 2.2.2 吞吐量测试
+
+吞吐量测试是基于一段时间内所能完成的工作量。
+
+客户端常常有多个线程在处理，所以吞吐量就是所有客户端所完成的操作总量。通常这个数字就是每秒完成的操作量，而不是测量期间的总操作量。这个指标常常被称作每秒事务数（TPS）、每秒请求数（RPS）或每秒操作次数（OPS）。
+
+### 2.2.3 响应时间测试
+
+最后一个常用的测试指标是响应时间：从客户端发送请求至收到响应之间的流逝时间。
+
+响应时间测试和吞吐量测试（假设后者是基于客户端-服务端模式）之间的差别是，响应时间测试中的客户端线程会在操作之间休眠一段时间。这被称为思考时间。
+
+> **思考时间和吞吐量**
+>
+> 有两种方法
+>
+> 另外一种方法是周期时间（Cycle Time）
+
+衡量响应时间有两种方法。响应时间可以报告为平均值：请求时间的总和除以请求数。响应时间也可以报告为百分位请求，例如第90百分位响应时间。
+
+两种方法的一个区别在于，平均值会受离群值影响。
+
+## 2.3 原则3：用统计方法应对性能的变化
+
+学生t检验（Student's t-test，以下称t检验）
