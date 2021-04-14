@@ -93,6 +93,8 @@ public class GoBangAiService {
         int sumAfter = 0;
         int xStartMin = Math.max(0, x - 4);
         int xStartMax = Math.min(10, x);
+        int xSlashStartMax = Math.min(14, x + 5);
+        int xSlashStartMin = Math.max(4, x);
         int yStartMin = Math.max(0, y - 4);
         int yStartMax = Math.min(10, y);
         for (int i = xStartMin; i <= xStartMax; i++) {
@@ -103,8 +105,13 @@ public class GoBangAiService {
             sumPre += valueRow(board, x, i);
             sumAfter += valueRowWithStep(board, x, i, side, y);
         }
-        for (int i = Math.min(x - xStartMin, y - yStartMin); i <= Math.max(x - xStartMax, y - yStartMax); i++) {
-            // TODO: 斜线逻辑
+        for (int i = Math.max(xSlashStartMin - x, y - yStartMax); i <= Math.min(xSlashStartMax - x, y - yStartMin); i++) {
+            sumPre += valueSlash(board, x + i, y - i);
+            sumAfter += valueSlashWithStep(board, x + i, y - i, side, x);
+        }
+        for (int i = Math.max(x - xStartMax, y - yStartMax); i <= Math.min(x - xStartMin, y - yStartMin); i++) {
+            sumPre += valueBackSlash(board, x - i, y - i);
+            sumAfter += valueBackSlashWithStep(board, x - i, y - i, side, x);
         }
 
         return sumAfter - sumPre;
@@ -232,6 +239,28 @@ public class GoBangAiService {
         return valueLine(board[x][y], board[x - 1][y + 1], board[x - 2][y + 2], board[x - 3][y + 3], board[x - 4][y + 4]);
     }
 
+    private int valueSlashWithStep(int[][] board, int x, int y, GoBangEnum side, int stepX) {
+        int pos1 = board[x][y];
+        int pos2 = board[x - 1][y + 1];
+        int pos3 = board[x - 2][y + 2];
+        int pos4 = board[x - 3][y + 3];
+        int pos5 = board[x - 4][y + 4];
+
+        if (x == stepX) {
+            pos1 = side.getVal();
+        } else if (x + 1 == stepX) {
+            pos2 = side.getVal();
+        } else if (x + 2 == stepX) {
+            pos3 = side.getVal();
+        } else if (x + 3 == stepX) {
+            pos4 = side.getVal();
+        } else if (x + 4 == stepX) {
+            pos5 = side.getVal();
+        }
+
+        return valueLine(pos1, pos2, pos3, pos4, pos5);
+    }
+
     /**
      * 以[x, y]为起点，向右下方计算反斜杠方向（\）的valueLine
      *
@@ -242,6 +271,28 @@ public class GoBangAiService {
      */
     private int valueBackSlash(int[][] board, int x, int y) {
         return valueLine(board[x][y], board[x + 1][y + 1], board[x + 2][y + 2], board[x + 3][y + 3], board[x + 4][y + 4]);
+    }
+
+    private int valueBackSlashWithStep(int[][] board, int x, int y, GoBangEnum side, int stepX) {
+        int pos1 = board[x][y];
+        int pos2 = board[x + 1][y + 1];
+        int pos3 = board[x + 2][y + 2];
+        int pos4 = board[x + 3][y + 3];
+        int pos5 = board[x + 4][y + 4];
+
+        if (x == stepX) {
+            pos1 = side.getVal();
+        } else if (x + 1 == stepX) {
+            pos2 = side.getVal();
+        } else if (x + 2 == stepX) {
+            pos3 = side.getVal();
+        } else if (x + 3 == stepX) {
+            pos4 = side.getVal();
+        } else if (x + 4 == stepX) {
+            pos5 = side.getVal();
+        }
+
+        return valueLine(pos1, pos2, pos3, pos4, pos5);
     }
 
     public void setAiStrategy(GoBangAiStrategyEnum strategy) {
