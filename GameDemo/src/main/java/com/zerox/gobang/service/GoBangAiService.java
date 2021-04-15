@@ -47,11 +47,11 @@ public class GoBangAiService {
     private int[] minmaxNextStep(int[][] currentBoard, GoBangEnum side) {
         thinkProcess = 0;
         MinMaxTreeNode root = new MinMaxTreeNode();
-        int[] result = minmax(root, MINMAX_DEPTH, GoBangEnum.BLACK.equals(side), currentBoard, -1, -1);
+        int[] result = minmax(root, MINMAX_DEPTH, GoBangEnum.BLACK.equals(side), currentBoard, -1, -1, Integer.MIN_VALUE, Integer.MAX_VALUE);
         return new int[]{result[1], result[2]};
     }
 
-    private int[] minmax(MinMaxTreeNode node, int depth, boolean isBlack, int[][] board, int lastX, int lastY) {
+    private int[] minmax(MinMaxTreeNode node, int depth, boolean isBlack, int[][] board, int lastX, int lastY, int alpha, int beta) {
         node.init(board, lastX, lastY);
         // 如果能得到确定的结果或者深度为零，使用评估函数返回局面得分
         if (node.getChildrenCount() == 0 || depth == 0) {
@@ -60,21 +60,27 @@ public class GoBangAiService {
         LinkedList<int[]> list = new LinkedList<>();
         // 如果轮到黑方走棋，是极小节点，选择一个得分最小的走法
         if (isBlack) {
-            int min = Integer.MAX_VALUE;
+            loop1:
             for (int i = 0; i < 15; i++) {
                 for (int j = 0; j < 15; j++) {
                     if (node.getChildren()[i][j] != null) {
                         int[][] boardNode = BoardUtils.copyBoard(board);
                         boardNode[i][j] = GoBangEnum.BLACK.getVal();
-                        int[] minmax = minmax(node.getChildren()[i][j], depth - 1, false, boardNode, i, j);
+                        int[] minmax = minmax(node.getChildren()[i][j], depth - 1, false, boardNode, i, j, alpha, beta);
                         minmax[1] = i;
                         minmax[2] = j;
-                        if (minmax[0] < min) {
+                        if (minmax[0] < beta) {
                             list.clear();
                             list.add(minmax);
-                            min = minmax[0];
-                        } else if (minmax[0] == min) {
+                            beta = minmax[0];
+                            if (beta <= alpha) {
+                                break loop1;
+                            }
+                        } else if (minmax[0] == beta) {
                             list.add(minmax);
+                            if (beta <= alpha) {
+                                break loop1;
+                            }
                         }
                     }
                 }
@@ -82,25 +88,35 @@ public class GoBangAiService {
         }
         // 如果轮到白方走棋，是极大节点，选择一个得分最大的走法
         else {
-            int max = Integer.MIN_VALUE;
+            loop2:
             for (int i = 0; i < 15; i++) {
                 for (int j = 0; j < 15; j++) {
                     if (node.getChildren()[i][j] != null) {
                         int[][] boardNode = BoardUtils.copyBoard(board);
                         boardNode[i][j] = GoBangEnum.WHITE.getVal();
-                        int[] minmax = minmax(node.getChildren()[i][j], depth - 1, true, boardNode, i, j);
+                        int[] minmax = minmax(node.getChildren()[i][j], depth - 1, true, boardNode, i, j, alpha, beta);
                         minmax[1] = i;
                         minmax[2] = j;
-                        if (minmax[0] > max) {
+                        if (minmax[0] > alpha) {
                             list.clear();
                             list.add(minmax);
-                            max = minmax[0];
-                        } else if (minmax[0] == max) {
+                            alpha = minmax[0];
+                            if (beta <= alpha) {
+                                break loop2;
+                            }
+                        } else if (minmax[0] == alpha) {
                             list.add(minmax);
+                            if (beta <= alpha) {
+                                break loop2;
+                            }
                         }
                     }
                 }
             }
+        }
+        if (list.isEmpty()) {
+            int score = isBlack ? beta : alpha;
+            return new int[]{score, -1, -1};
         }
         return list.get((int) (Math.random() * list.size()));
     }
