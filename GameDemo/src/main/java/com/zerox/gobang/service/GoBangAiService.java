@@ -3,9 +3,12 @@ package com.zerox.gobang.service;
 import com.zerox.gobang.constant.GoBangAiStrategyEnum;
 import com.zerox.gobang.constant.GoBangEnum;
 import com.zerox.gobang.dao.GoBangBoard;
+import com.zerox.gobang.entity.ai.MinMaxTreeNode;
+import com.zerox.gobang.utils.BoardUtils;
 import com.zerox.gobang.utils.ScoreMapUtils;
 
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.Random;
 
 /**
@@ -18,6 +21,8 @@ public class GoBangAiService {
     private int thinkProcess;
     private GoBangAiStrategyEnum strategy = GoBangAiStrategyEnum.RANDOM;
     private final static HashMap<Integer, Integer> scoreMap = ScoreMapUtils.initScoreMap();
+
+    private final static int MINMAX_DEPTH = 6;
 
     public int getThinkProcess() {
         return thinkProcess;
@@ -32,9 +37,72 @@ public class GoBangAiService {
                 return randomNextStep(currentBoard, side);
             case FIRST_EMPTY:
                 return firstEmptyNextStep(currentBoard, side);
+            case MINMAX:
+                return minmaxNextStep(currentBoard, side);
             default:
                 throw new IllegalArgumentException("策略配置错误");
         }
+    }
+
+    private int[] minmaxNextStep(int[][] currentBoard, GoBangEnum side) {
+        thinkProcess = 0;
+        MinMaxTreeNode root = new MinMaxTreeNode();
+        int[] result = minmax(root, MINMAX_DEPTH, GoBangEnum.BLACK.equals(side), currentBoard, -1, -1);
+        return new int[]{result[1], result[2]};
+    }
+
+    private int[] minmax(MinMaxTreeNode node, int depth, boolean isBlack, int[][] board, int lastX, int lastY) {
+        node.init(board, lastX, lastY);
+        // 如果能得到确定的结果或者深度为零，使用评估函数返回局面得分
+        if (node.getChildrenCount() == 0 || depth == 0) {
+            return new int[]{value(node.getBoard()), node.getLastX(), node.getLastY()};
+        }
+        LinkedList<int[]> list = new LinkedList<>();
+        // 如果轮到黑方走棋，是极小节点，选择一个得分最小的走法
+        if (isBlack) {
+            int min = Integer.MAX_VALUE;
+            for (int i = 0; i < 15; i++) {
+                for (int j = 0; j < 15; j++) {
+                    if (node.getChildren()[i][j] != null) {
+                        int[][] boardNode = BoardUtils.copyBoard(board);
+                        boardNode[i][j] = GoBangEnum.BLACK.getVal();
+                        int[] minmax = minmax(node.getChildren()[i][j], depth - 1, false, boardNode, i, j);
+                        minmax[1] = i;
+                        minmax[2] = j;
+                        if (minmax[0] < min) {
+                            list.clear();
+                            list.add(minmax);
+                            min = minmax[0];
+                        } else if (minmax[0] == min) {
+                            list.add(minmax);
+                        }
+                    }
+                }
+            }
+        }
+        // 如果轮到白方走棋，是极大节点，选择一个得分最大的走法
+        else {
+            int max = Integer.MIN_VALUE;
+            for (int i = 0; i < 15; i++) {
+                for (int j = 0; j < 15; j++) {
+                    if (node.getChildren()[i][j] != null) {
+                        int[][] boardNode = BoardUtils.copyBoard(board);
+                        boardNode[i][j] = GoBangEnum.WHITE.getVal();
+                        int[] minmax = minmax(node.getChildren()[i][j], depth - 1, true, boardNode, i, j);
+                        minmax[1] = i;
+                        minmax[2] = j;
+                        if (minmax[0] > max) {
+                            list.clear();
+                            list.add(minmax);
+                            max = minmax[0];
+                        } else if (minmax[0] == max) {
+                            list.add(minmax);
+                        }
+                    }
+                }
+            }
+        }
+        return list.get((int) (Math.random() * list.size()));
     }
 
     private int[] firstEmptyNextStep(int[][] currentBoard, GoBangEnum side) {

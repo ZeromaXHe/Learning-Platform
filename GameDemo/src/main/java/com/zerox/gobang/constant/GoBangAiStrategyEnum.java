@@ -7,5 +7,8 @@ package com.zerox.gobang.constant;
  * @Modified By: zhuxi
  */
 public enum GoBangAiStrategyEnum {
-    RANDOM, FIRST_EMPTY;
+    RANDOM,
+    FIRST_EMPTY,
+    MINMAX
+    ;
 }

@@ -9,7 +9,7 @@ import java.util.function.ToIntBiFunction;
 /**
  * @Author: zhuxi
  * @Time: 2021/3/31 11:54
- * @Description:
+ * @Description: 算分的结果白方优势为正，黑方优势为负
  * @Modified By: zhuxi
  */
 public class ScoreMapUtils {
