@@ -10,35 +10,35 @@ import java.util.HashMap;
  * <p>
  * 下图是字符串 s1 = "great" 的一种可能的表示形式。
  * <p>
- *     great
- *    /    \
- *   gr    eat
- *  / \    /  \
- * g   r  e   at
- *           / \
- *          a   t
+ * |     great
+ * |    /    \
+ * |   gr    eat
+ * |  / \    /  \
+ * | g   r  e   at
+ * |           / \
+ * |          a   t
  * 在扰乱这个字符串的过程中，我们可以挑选任何一个非叶节点，然后交换它的两个子节点。
  * <p>
  * 例如，如果我们挑选非叶节点 "gr" ，交换它的两个子节点，将会产生扰乱字符串 "rgeat" 。
  * <p>
- *     rgeat
- *    /    \
- *   rg    eat
- *  / \    /  \
- * r   g  e   at
- *           / \
- *          a   t
+ * |     rgeat
+ * |    /    \
+ * |   rg    eat
+ * |  / \    /  \
+ * | r   g  e   at
+ * |           / \
+ * |          a   t
  * 我们将 "rgeat” 称作 "great" 的一个扰乱字符串。
  * <p>
  * 同样地，如果我们继续交换节点 "eat" 和 "at" 的子节点，将会产生另一个新的扰乱字符串 "rgtae" 。
  * <p>
- *     rgtae
- *    /    \
- *   rg    tae
- *  / \    /  \
- * r   g  ta  e
- *       / \
- *      t   a
+ * |     rgtae
+ * |    /    \
+ * |   rg    tae
+ * |  / \    /  \
+ * | r   g  ta  e
+ * |       / \
+ * |      t   a
  * 我们将 "rgtae” 称作 "great" 的一个扰乱字符串。
  * <p>
  * 给出两个长度相等的字符串 s1 和 s2，判断 s2 是否是 s1 的扰乱字符串。
@@ -51,6 +51,11 @@ import java.util.HashMap;
  * 输入: s1 = "abcde", s2 = "caebd"
  * 输出: false
  * <p>
+ * 提示：
+ * s1.length == s2.length
+ * 1 <= s1.length <= 30
+ * s1 和 s2 由小写英文字母组成
+ * <p>
  * 来源：力扣（LeetCode）
  * 链接：https://leetcode-cn.com/problems/scramble-string
  * 著作权归领扣网络所有。商业转载请联系官方授权，非商业转载请注明出处。
@@ -58,14 +63,40 @@ import java.util.HashMap;
  */
 public class Solution87 {
     /**
-     * 执行用时： 2 ms , 在所有 Java 提交中击败了 98.61% 的用户
-     * 内存消耗： 38.8 MB , 在所有 Java 提交中击败了 18.53% 的用户
+     * 执行用时：11 ms , 在所有 Java 提交中击败了 19.77% 的用户
+     * 内存消耗： 39.1 MB , 在所有 Java 提交中击败了 6.36% 的用户
+     * <p>
+     * 每日一题，发现不map超时之后，改用map的方法做。
+     * 去掉了前面不必要的检测：更新的题目里有提示：
+     * s1.length == s2.length
+     * 1 <= s1.length <= 30
+     * 其实真正提交的代码就是isScramble_mapped_coreCode()中的代码
+     * （当然，最好还是用动规，但我就是想偷懒了……）
      *
      * @param s1
      * @param s2
      * @return
      */
     public boolean isScramble(String s1, String s2) {
+        return isScramble_mapped_coreCode(s1, s2);
+    }
+
+    /**
+     * 执行用时： 2 ms , 在所有 Java 提交中击败了 98.61% 的用户
+     * 内存消耗： 38.8 MB , 在所有 Java 提交中击败了 18.53% 的用户
+     * <p>
+     * 时隔3个月再做每日一题，发现新的测试用例通不过了
+     * 286 / 288 个通过测试用例
+     * "eebaacbcbcadaaedceaaacadccd"
+     * "eadcaacabaddaceacbceaabeccd"
+     * 状态：超出时间限制
+     * 提交时间：1 分钟前
+     *
+     * @param s1
+     * @param s2
+     * @return
+     */
+    public boolean isScramble_pass285Cases(String s1, String s2) {
         if (s1 == null || s2 == null) return false;
         if (s1.length() != s2.length()) return false;
         if (s1.equals(s2)) return true;
@@ -106,6 +137,10 @@ public class Solution87 {
     public boolean isScramble_mapped(String s1, String s2) {
         if (s1 == null || s2 == null) return false;
         if (s1.length() != s2.length()) return false;
+        return isScramble_mapped_coreCode(s1, s2);
+    }
+
+    private boolean isScramble_mapped_coreCode(String s1, String s2) {
         if (s1.equals(s2)) return true;
         String key = s1 + "#" + s2;
         if (map.containsKey(key)) {
