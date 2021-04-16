@@ -1,6 +1,7 @@
 package com.zerox.gobang.dao;
 
 import com.zerox.gobang.constant.GoBangEnum;
+import com.zerox.gobang.utils.BoardUtils;
 
 import java.util.LinkedList;
 
@@ -42,7 +43,7 @@ public class GoBangBoard {
 
     private static GoBangBoard instance = new GoBangBoard();
 
-    public GoBangBoard() {
+    private GoBangBoard() {
         this.board = new int[15][15];
         stepStack = new LinkedList<>();
         dominateSide = GoBangEnum.EMPTY;
@@ -103,7 +104,7 @@ public class GoBangBoard {
 
         saveExistInfo(x, y);
 
-        dominateSide = calcNewDominateSide(x, y);
+        dominateSide = BoardUtils.calcNewDominateSide(board, getNowTurn(), x, y, stepStack.size());
         stepStack.push(new int[]{x, y});
     }
 
@@ -118,81 +119,6 @@ public class GoBangBoard {
         backSlashExistChess[x - y + 14] = true;
         rowExistChess[x] = true;
         columnExistChess[y] = true;
-    }
-
-    /**
-     * 计算新的获胜状态
-     *
-     * @param x
-     * @param y
-     * @return
-     */
-    private GoBangEnum calcNewDominateSide(int x, int y) {
-        // 判断上下方向
-        int count = 1;
-        int diff = 1;
-        while (x - diff >= 0 && board[x - diff][y] == board[x][y]) {
-            count++;
-            diff++;
-        }
-        diff = 1;
-        while (x + diff < 15 && board[x + diff][y] == board[x][y]) {
-            count++;
-            diff++;
-        }
-        if (count >= 5) {
-            return getNowTurn();
-        }
-
-        // 判断左右方向
-        count = 1;
-        diff = 1;
-        while (y - diff >= 0 && board[x][y - diff] == board[x][y]) {
-            count++;
-            diff++;
-        }
-        diff = 1;
-        while (y + diff < 15 && board[x][y + diff] == board[x][y]) {
-            count++;
-            diff++;
-        }
-        if (count >= 5) {
-            return getNowTurn();
-        }
-
-        // 判断左上到右下方向
-        count = 1;
-        diff = 1;
-        while (x - diff >= 0 && y - diff >= 0 && board[x - diff][y - diff] == board[x][y]) {
-            count++;
-            diff++;
-        }
-        diff = 1;
-        while (x + diff < 15 && y + diff < 15 && board[x + diff][y + diff] == board[x][y]) {
-            count++;
-            diff++;
-        }
-        if (count >= 5) {
-            return getNowTurn();
-        }
-
-        // 判断左下到右上方向
-        count = 1;
-        diff = 1;
-        while (x + diff < 15 && y - diff >= 0 && board[x + diff][y - diff] == board[x][y]) {
-            count++;
-            diff++;
-        }
-        diff = 1;
-        while (x - diff >= 0 && y + diff < 15 && board[x - diff][y + diff] == board[x][y]) {
-            count++;
-            diff++;
-        }
-        if (count >= 5) {
-            return getNowTurn();
-        }
-
-        return stepStack.size() == 15 * 15 ? GoBangEnum.TIE : GoBangEnum.EMPTY;
     }
 
     /**

@@ -1,6 +1,9 @@
 package gobang;
 
+import com.zerox.gobang.constant.GoBangEnum;
 import com.zerox.gobang.service.GoBangAiService;
+import com.zerox.gobang.utils.BoardUtils;
+import com.zerox.gobang.utils.ValueUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -13,11 +16,50 @@ import java.lang.reflect.Method;
  * @Description:
  * @Modified By: zhuxi
  */
-public class GoBangAiServiceTest {
+public class ValueTest {
+    @Test
+    public void FullBlackValueTest() {
+        int[][] board = new int[15][15];
+        for (int i = 0; i < 15; i++) {
+            for (int j = 0; j < 15; j++) {
+                board[i][j] = 1;
+            }
+        }
+        System.out.println("value:     " + ValueUtils.value(board));
+        System.out.println("available: " + (Integer.MAX_VALUE - ValueUtils.value(board)));
+    }
+
+    @Test
+    public void valueStepTest() {
+        int[][] board = new int[15][15];
+        board[14][14] = 1;
+        board[13][13] = 2;
+        int preValue = ValueUtils.value(board);
+        System.out.println("preValue: " + preValue);
+        int valueStep = ValueUtils.valueStep(board, 3, 3, GoBangEnum.BLACK);
+        System.out.println("valueStep: " + valueStep);
+        board[3][3] = 1;
+        int afterValue = ValueUtils.value(board);
+        System.out.println("afterValue: " + afterValue);
+        // FIXME: 测试没过！
+        Assert.assertEquals(valueStep, afterValue - preValue);
+    }
+
     @Test
     public void valueTest() {
         int[][] board = new int[15][15];
-        board[0][0] = 1;
+        board[7][7] = 1;
+        board[6][6] = 2;
+        board[6][8] = 1;
+        System.out.println(ValueUtils.value(board));
+    }
+
+    /**
+     * 曾经value方法还在GoBangAiService里做私有方法时的测试调用
+     */
+    @Deprecated
+    private void deprecatedValueTest() {
+        int[][] board = new int[15][15];
         Class<GoBangAiService> aiServiceClass = GoBangAiService.class;
         try {
             Method value = aiServiceClass.getDeclaredMethod("value", int[][].class);
@@ -52,7 +94,7 @@ public class GoBangAiServiceTest {
                 board[i + j][j] = 1;
             }
         }
-        System.out.println(print2DArrWithChangeLine(board));
+        System.out.println(BoardUtils.trans2DArrWithChangeLineToString(board));
 
         board = new int[15][15];
         System.out.println("============");
@@ -62,24 +104,8 @@ public class GoBangAiServiceTest {
                 board[Math.min(14, i)][j] = 1;
             }
         }
-        System.out.println(print2DArrWithChangeLine(board));
+        System.out.println(BoardUtils.trans2DArrWithChangeLineToString(board));
 
-    }
-
-    private static String print2DArrWithChangeLine(int[][] arr2D) {
-        StringBuilder sb = new StringBuilder();
-        sb.append('[');
-        for (int i = 0; i < arr2D.length; i++) {
-            if (i != 0) sb.append(",\n");
-            sb.append('[');
-            for (int j = 0; j < arr2D[0].length; j++) {
-                if (j != 0) sb.append(',');
-                sb.append(arr2D[i][j]);
-            }
-            sb.append(']');
-        }
-        sb.append(']');
-        return sb.toString();
     }
 
     /**
@@ -97,7 +123,7 @@ public class GoBangAiServiceTest {
                 }
             }
         }
-        System.out.println(print2DArrWithChangeLine(board));
+        System.out.println(BoardUtils.trans2DArrWithChangeLineToString(board));
     }
 
     private String valueStep_slash(int x, int y) {
@@ -140,7 +166,7 @@ public class GoBangAiServiceTest {
                 }
             }
         }
-        System.out.println(print2DArrWithChangeLine(board));
+        System.out.println(BoardUtils.trans2DArrWithChangeLineToString(board));
     }
 
     private String valueStep_backSlash(int x, int y) {

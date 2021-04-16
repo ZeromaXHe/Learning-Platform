@@ -4,10 +4,7 @@ import com.zerox.gobang.constant.GoBangAiStrategyEnum;
 import com.zerox.gobang.constant.GoBangEnum;
 import com.zerox.gobang.dao.GoBangBoard;
 import com.zerox.gobang.entity.ai.MinMaxTreeNode;
-import com.zerox.gobang.utils.BoardUtils;
-import com.zerox.gobang.utils.ScoreMapUtils;
 
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Random;
 
@@ -20,9 +17,8 @@ import java.util.Random;
 public class GoBangAiService {
     private int thinkProcess;
     private GoBangAiStrategyEnum strategy = GoBangAiStrategyEnum.RANDOM;
-    private final static HashMap<Integer, Integer> scoreMap = ScoreMapUtils.initScoreMap();
 
-    private final static int MINMAX_DEPTH = 6;
+    private final static int MINMAX_DEPTH = 2;
 
     public int getThinkProcess() {
         return thinkProcess;
@@ -38,75 +34,74 @@ public class GoBangAiService {
             case FIRST_EMPTY:
                 return firstEmptyNextStep(currentBoard, side);
             case MINMAX:
-                return minmaxNextStep(currentBoard, side);
+                if (goBangBoard.getStepCount() == 0) {
+                    thinkProcess = 100;
+                    return new int[]{7, 7};
+                }
+                return minmaxNextStep(currentBoard, side, goBangBoard.getStepCount(), goBangBoard.getStepStackTop());
             default:
                 throw new IllegalArgumentException("策略配置错误");
         }
     }
 
-    private int[] minmaxNextStep(int[][] currentBoard, GoBangEnum side) {
+    private int[] minmaxNextStep(int[][] currentBoard, GoBangEnum side, int stepCount, int[] lastStep) {
         thinkProcess = 0;
-        MinMaxTreeNode root = new MinMaxTreeNode();
-        int[] result = minmax(root, MINMAX_DEPTH, GoBangEnum.BLACK.equals(side), currentBoard, -1, -1, Integer.MIN_VALUE, Integer.MAX_VALUE);
-        return new int[]{result[1], result[2]};
+        MinMaxTreeNode root = new MinMaxTreeNode(currentBoard, side, stepCount, lastStep[0], lastStep[1]);
+        MinMaxTreeNode result = minmax(root, MINMAX_DEPTH);
+        // 打印minmax树
+        System.out.println(root.toMinmaxTreeString("", new StringBuilder()));
+        return new int[]{result.getNextX(), result.getNextY()};
     }
 
-    private int[] minmax(MinMaxTreeNode node, int depth, boolean isBlack, int[][] board, int lastX, int lastY, int alpha, int beta) {
-        node.init(board, lastX, lastY);
+    private MinMaxTreeNode minmax(MinMaxTreeNode node, int depth) {
         // 如果能得到确定的结果或者深度为零，使用评估函数返回局面得分
-        if (node.getChildrenCount() == 0 || depth == 0) {
-            return new int[]{value(node.getBoard()), node.getLastX(), node.getLastY()};
+        if (node.isTerminal() || depth == 0) {
+            node.initValue();
+            return node;
         }
-        LinkedList<int[]> list = new LinkedList<>();
-        // 如果轮到黑方走棋，是极小节点，选择一个得分最小的走法
-        if (isBlack) {
+
+        node.initChildren();
+        if (node.getChildrenCount() == 0) {
+            node.initValue();
+            return node;
+        }
+
+        LinkedList<MinMaxTreeNode> list = new LinkedList<>();
+
+        if (GoBangEnum.WHITE.equals(node.getSide())) {
+            // 如果轮到白方走棋，是极小节点，选择一个得分最小的走法
             loop1:
             for (int i = 0; i < 15; i++) {
                 for (int j = 0; j < 15; j++) {
                     if (node.getChildren()[i][j] != null) {
-                        int[][] boardNode = BoardUtils.copyBoard(board);
-                        boardNode[i][j] = GoBangEnum.BLACK.getVal();
-                        int[] minmax = minmax(node.getChildren()[i][j], depth - 1, false, boardNode, i, j, alpha, beta);
-                        minmax[1] = i;
-                        minmax[2] = j;
-                        if (minmax[0] < beta) {
-                            list.clear();
-                            list.add(minmax);
-                            beta = minmax[0];
-                            if (beta <= alpha) {
-                                break loop1;
+                        MinMaxTreeNode minmax = minmax(node.getChildren()[i][j], depth - 1);
+                        if (minmax.getValue() <= node.getBeta()) {
+                            if (minmax.getValue() < node.getBeta()) {
+                                list.clear();
+                                node.setBeta(minmax.getValue());
                             }
-                        } else if (minmax[0] == beta) {
                             list.add(minmax);
-                            if (beta <= alpha) {
+                            if (node.getBeta() <= node.getAlpha()) {
                                 break loop1;
                             }
                         }
                     }
                 }
             }
-        }
-        // 如果轮到白方走棋，是极大节点，选择一个得分最大的走法
-        else {
+        } else {
+            // 如果轮到黑方走棋，是极大节点，选择一个得分最大的走法
             loop2:
             for (int i = 0; i < 15; i++) {
                 for (int j = 0; j < 15; j++) {
                     if (node.getChildren()[i][j] != null) {
-                        int[][] boardNode = BoardUtils.copyBoard(board);
-                        boardNode[i][j] = GoBangEnum.WHITE.getVal();
-                        int[] minmax = minmax(node.getChildren()[i][j], depth - 1, true, boardNode, i, j, alpha, beta);
-                        minmax[1] = i;
-                        minmax[2] = j;
-                        if (minmax[0] > alpha) {
-                            list.clear();
-                            list.add(minmax);
-                            alpha = minmax[0];
-                            if (beta <= alpha) {
-                                break loop2;
+                        MinMaxTreeNode minmax = minmax(node.getChildren()[i][j], depth - 1);
+                        if (minmax.getValue() >= node.getAlpha()) {
+                            if (minmax.getValue() > node.getAlpha()) {
+                                list.clear();
+                                node.setAlpha(minmax.getValue());
                             }
-                        } else if (minmax[0] == alpha) {
                             list.add(minmax);
-                            if (beta <= alpha) {
+                            if (node.getBeta() <= node.getAlpha()) {
                                 break loop2;
                             }
                         }
@@ -114,11 +109,17 @@ public class GoBangAiService {
                 }
             }
         }
+        // 这种情况应该对应被α-β剪枝了，所以应该不会采用本节点？
         if (list.isEmpty()) {
-            int score = isBlack ? beta : alpha;
-            return new int[]{score, -1, -1};
+            int score = GoBangEnum.BLACK.equals(node.getSide()) ? node.getBeta() : node.getAlpha();
+            node.setValue(score);
+        } else {
+            MinMaxTreeNode chosen = list.get((int) (Math.random() * list.size()));
+            node.setValue(chosen.getValue());
+            node.setNextX(chosen.getLastX());
+            node.setNextY(chosen.getLastY());
         }
-        return list.get((int) (Math.random() * list.size()));
+        return node;
     }
 
     private int[] firstEmptyNextStep(int[][] currentBoard, GoBangEnum side) {
@@ -170,213 +171,6 @@ public class GoBangAiService {
             thinkProcess++;
         }
         return result;
-    }
-
-    private int valueStep(int[][] board, int x, int y, GoBangEnum side) {
-        int sumPre = 0;
-        int sumAfter = 0;
-        int xStartMin = Math.max(0, x - 4);
-        int xStartMax = Math.min(10, x);
-        int xSlashStartMax = Math.min(14, x + 5);
-        int xSlashStartMin = Math.max(4, x);
-        int yStartMin = Math.max(0, y - 4);
-        int yStartMax = Math.min(10, y);
-        for (int i = xStartMin; i <= xStartMax; i++) {
-            sumPre += valueColumn(board, i, y);
-            sumAfter += valueColumnWithStep(board, i, y, side, x);
-        }
-        for (int i = yStartMin; i <= yStartMax; i++) {
-            sumPre += valueRow(board, x, i);
-            sumAfter += valueRowWithStep(board, x, i, side, y);
-        }
-        for (int i = Math.max(xSlashStartMin - x, y - yStartMax); i <= Math.min(xSlashStartMax - x, y - yStartMin); i++) {
-            sumPre += valueSlash(board, x + i, y - i);
-            sumAfter += valueSlashWithStep(board, x + i, y - i, side, x);
-        }
-        for (int i = Math.max(x - xStartMax, y - yStartMax); i <= Math.min(x - xStartMin, y - yStartMin); i++) {
-            sumPre += valueBackSlash(board, x - i, y - i);
-            sumAfter += valueBackSlashWithStep(board, x - i, y - i, side, x);
-        }
-
-        return sumAfter - sumPre;
-    }
-
-    /**
-     * 为棋盘盘面评分
-     *
-     * @param board
-     * @return
-     */
-    private int value(int[][] board) {
-        int sum = 0;
-        for (int i = 0; i < 15; i++) {
-            for (int j = 0; j < 11; j++) {
-                sum += valueRow(board, i, j);
-                sum += valueColumn(board, j, i);
-                if (i < 11) {
-                    sum += valueBackSlash(board, i, j);
-                }
-                if (i >= 4) {
-                    sum += valueSlash(board, i, j);
-                }
-            }
-        }
-        return sum;
-    }
-
-    /**
-     * 为棋盘上某直线上5个位置打分
-     *
-     * @param pos1
-     * @param pos2
-     * @param pos3
-     * @param pos4
-     * @param pos5
-     * @return
-     */
-    private int valueLine(int pos1, int pos2, int pos3, int pos4, int pos5) {
-        int key = pos5 + 10 * pos4 + 100 * pos3 + 1000 * pos2 + 10000 * pos1;
-        if (scoreMap.containsKey(key)) {
-            return scoreMap.get(key);
-        } else {
-            throw new IllegalArgumentException("valueLine fail, false key:" + key);
-        }
-    }
-
-    /**
-     * 以[x, y]为起点，向右方计算行方向的valueLine
-     *
-     * @param board
-     * @param x
-     * @param y
-     * @return
-     */
-    private int valueRow(int[][] board, int x, int y) {
-        return valueLine(board[x][y], board[x][y + 1], board[x][y + 2], board[x][y + 3], board[x][y + 4]);
-    }
-
-    private int valueRowWithStep(int[][] board, int x, int y, GoBangEnum side, int stepY) {
-        int pos1 = board[x][y];
-        int pos2 = board[x][y + 1];
-        int pos3 = board[x][y + 2];
-        int pos4 = board[x][y + 3];
-        int pos5 = board[x][y + 4];
-
-        if (y == stepY) {
-            pos1 = side.getVal();
-        } else if (y + 1 == stepY) {
-            pos2 = side.getVal();
-        } else if (y + 2 == stepY) {
-            pos3 = side.getVal();
-        } else if (y + 3 == stepY) {
-            pos4 = side.getVal();
-        } else if (y + 4 == stepY) {
-            pos5 = side.getVal();
-        }
-
-        return valueLine(pos1, pos2, pos3, pos4, pos5);
-    }
-
-    /**
-     * 以[x, y]为起点，向下方计算列方向的valueLine
-     *
-     * @param board
-     * @param x
-     * @param y
-     * @return
-     */
-    private int valueColumn(int[][] board, int x, int y) {
-        return valueLine(board[x][y], board[x + 1][y], board[x + 2][y], board[x + 3][y], board[x + 4][y]);
-    }
-
-    private int valueColumnWithStep(int[][] board, int x, int y, GoBangEnum side, int stepX) {
-        int pos1 = board[x][y];
-        int pos2 = board[x + 1][y];
-        int pos3 = board[x + 2][y];
-        int pos4 = board[x + 3][y];
-        int pos5 = board[x + 4][y];
-
-        if (x == stepX) {
-            pos1 = side.getVal();
-        } else if (x + 1 == stepX) {
-            pos2 = side.getVal();
-        } else if (x + 2 == stepX) {
-            pos3 = side.getVal();
-        } else if (x + 3 == stepX) {
-            pos4 = side.getVal();
-        } else if (x + 4 == stepX) {
-            pos5 = side.getVal();
-        }
-
-        return valueLine(pos1, pos2, pos3, pos4, pos5);
-    }
-
-    /**
-     * 以[x, y]为起点，向右上方计算斜杠方向（/）的valueLine
-     *
-     * @param board
-     * @param x
-     * @param y
-     * @return
-     */
-    private int valueSlash(int[][] board, int x, int y) {
-        return valueLine(board[x][y], board[x - 1][y + 1], board[x - 2][y + 2], board[x - 3][y + 3], board[x - 4][y + 4]);
-    }
-
-    private int valueSlashWithStep(int[][] board, int x, int y, GoBangEnum side, int stepX) {
-        int pos1 = board[x][y];
-        int pos2 = board[x - 1][y + 1];
-        int pos3 = board[x - 2][y + 2];
-        int pos4 = board[x - 3][y + 3];
-        int pos5 = board[x - 4][y + 4];
-
-        if (x == stepX) {
-            pos1 = side.getVal();
-        } else if (x + 1 == stepX) {
-            pos2 = side.getVal();
-        } else if (x + 2 == stepX) {
-            pos3 = side.getVal();
-        } else if (x + 3 == stepX) {
-            pos4 = side.getVal();
-        } else if (x + 4 == stepX) {
-            pos5 = side.getVal();
-        }
-
-        return valueLine(pos1, pos2, pos3, pos4, pos5);
-    }
-
-    /**
-     * 以[x, y]为起点，向右下方计算反斜杠方向（\）的valueLine
-     *
-     * @param board
-     * @param x
-     * @param y
-     * @return
-     */
-    private int valueBackSlash(int[][] board, int x, int y) {
-        return valueLine(board[x][y], board[x + 1][y + 1], board[x + 2][y + 2], board[x + 3][y + 3], board[x + 4][y + 4]);
-    }
-
-    private int valueBackSlashWithStep(int[][] board, int x, int y, GoBangEnum side, int stepX) {
-        int pos1 = board[x][y];
-        int pos2 = board[x + 1][y + 1];
-        int pos3 = board[x + 2][y + 2];
-        int pos4 = board[x + 3][y + 3];
-        int pos5 = board[x + 4][y + 4];
-
-        if (x == stepX) {
-            pos1 = side.getVal();
-        } else if (x + 1 == stepX) {
-            pos2 = side.getVal();
-        } else if (x + 2 == stepX) {
-            pos3 = side.getVal();
-        } else if (x + 3 == stepX) {
-            pos4 = side.getVal();
-        } else if (x + 4 == stepX) {
-            pos5 = side.getVal();
-        }
-
-        return valueLine(pos1, pos2, pos3, pos4, pos5);
     }
 
     public void setAiStrategy(GoBangAiStrategyEnum strategy) {

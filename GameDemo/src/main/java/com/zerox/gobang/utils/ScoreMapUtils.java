@@ -9,7 +9,7 @@ import java.util.function.ToIntBiFunction;
 /**
  * @Author: zhuxi
  * @Time: 2021/3/31 11:54
- * @Description: 算分的结果白方优势为正，黑方优势为负
+ * @Description: 算分的结果黑方优势为正，白方优势为负
  * @Modified By: zhuxi
  */
 public class ScoreMapUtils {
@@ -56,10 +56,10 @@ public class ScoreMapUtils {
             sign = -1;
         }
         Optional<ToIntBiFunction<List<Integer>, List<Integer>>> optional = getCalcPossibleFunction(oneIndexes, twoIndexes);
-        if(optional.isPresent()) {
+        if (optional.isPresent()) {
             ToIntBiFunction<List<Integer>, List<Integer>> toIntBiFunction = optional.get();
             return sign * toIntBiFunction.applyAsInt(oneIndexes, twoIndexes);
-        }else{
+        } else {
             // TODO: 需要日志系统
             System.out.println("fail to get toIntBiFunction!");
             return 0;
