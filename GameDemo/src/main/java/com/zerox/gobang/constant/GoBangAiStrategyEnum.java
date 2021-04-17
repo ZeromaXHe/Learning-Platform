@@ -9,6 +9,7 @@ package com.zerox.gobang.constant;
 public enum GoBangAiStrategyEnum {
     RANDOM,
     FIRST_EMPTY,
-    MINMAX
+    MINMAX,
+    MINMAX_FROM_WEB
     ;
 }

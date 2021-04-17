@@ -49,6 +49,7 @@ class GoBangFrame extends JFrame {
     private AiWorker aiWorker;
     private JRadioButton randomStrategyButton;
     private JRadioButton firstEmptyStrategyButton;
+    private JRadioButton minmaxStrategyButton;
 
     int[] lastStep;
     int[] regretStep;
@@ -151,8 +152,12 @@ class GoBangFrame extends JFrame {
         firstEmptyStrategyButton = new JRadioButton("填充首空策略", false);
         firstEmptyStrategyButton.addActionListener(e -> goBangController.setBoardAiStrategy(GoBangAiStrategyEnum.FIRST_EMPTY));
         aiStrategyButtonGroup.add(firstEmptyStrategyButton);
+        minmaxStrategyButton = new JRadioButton("最大最小策略", false);
+        minmaxStrategyButton.addActionListener(e -> goBangController.setBoardAiStrategy(GoBangAiStrategyEnum.MINMAX_FROM_WEB));
+        aiStrategyButtonGroup.add(minmaxStrategyButton);
         aiPanel.add(randomStrategyButton, new GBC(0, 1));
         aiPanel.add(firstEmptyStrategyButton, new GBC(1, 1));
+        aiPanel.add(minmaxStrategyButton, new GBC(2, 1));
 
         Border etched = BorderFactory.createEtchedBorder();
         Border aiPanelBorder = BorderFactory.createTitledBorder(etched, "AI选项");
@@ -226,6 +231,7 @@ class GoBangFrame extends JFrame {
         regretAction.setEnabled(false);
         restartButton.setEnabled(false);
         restartAction.setEnabled(false);
+        aiButton.setEnabled(true);
         for (int i = 0; i < 15; i++) {
             for (int j = 0; j < 15; j++) {
                 boardButtonRef[i][j].setEnabled(true);
@@ -302,10 +308,10 @@ class GoBangFrame extends JFrame {
                 setAllBoardButtonRefEnabledByStatus(true);
             }
             try {
-                appendInfo("【信息框】aiResult:" + Arrays.toString(aiFuture.get()));
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            } catch (ExecutionException e) {
+                int[] result = aiFuture.get();
+                appendInfo("【信息框】aiResult:" + Arrays.toString(result));
+                boardButtonRef[result[0]][result[1]].doClick();
+            } catch (InterruptedException | ExecutionException e) {
                 e.printStackTrace();
             }
         }
@@ -346,10 +352,12 @@ class GoBangFrame extends JFrame {
                 setAllBoardButtonRefEnabledByStatus(false);
                 regretButton.setEnabled(false);
                 regretAction.setEnabled(false);
+                aiButton.setEnabled(false);
                 appendInfo("【信息框】:" + (vo.getDominateSide() == GoBangEnum.BLACK ? "黑方" : "白方") + "胜利！");
             } else if (vo.getDominateSide() == GoBangEnum.TIE) {
                 regretButton.setEnabled(false);
                 regretAction.setEnabled(false);
+                aiButton.setEnabled(false);
                 appendInfo("【信息框】:平局！");
             }
         }

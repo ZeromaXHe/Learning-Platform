@@ -4,6 +4,8 @@ import com.zerox.gobang.constant.GoBangAiStrategyEnum;
 import com.zerox.gobang.constant.GoBangEnum;
 import com.zerox.gobang.dao.GoBangBoard;
 import com.zerox.gobang.entity.ai.MinMaxTreeNode;
+import com.zerox.gobang.utils.AiFromWebUtils;
+import com.zerox.gobang.utils.BoardFromWebUtils;
 
 import java.util.Random;
 
@@ -39,9 +41,20 @@ public class GoBangAiService {
                     return new int[]{7, 7};
                 }
                 return minmaxNextStep(currentBoard, side, goBangBoard.getStepCount(), goBangBoard.getStepStackTop());
+            case MINMAX_FROM_WEB:
+                return minmaxFromWebNextStep(currentBoard, side);
             default:
                 throw new IllegalArgumentException("策略配置错误");
         }
+    }
+
+    private int[] minmaxFromWebNextStep(int[][] currentBoard, GoBangEnum side) {
+        thinkProcess = 0;
+        int[] result = AiFromWebUtils.AI(BoardFromWebUtils.transBoardToPaddedBoard(currentBoard), side);
+        result[0]--;
+        result[1]--;
+        thinkProcess = 100;
+        return result;
     }
 
     private int[] minmaxNextStep(int[][] currentBoard, GoBangEnum side, int stepCount, int[] lastStep) {
@@ -49,12 +62,12 @@ public class GoBangAiService {
         MinMaxTreeNode root = new MinMaxTreeNode(currentBoard, side, stepCount, lastStep[0], lastStep[1]);
         root.minmax(MINMAX_DEPTH);
         // 打印minmax树
-        if(PRINT_MINMAX_TREE) {
+        if (PRINT_MINMAX_TREE) {
             System.out.println(root.toMinmaxTreeString("", new StringBuilder()));
         }
+        thinkProcess = 100;
         return new int[]{root.getNextX(), root.getNextY()};
     }
-
 
 
     private int[] firstEmptyNextStep(int[][] currentBoard, GoBangEnum side) {

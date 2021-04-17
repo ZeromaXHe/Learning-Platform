@@ -195,9 +195,9 @@ public class MinMaxTreeNode {
             throw new IllegalStateException("need initBoard first");
         }
         /// 原来自己写的评估函数
-//        this.value = ValueUtils.value(board);
-        // 网上的评估函数改的java版本（仅计算走的那一步的价值）
-        this.value = ValueFromWebUtils.value(lastX, lastY, board, side);
+        this.value = ValueUtils.value(board);
+        /// 网上的评估函数改的java版本（仅计算走的那一步的价值）
+//        this.value = ValueFromWebUtils.value(lastX, lastY, board, side);
     }
 
     public void addStepValue(int x, int y, GoBangEnum side) {
