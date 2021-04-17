@@ -5,7 +5,6 @@ import com.zerox.gobang.constant.GoBangEnum;
 import com.zerox.gobang.dao.GoBangBoard;
 import com.zerox.gobang.entity.ai.MinMaxTreeNode;
 
-import java.util.LinkedList;
 import java.util.Random;
 
 /**

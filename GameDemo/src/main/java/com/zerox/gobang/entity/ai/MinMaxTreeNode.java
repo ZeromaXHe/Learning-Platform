@@ -2,6 +2,7 @@ package com.zerox.gobang.entity.ai;
 
 import com.zerox.gobang.constant.GoBangEnum;
 import com.zerox.gobang.utils.BoardUtils;
+import com.zerox.gobang.utils.ValueFromWebUtils;
 import com.zerox.gobang.utils.ValueUtils;
 
 import java.util.LinkedList;
@@ -64,10 +65,63 @@ public class MinMaxTreeNode {
 
         LinkedList<MinMaxTreeNode> list = new LinkedList<>();
 
-        if (GoBangEnum.WHITE.equals(side)) {
+        if (GoBangEnum.WHITE == side) {
             // 如果轮到白方走棋，是极小节点，选择一个得分最小的走法
+            int min = Integer.MAX_VALUE;
             for (MinMaxTreeNode child : childrenList) {
                 child.minmax(depth - 1);
+                if (child.value < min) {
+                    list.clear();
+                    list.add(child);
+                    min = child.value;
+                } else if (child.value == min) {
+                    list.add(child);
+                }
+            }
+        } else {
+            // 如果轮到黑方走棋，是极大节点，选择一个得分最大的走法
+            int max = Integer.MIN_VALUE;
+            for (MinMaxTreeNode child : childrenList) {
+                child.minmax(depth - 1);
+                if (child.value > max) {
+                    list.clear();
+                    list.add(child);
+                    max = child.value;
+                } else if (child.value == max) {
+                    list.add(child);
+                }
+            }
+        }
+        MinMaxTreeNode chosen = list.get((int) (Math.random() * list.size()));
+        value = chosen.getValue();
+        nextX = chosen.getLastX();
+        nextY = chosen.getLastY();
+    }
+
+    /**
+     * alpha-beta剪枝的minmax
+     *
+     * @param depth
+     */
+    public void minmax_alphaBeta(int depth) {
+        // 如果能得到确定的结果或者深度为零，使用评估函数返回局面得分
+        if (terminal || depth == 0) {
+            initValue();
+            return;
+        }
+
+        initChildren();
+        if (childrenList.isEmpty()) {
+            initValue();
+            return;
+        }
+
+        LinkedList<MinMaxTreeNode> list = new LinkedList<>();
+
+        if (GoBangEnum.WHITE == side) {
+            // 如果轮到白方走棋，是极小节点，选择一个得分最小的走法
+            for (MinMaxTreeNode child : childrenList) {
+                child.minmax_alphaBeta(depth - 1);
                 if (child.getValue() <= beta) {
                     if (child.getValue() < beta) {
                         list.clear();
@@ -82,7 +136,7 @@ public class MinMaxTreeNode {
         } else {
             // 如果轮到黑方走棋，是极大节点，选择一个得分最大的走法
             for (MinMaxTreeNode child : childrenList) {
-                child.minmax(depth - 1);
+                child.minmax_alphaBeta(depth - 1);
                 if (child.getValue() >= alpha) {
                     if (child.getValue() > alpha) {
                         list.clear();
@@ -97,7 +151,7 @@ public class MinMaxTreeNode {
         }
         // 这种情况应该对应被α-β剪枝了，所以应该不会采用本节点？
         if (list.isEmpty()) {
-            value = GoBangEnum.BLACK.equals(side) ? beta : alpha;
+            value = GoBangEnum.BLACK == side ? beta : alpha;
         } else {
             MinMaxTreeNode chosen = list.get((int) (Math.random() * list.size()));
             value = chosen.getValue();
@@ -115,7 +169,7 @@ public class MinMaxTreeNode {
         }
         // 子节点颜色相反
         GoBangEnum childrenSide = GoBangEnum.BLACK;
-        if (GoBangEnum.BLACK.equals(side)) {
+        if (GoBangEnum.BLACK == side) {
             childrenSide = GoBangEnum.WHITE;
         }
         for (int i = 0; i < 15; i++) {
@@ -140,7 +194,10 @@ public class MinMaxTreeNode {
         if (board == null) {
             throw new IllegalStateException("need initBoard first");
         }
-        this.value = ValueUtils.value(board);
+        /// 原来自己写的评估函数
+//        this.value = ValueUtils.value(board);
+        // 网上的评估函数改的java版本（仅计算走的那一步的价值）
+        this.value = ValueFromWebUtils.value(lastX, lastY, board, side);
     }
 
     public void addStepValue(int x, int y, GoBangEnum side) {

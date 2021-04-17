@@ -17,7 +17,7 @@ import java.util.Scanner;
  * @Modified By: zhuxi
  */
 public class MinmaxTest {
-    private final static boolean MANUAL_STEP = false;
+    private final static boolean MANUAL_STEP = true;
 
     public static void main(String[] args) {
         new MinmaxTest().minmaxTest();

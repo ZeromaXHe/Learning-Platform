@@ -10,17 +10,19 @@ import java.util.Scanner;
  * @Modified By: ZeromaXHe
  */
 public class GoBangAiFromWebTest {
+    //#define same_u_i same(row + dx[u] * i, col + dy[u] * i, p[row][col])//u方向i距离的点是否同色
+    //#define OutOrNotEmpty  (!inboard(row + dx[u] * i, col + dy[u] * i) || p[row + dx[u] * i][col + dy[u] * i] != 0)//出了棋盘或者非空格点
     private final static int N = 15;
 
-    int[][] p = new int[N + 2][N + 2]; //0空1黑2白  1●2○ -1▲-2△
-    int s = 0, ais = 1, s0;//s是轮到谁下,s=1,2，s=1是ai下，s=2是玩家，s=s0是黑方下，否则是白方下
-    boolean is_end = false;
-    int[] dx = {1, 1, 0, -1, -1, -1, 0, 1}; //flat技术
-    int[] dy = {0, 1, 1, 1, 0, -1, -1, -1};//（dx,dy）是8个方向向量
-    int[][] manu = new int[2][300];
-    int manukey = 0;//棋谱
+    private int[][] p = new int[N + 2][N + 2]; //0空1黑2白  1●2○ -1▲-2△
+    private int s = 0, ais = 1, s0;//s是轮到谁下,s=1,2，s=1是ai下，s=2是玩家，s=s0是黑方下，否则是白方下
+    private boolean is_end = false;
+    private int[] dx = {1, 1, 0, -1, -1, -1, 0, 1}; //flat技术
+    private int[] dy = {0, 1, 1, 1, 0, -1, -1, -1};//（dx,dy）是8个方向向量
+    private int[][] manu = new int[2][300];
+    private int manukey = 0;//棋谱
 
-    Scanner scanner = new Scanner(System.in);
+    private Scanner scanner = new Scanner(System.in);
 
     public static void main(String[] args) {
         new GoBangAiFromWebTest().main();
@@ -30,23 +32,38 @@ public class GoBangAiFromWebTest {
      * 打印棋盘
      */
     int out(int i, int j) {
-        if (p[i][j] == 1) return printf("● ");
-        if (p[i][j] == 2) return printf("○ ");
-        if (p[i][j] == -1) return printf("▲ ");
-        if (p[i][j] == -2) return printf("△ ");
+        if (p[i][j] == 1) {
+            return printf("● ");
+        } else if (p[i][j] == 2) {
+            return printf("○ ");
+        } else if (p[i][j] == -1) {
+            return printf("▲ ");
+        } else if (p[i][j] == -2) {
+            return printf("△ ");
+        }
+
         if (i == N) {
-            if (j == 1) return printf("┏ ");
-            if (j == N) return printf("┓ ");
+            if (j == 1) {
+                return printf("┏ ");
+            } else if (j == N) {
+                return printf("┓ ");
+            }
             return printf("┯ ");
-        }
-        if (i == 1) {
-            if (j == 1) return printf("┗ ");
-            if (j == N) return printf("┛ ");
+        } else if (i == 1) {
+            if (j == 1) {
+                return printf("┗ ");
+            } else if (j == N) {
+                return printf("┛ ");
+            }
             return printf("┷ ");
+        } else {
+            if (j == 1) {
+                return printf("┠ ");
+            } else if (j == N) {
+                return printf("┨ ");
+            }
+            return printf("┼ ");
         }
-        if (j == 1) return printf("┠ ");
-        if (j == N) return printf("┨ ");
-        return printf("┼ ");
     }
 
     private int printf(String s) {
@@ -83,10 +100,15 @@ public class GoBangAiFromWebTest {
         }
         alpha = 'A';
         printf("\n     ");
-        for (col = 1; col <= N; col++) printf("%c ", alpha++);
+        for (col = 1; col <= N; col++) {
+            printf("%c ", alpha++);
+        }
         printf("\n\n");
-        if (s0 == ais) printf("  AI执黑，玩家执白\n");
-        else printf("  AI执白，玩家执黑\n");
+        if (s0 == ais) {
+            printf("  AI执黑，玩家执白\n");
+        } else {
+            printf("  AI执白，玩家执黑\n");
+        }
         alpha = 'A';
         if (keyr != 0) {
             printf("  最后落子位置：%c%d\n", alpha + keyc - 1, keyr);
@@ -113,31 +135,53 @@ public class GoBangAiFromWebTest {
             }
         }
         DrawBoard();
-        for (j = 0; j < 300; j++) manu[0][j] = manu[1][j] = 0;
+        for (j = 0; j < 300; j++) {
+            manu[0][j] = manu[1][j] = 0;
+        }
     }
 
     /**
-     * //判断(row,col)是否在棋盘内
+     * 判断(row,col)是否在棋盘内
      *
      * @param row
      * @param col
      * @return
      */
     boolean inboard(int row, int col) {
-        if (row < 1 || row > N) return false;
+        if (row < 1 || row > N) {
+            return false;
+        }
         return col >= 1 && col <= N;
     }
 
-    boolean same(int row, int col, int key)//判断2个棋子是否同色
-    {
-        if (!inboard(row, col)) return false;
+    /**
+     * 判断2个棋子是否同色
+     *
+     * @param row
+     * @param col
+     * @param key
+     * @return
+     */
+    boolean same(int row, int col, int key) {
+        if (!inboard(row, col)) {
+            return false;
+        }
         return (p[row][col] == key || p[row][col] + key == 0);
     }
 
-    int num(int row, int col, int u)//坐标（row,col），方向向量u，返回该方向有多少连续同色棋子
-    {
+    /**
+     * 坐标（row,col），方向向量u，返回该方向有多少连续同色棋子
+     *
+     * @param row
+     * @param col
+     * @param u
+     * @return
+     */
+    int num(int row, int col, int u) {
         int i = row + dx[u], j = col + dy[u], sum = 0, ref = p[row][col];
-        if (ref == 0) return 0;
+        if (ref == 0) {
+            return 0;
+        }
         while (same(i, j, ref)) {
             sum++;
             i += dx[u];
@@ -170,13 +214,16 @@ public class GoBangAiFromWebTest {
             if ((!inboard(row + dx[u] * i, col + dy[u] * i) || p[row + dx[u] * i][col + dy[u] * i] != 0)) {
                 continue;
             }
-            if (sumk == 4) sum++;
+            if (sumk == 4) {
+                sum++;
+            }
         }
         return sum;
     }
 
     /**
      * 成5点的数量
+     *
      * @param row
      * @param col
      * @return
@@ -212,6 +259,7 @@ public class GoBangAiFromWebTest {
 
     /**
      * 冲4的数量
+     *
      * @param row
      * @param col
      * @return
@@ -222,6 +270,7 @@ public class GoBangAiFromWebTest {
 
     /**
      * 落子成活3的数量
+     *
      * @param row
      * @param col
      * @return
@@ -281,7 +330,9 @@ public class GoBangAiFromWebTest {
             if ((!inboard(row + dx[u] * i, col + dy[u] * i) || p[row + dx[u] * i][col + dy[u] * i] != 0)) {
                 continue;
             }
-            if (sumk == 3) sum++;
+            if (sumk == 3) {
+                sum++;
+            }
         }
         return sum;
     }
@@ -343,24 +394,37 @@ public class GoBangAiFromWebTest {
      * @param col
      */
     void go(int row, int col) {
-        if (s == s0) p[row][col] = -1; //标出最新下的棋
-        else p[row][col] = -2;
+        if (s == s0) {
+            p[row][col] = -1; //标出最新下的棋
+        } else {
+            p[row][col] = -2;
+        }
         for (int i = 0; i <= N; i++)
-            for (int j = 0; j <= N; j++) //取消上一个最新棋的标识
-            {
-                if (i == row && j == col) continue;
-                if (p[i][j] < 0) p[i][j] *= -1;
+            //取消上一个最新棋的标识
+            for (int j = 0; j <= N; j++) {
+                if (i == row && j == col) {
+                    continue;
+                }
+                if (p[i][j] < 0) {
+                    p[i][j] *= -1;
+                }
             }
         DrawBoard();
         if (ban(row, col)) {
             printf("禁手\n");
-            if (s0 == 1) printf("玩家胜");
-            else printf("AI胜");
+            if (s0 == 1) {
+                printf("玩家胜");
+            } else {
+                printf("AI胜");
+            }
             //Sleep(10000);
         }
         if (end_(row, col)) {
-            if (s == ais) printf("AI胜");
-            else printf("玩家胜");
+            if (s == ais) {
+                printf("AI胜");
+            } else {
+                printf("玩家胜");
+            }
             //Sleep(10000);
         }
         manu[0][manukey] = row;
@@ -519,8 +583,11 @@ public class GoBangAiFromWebTest {
             player();
             return;
         }
-        if (c < 'a') col = c - 'A' + 1;
-        else col = c - 'a' + 1;
+        if (c < 'a') {
+            col = c - 'A' + 1;
+        } else {
+            col = c - 'a' + 1;
+        }
         if (!ok(row, col)) {
             printf("此处不能下");
             //Sleep(1000);
@@ -542,6 +609,3 @@ public class GoBangAiFromWebTest {
         }
     }
 }
-//#define same_u_i same(row+dx[u]*i,col+dy[u]*i,p[row][col])//u方向i距离的点是否同色
-//#define OutOrNotEmpty (!inboard(row+dx[u]*i,col+dy[u]*i)||p[row+dx[u]*i][col+dy[u]*i]!=0) //出了棋盘或者非空格点
-
