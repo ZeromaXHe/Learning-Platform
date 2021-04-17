@@ -4,6 +4,8 @@ import com.zerox.gobang.constant.GoBangEnum;
 import com.zerox.gobang.utils.BoardUtils;
 import com.zerox.gobang.utils.ValueUtils;
 
+import java.util.LinkedList;
+
 /**
  * @Author: zhuxi
  * @Time: 2021/4/15 14:27
@@ -13,7 +15,7 @@ import com.zerox.gobang.utils.ValueUtils;
 public class MinMaxTreeNode {
     private int[][] board;
     private MinMaxTreeNode[][] children = new MinMaxTreeNode[15][15];
-    private int childrenCount = 0;
+    private LinkedList<MinMaxTreeNode> childrenList = new LinkedList<>();
     private int step;
     private boolean terminal = false;
     private GoBangEnum side;
@@ -47,6 +49,63 @@ public class MinMaxTreeNode {
         }
     }
 
+    public void minmax(int depth) {
+        // 如果能得到确定的结果或者深度为零，使用评估函数返回局面得分
+        if (terminal || depth == 0) {
+            initValue();
+            return;
+        }
+
+        initChildren();
+        if (childrenList.isEmpty()) {
+            initValue();
+            return;
+        }
+
+        LinkedList<MinMaxTreeNode> list = new LinkedList<>();
+
+        if (GoBangEnum.WHITE.equals(side)) {
+            // 如果轮到白方走棋，是极小节点，选择一个得分最小的走法
+            for (MinMaxTreeNode child : childrenList) {
+                child.minmax(depth - 1);
+                if (child.getValue() <= beta) {
+                    if (child.getValue() < beta) {
+                        list.clear();
+                        beta = child.getValue();
+                    }
+                    list.add(child);
+                    if (beta <= alpha) {
+                        break;
+                    }
+                }
+            }
+        } else {
+            // 如果轮到黑方走棋，是极大节点，选择一个得分最大的走法
+            for (MinMaxTreeNode child : childrenList) {
+                child.minmax(depth - 1);
+                if (child.getValue() >= alpha) {
+                    if (child.getValue() > alpha) {
+                        list.clear();
+                        alpha = child.getValue();
+                    }
+                    list.add(child);
+                    if (beta <= alpha) {
+                        break;
+                    }
+                }
+            }
+        }
+        // 这种情况应该对应被α-β剪枝了，所以应该不会采用本节点？
+        if (list.isEmpty()) {
+            value = GoBangEnum.BLACK.equals(side) ? beta : alpha;
+        } else {
+            MinMaxTreeNode chosen = list.get((int) (Math.random() * list.size()));
+            value = chosen.getValue();
+            nextX = chosen.getLastX();
+            nextY = chosen.getLastY();
+        }
+    }
+
     public void initChildren() {
         if (board == null) {
             throw new IllegalStateException("need initBoard first");
@@ -68,7 +127,7 @@ public class MinMaxTreeNode {
                                 int[][] boardNode = BoardUtils.copyBoard(board);
                                 boardNode[m][n] = childrenSide.getVal();
                                 children[m][n] = new MinMaxTreeNode(boardNode, childrenSide, step + 1, m, n);
-                                childrenCount++;
+                                childrenList.add(children[m][n]);
                             }
                         }
                     }
@@ -96,13 +155,9 @@ public class MinMaxTreeNode {
             spaces = "";
         }
         sb.append(spaces).append(this.toString()).append('\n');
-        if (this.getChildrenCount() > 0) {
-            for (int i = 0; i < 15; i++) {
-                for (int j = 0; j < 15; j++) {
-                    if (children[i][j] != null) {
-                        children[i][j].toMinmaxTreeString(spaces + "    ", sb);
-                    }
-                }
+        if (!this.childrenList.isEmpty()) {
+            for (MinMaxTreeNode child : childrenList) {
+                child.toMinmaxTreeString(spaces + "    ", sb);
             }
         }
         return sb;
@@ -131,12 +186,12 @@ public class MinMaxTreeNode {
         this.children = children;
     }
 
-    public int getChildrenCount() {
-        return childrenCount;
+    public LinkedList<MinMaxTreeNode> getChildrenList() {
+        return childrenList;
     }
 
-    public void setChildrenCount(int childrenCount) {
-        this.childrenCount = childrenCount;
+    public void setChildrenList(LinkedList<MinMaxTreeNode> childrenList) {
+        this.childrenList = childrenList;
     }
 
     public int getStep() {

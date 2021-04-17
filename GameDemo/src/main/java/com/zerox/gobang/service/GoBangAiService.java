@@ -18,7 +18,8 @@ public class GoBangAiService {
     private int thinkProcess;
     private GoBangAiStrategyEnum strategy = GoBangAiStrategyEnum.RANDOM;
 
-    private final static int MINMAX_DEPTH = 2;
+    private final static int MINMAX_DEPTH = 3;
+    private final static boolean PRINT_MINMAX_TREE = false;
 
     public int getThinkProcess() {
         return thinkProcess;
@@ -47,80 +48,15 @@ public class GoBangAiService {
     private int[] minmaxNextStep(int[][] currentBoard, GoBangEnum side, int stepCount, int[] lastStep) {
         thinkProcess = 0;
         MinMaxTreeNode root = new MinMaxTreeNode(currentBoard, side, stepCount, lastStep[0], lastStep[1]);
-        MinMaxTreeNode result = minmax(root, MINMAX_DEPTH);
+        root.minmax(MINMAX_DEPTH);
         // 打印minmax树
-        System.out.println(root.toMinmaxTreeString("", new StringBuilder()));
-        return new int[]{result.getNextX(), result.getNextY()};
+        if(PRINT_MINMAX_TREE) {
+            System.out.println(root.toMinmaxTreeString("", new StringBuilder()));
+        }
+        return new int[]{root.getNextX(), root.getNextY()};
     }
 
-    private MinMaxTreeNode minmax(MinMaxTreeNode node, int depth) {
-        // 如果能得到确定的结果或者深度为零，使用评估函数返回局面得分
-        if (node.isTerminal() || depth == 0) {
-            node.initValue();
-            return node;
-        }
 
-        node.initChildren();
-        if (node.getChildrenCount() == 0) {
-            node.initValue();
-            return node;
-        }
-
-        LinkedList<MinMaxTreeNode> list = new LinkedList<>();
-
-        if (GoBangEnum.WHITE.equals(node.getSide())) {
-            // 如果轮到白方走棋，是极小节点，选择一个得分最小的走法
-            loop1:
-            for (int i = 0; i < 15; i++) {
-                for (int j = 0; j < 15; j++) {
-                    if (node.getChildren()[i][j] != null) {
-                        MinMaxTreeNode minmax = minmax(node.getChildren()[i][j], depth - 1);
-                        if (minmax.getValue() <= node.getBeta()) {
-                            if (minmax.getValue() < node.getBeta()) {
-                                list.clear();
-                                node.setBeta(minmax.getValue());
-                            }
-                            list.add(minmax);
-                            if (node.getBeta() <= node.getAlpha()) {
-                                break loop1;
-                            }
-                        }
-                    }
-                }
-            }
-        } else {
-            // 如果轮到黑方走棋，是极大节点，选择一个得分最大的走法
-            loop2:
-            for (int i = 0; i < 15; i++) {
-                for (int j = 0; j < 15; j++) {
-                    if (node.getChildren()[i][j] != null) {
-                        MinMaxTreeNode minmax = minmax(node.getChildren()[i][j], depth - 1);
-                        if (minmax.getValue() >= node.getAlpha()) {
-                            if (minmax.getValue() > node.getAlpha()) {
-                                list.clear();
-                                node.setAlpha(minmax.getValue());
-                            }
-                            list.add(minmax);
-                            if (node.getBeta() <= node.getAlpha()) {
-                                break loop2;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        // 这种情况应该对应被α-β剪枝了，所以应该不会采用本节点？
-        if (list.isEmpty()) {
-            int score = GoBangEnum.BLACK.equals(node.getSide()) ? node.getBeta() : node.getAlpha();
-            node.setValue(score);
-        } else {
-            MinMaxTreeNode chosen = list.get((int) (Math.random() * list.size()));
-            node.setValue(chosen.getValue());
-            node.setNextX(chosen.getLastX());
-            node.setNextY(chosen.getLastY());
-        }
-        return node;
-    }
 
     private int[] firstEmptyNextStep(int[][] currentBoard, GoBangEnum side) {
         thinkProcess = 0;

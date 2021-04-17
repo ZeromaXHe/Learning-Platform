@@ -35,6 +35,59 @@ public class ScoreMapUtils {
         }
     }
 
+    private static int calcPossibleScore_switch(int possible) {
+        switch (possible) {
+            case 10000:
+            case 1:
+                return SCORE_1 / 2;
+            case 20000:
+            case 2:
+                return -SCORE_1 / 2;
+            case 1000:
+            case 100:
+            case 10:
+                return SCORE_1;
+            case 2000:
+            case 200:
+            case 20:
+                return -SCORE_1;
+            case 11000:
+            case 11:
+                return SCORE_2 / 2;
+            case 22000:
+            case 22:
+                return -SCORE_2 / 2;
+            case 1100:
+            case 110:
+                return SCORE_2;
+            case 2200:
+            case 220:
+                return -SCORE_2;
+            case 11100:
+            case 111:
+                return SCORE_3 / 2;
+            case 22200:
+            case 222:
+                return -SCORE_3 / 2;
+            case 1110:
+                return SCORE_3;
+            case 2220:
+                return -SCORE_3;
+            case 1111:
+            case 11110:
+                return SCORE_4;
+            case 2222:
+            case 22220:
+                return -SCORE_4;
+            case 11111:
+                return SCORE_5;
+            case 22222:
+                return -SCORE_5;
+            default:
+                return 0;
+        }
+    }
+
     private static int calcPossibleScore(int possible) {
         LinkedList<Integer> oneIndexes = new LinkedList<>();
         LinkedList<Integer> twoIndexes = new LinkedList<>();
