@@ -69,3 +69,75 @@ private String abstract_;
 # gson 存在 int自动变成double的问题
 
 需要注意转换Integer需要特殊处理
+
+
+
+# FastJSON内部类反序列化问题(fastjson exception: create instance error)
+
+## 一、问题
+
+项目开发过程中遇到了JSON反序列化问题(JSONException: create instance error)，问题如下：
+
+~~~
+...
+com.alibaba.fastjson.JSONException: create instance error, class com.test.xiaofan.test.ClassA$ClassB
+...
+~~~
+
+由问题可见，fastjson反序列化时尝试创建ClassA的内部内ClassB失败。测试内部类声明如下：
+
+```java
+@Data
+public class ClassA {
+    private String filedA1;
+
+    private String fieldA2;
+
+    private List<ClassB> fieldA3s;
+
+    @Data
+    public class ClassB {
+
+        private String fieldB1;
+
+        private String filedB2;
+    }
+}
+```
+
+测试代码如下：
+
+```java
+public class TestA {
+    @Test
+    public void testParseA(){
+        String str = "{\"fieldA2\":\"test field A2\",\"fieldA3s\":[{\"fieldB1\":\"test field B1\",\"filedB2\":\"test "
+            + "field B2\"}],\"filedA1\":\"test field A1\"}\n";
+
+        ClassA classA = JSON.parseObject(str, ClassA.class);
+
+        System.out.println(JSON.toJSONString(classA));
+    }
+
+    @Test
+    public void testParseB() {
+        String str = "{\"fieldB1\":\"test field B1\",\"filedB2\":\"test field B2\"}";
+
+        ClassB classB = JSON.parseObject(str, ClassB.class);
+
+        System.out.println(JSON.toJSONString(classB));
+    }
+}
+```
+## 二、嵌套类与内部类
+
+查看了fastjson官方问题解释：[点击查看](https://github.com/alibaba/fastjson/issues/302)，问题本质为内部类无法实例化，导致fastjson反序列化失败。
+
+点击查看：[《Java嵌套类与内部类》](http://blog.csdn.net/xktxoo/article/details/78175909)
+
+## 三、解决方案
+
+由Java嵌套类与内部类一文分析可知，非静态成员嵌套类的实例化依赖于外部类实例，而静态嵌套类的实例化不依赖于外部类，将内部类改为静态嵌套类即可。
+————————————————
+版权声明：本文为CSDN博主「Jerry的技术博客」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/xktxoo/article/details/78175997
