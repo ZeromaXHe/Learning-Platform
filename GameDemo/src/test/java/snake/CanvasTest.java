@@ -28,7 +28,7 @@ public class CanvasTest extends Application {
             if(e.getCode() == KeyCode.ENTER) {
                 System.out.println("pressed enter");
                 drawGraphics(gc);
-                primaryStage.show();
+//                primaryStage.show();
             }
         });
         primaryStage.setScene(scene);
