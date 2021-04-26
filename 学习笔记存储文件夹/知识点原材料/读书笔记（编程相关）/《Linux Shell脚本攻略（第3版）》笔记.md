@@ -113,15 +113,15 @@ $ echo "cannot include exclamation - ! within double quotes"
 ~~~
 bash: !: event not found error
 ~~~
- 
+
 如果需要打印像!这样的特殊字符，那就不要将其放入双引号中，而是使用单引号，或是在特殊字符之前加上一个反斜线（\）：
 ~~~shell script
 $ echo Hello world !
-~~~ 
+~~~
 或者
 ~~~shell script
 $ echo 'Hello world !'
-~~~ 
+~~~
 或者
 ~~~shell script
 $ echo "Hello world \!" #将转义字符放在前面
@@ -129,7 +129,7 @@ $ echo "Hello world \!" #将转义字符放在前面
 如果不使用引号，我们无法在echo中使用分号，因为分号在Bash shell中用作命令间的分隔符：
 ~~~shell script
 echo hello; hello
-~~~ 
+~~~
 对于上面的命令，Bash将echo hello作为一个命令，将hello作为另外一个命令。
 
 在下一条攻略中将讨论到的变量替换不会在单引号中执行。
@@ -138,7 +138,7 @@ echo hello; hello
 ~~~shell script
 $ printf "Hello world"
 ~~~
- 
+
 printf命令接受引用文本或由空格分隔的参数。我们可以在printf中使用格式化字符串来指定字符串的宽度、左右对齐方式等。默认情况下，printf并不会自动添加换行符，我们必须在需要的时候手动指定，比如在下面的脚本中：
 ~~~shell script
 #!/bin/bash 
@@ -147,7 +147,7 @@ printf "%-5s %-10s %-4s\n" No Name Mark
 printf "%-5s %-10s %-4.2f\n" 1 Sarath 80.3456 
 printf "%-5s %-10s %-4.2f\n" 2 James 90.9989 
 printf "%-5s %-10s %-4.2f\n" 3 Jeff 77.564
-~~~ 
+~~~
 可以得到如下格式化的输出：
 ~~~
 No   Name      Mark 
@@ -188,7 +188,7 @@ echo -e "1\t2\t3"
 要打印彩色文本，可输入如下命令：
 ~~~shell script
 echo -e "\e[1;31m This is red text \e[0m"
-~~~ 
+~~~
 其中\e[1;31m是一个转义字符串，可以将颜色设为红色，\e[0m将颜色重新置回。只需要将31替换成想要的色彩码就可以了。
 
 对于彩色背景，经常使用的颜色码是：重置=0，黑色=40，红色=41，绿色=42，黄色=43，蓝色=44，洋红=45，青色=46，白色=47。
@@ -196,7 +196,7 @@ echo -e "\e[1;31m This is red text \e[0m"
 要设置彩色背景的话，可输入如下命令：
 ~~~shell script
 echo -e "\e[1;42m Green Background \e[0m"
-~~~ 
+~~~
 这些例子中包含了一些转义序列。可以使用man console_codes来查看相关文档。
 
 ## 1.3 使用变量与环境变量
@@ -219,7 +219,7 @@ SHELL=/bin/bash
 要查看其他进程的环境变量，可以使用如下命令：
 ~~~shell script
 cat /proc/$PID/environ
-~~~ 
+~~~
 其中，PID是相关进程的进程ID（PID是一个整数）。
 
 假设有一个叫作gedit的应用程序正在运行。我们可以使用pgrep命令获得gedit的进程ID：
@@ -228,7 +228,7 @@ $ pgrep gedit
 ~~~
 ~~~
 12501
-~~~ 
+~~~
 那么，你就可以执行以下命令来查看与该进程相关的环境变量：
 ~~~shell script
 $ cat /proc/12501/environ
@@ -268,7 +268,7 @@ echo ${var}
 输出如下：
 ~~~
 value
-~~~ 
+~~~
 我们可以在printf、echo或其他命令的双引号中引用变量值：
 ~~~shell script
 #!/bin/bash 
@@ -290,7 +290,7 @@ We have 5 apple(s)
 ~~~shell script
 HTTP_PROXY=192.168.1.23:3128 
 export HTTP_PROXY
-~~~ 
+~~~
 export命令声明了将由子进程所继承的一个或多个变量。这些变量被导出后，当前shell脚本所执行的任何应用程序都会获得这个变量。shell创建并用到了很多标准环境变量，我们也可以导出自己的环境变量。
 
 例如，PATH变量列出了一系列可供shell搜索特定应用程序的目录。一个典型的PATH变量包含如下内容:
@@ -305,7 +305,7 @@ $ echo $PATH
 如果需要在PATH中添加一条新路径，可以使用如下命令：
 ~~~shell script
 export PATH="$PATH:/home/user/bin"
-~~~ 
+~~~
 也可以使用
 ~~~
 $ PATH="$PATH:/home/user/bin" 
@@ -353,7 +353,7 @@ echo $0
 ~~~
 $ echo $SHELL 
 /bin/bash
-~~~ 
+~~~
 执行echo $0命令也可以得到同样的输出：
 ~~~
 $ echo $0 
@@ -391,12 +391,12 @@ root用户的UID是0。
 ~~~
 $ cat ~/.bashrc | grep PS1 
 PS1='${debian_chroot:+($debian_chroot)}\u@\h:\w\$ '
-~~~ 
+~~~
  如果要修改提示字符串，可以输入：
 ~~~
 slynux@localhost: ~$ PS1="PROMPT>" #提示字符串已经改变
 PROMPT> Type commands here.
-~~~ 
+~~~
  我们可以利用类似于\e[1;31的特定转义序列来设置彩色的提示字符串（参考1.2节的内
 容）。
 
@@ -409,7 +409,7 @@ PROMPT> Type commands here.
 ~~~
 PATH=/usr/bin; /bin 
 LD_LIBRARY_PATH=/usr/lib; /lib
-~~~ 
+~~~
 这意味着只要shell执行应用程序（二进制文件或脚本）时，它就会首先查找/usr/bin，然后查找/bin。
 
 当你使用源代码构建并安装程序时，通常需要为新的可执行文件和库文件添加特定的路径。假设我们要将myapp安装到/opt/myapp，它的二进制文件在/opt/myapp/bin目录中，库文件在/opt/ myapp /lib目录中。
@@ -426,11 +426,11 @@ PATH和LD_LIBRARY_PATH现在看起来应该像这样：
 ~~~
 PATH=/opt/myapp/bin:/usr/bin:/bin 
 LD_LIBRARY_PATH=/opt/myapp/lib:/usr/lib; /lib
-~~~ 
+~~~
 我们可以在.bashrc文件中定义如下函数，简化路径添加操作：
 ~~~shell script
 prepend() { [ -d "$2" ] && eval $1=\"$2':'\$$1\" && export $1; }
-~~~ 
+~~~
 该函数用法如下：
 ~~~shell script
 prepend PATH /opt/myapp/bin 
@@ -473,16 +473,16 @@ let命令的其他用法如下：
  自加操作
 ~~~shell script
 $ let no1++
-~~~ 
+~~~
  自减操作
 ~~~shell script
 $ let no1--
-~~~ 
+~~~
  简写形式
 ~~~shell script
 let no+=6 
 let no-=6
-~~~ 
+~~~
 它们分别等同于`let no=no+6`和`let no=no-6`。 
 
  其他方法
@@ -490,20 +490,20 @@ let no-=6
 操作符[]的使用方法和let命令一样：
 ~~~shell script
 result=$[ no1 + no2 ]
-~~~ 
+~~~
 在[]中也可以使用$前缀，例如：
 ~~~shell script
 result=$[ $no1 + 5 ]
-~~~ 
+~~~
 也可以使用操作符(())。出现在(())中的变量名之前需要加上$：
 ~~~shell script
 result=$(( no1 + 50 ))
-~~~ 
+~~~
 expr同样可以用于基本算术操作：
 ~~~shell script
 result=`expr 3 + 4` 
 result=$(expr $no1 + 5)
-~~~ 
+~~~
 以上这些方法不支持浮点数，只能用于整数运算。
 
 (3) bc是一个用于数学运算的高级实用工具，这个精密的计算器包含了大量的选项。我们可以借助它执行浮点数运算并使用一些高级函数：
@@ -521,7 +521,7 @@ bc可以接受操作控制前缀。这些前缀之间使用分号分隔。
 ~~~
 echo "scale=2;22/7" | bc 
 3.14
-~~~ 
+~~~
  进制转换。用bc可以将一种进制系统转换为另一种。来看看下面的代码是如何在十进制与二进制之间相互转换的：
 ~~~
 #!/bin/bash 
@@ -560,24 +560,24 @@ echo "10^10" | bc #Square
 (1) 使用大于号将文本保存到文件中：
 ~~~
 $ echo "This is a sample text 1" > temp.txt
-~~~ 
+~~~
 该命令会将输出的文本保存在temp.txt中。如果temp.txt已经存在，大于号会清空该文件中先前的内容。
 
 (2) 使用双大于号将文本追加到文件中：
 ~~~
 $ echo "This is sample text 2" >> temp.txt
-~~~ 
+~~~
 (3) 使用cat查看文件内容：
 ~~~
 $ cat temp.txt 
 This is sample text 1 
 This is sample text 2
-~~~ 
+~~~
 接着来看看如何重定向stderr。当命令产生错误信息时，该信息会被输出到stderr流。考虑下面的例子：
 ~~~
 $ ls + 
 ls: cannot access +: No such file or directory
-~~~ 
+~~~
 这里，+是一个非法参数，因此会返回错误信息。
 
 > TIP: 
@@ -588,7 +588,7 @@ ls: cannot access +: No such file or directory
 ~~~
 $ ls + > out.txt 
 ls: cannot access +: No such file or directory
-~~~ 
+~~~
 在下面的命令中，我们使用2>（数字2以及大于号）将stderr重定向到out.txt：
 ~~~
 $ ls + 2> out.txt #没有问题
@@ -596,7 +596,7 @@ $ ls + 2> out.txt #没有问题
 你可以将stderr和stdout分别重定向到不同的文件中：
 ~~~
 $ cmd 2>stderr.txt 1>stdout.txt
-~~~ 
+~~~
 
 下面这种更好的方法能够将stderr转换成stdout，使得stderr和stdout都被重定向到同一个文件中：
 ~~~
@@ -605,7 +605,7 @@ $ cmd 2>&1 alloutput.txt
 或者这样
 ~~~
 $ cmd &> output.txt
-~~~ 
+~~~
 
 如果你不想看到或保存错误信息，那么可以将stderr的输出重定向到/dev/null，保证一切都
 会被清除得干干净净。假设我们有3个文件，分别是a1、a2、a3。但是普通用户对文件a1没有“读
@@ -631,13 +631,13 @@ A2
 A3 
 $ cat err.txt 
 cat: a1: Permission denied
-~~~ 
+~~~
 我们在处理一些命令输出的同时还想将其保存下来，以备后用。stdout作为单数据流（single stream），可以被重定向到文件或是通过管道传入其他程序，但是无法两者兼得。
 
 有一种方法既可以将数据重定向到文件，还可以提供一份重定向数据的副本作为管道中后续命令的stdin。tee命令从stdin中读取，然后将输入数据重定向到stdout以及一个或多个文件中。
 ~~~
 command | tee FILE1 FILE2 | otherCommand
-~~~ 
+~~~
 在下面的代码中，tee命令接收到来自stdin的数据。它将stdout的一份副本写入文件out.txt，同时将另一份副本作为后续命令的stdin。命令cat -n为从stdin中接收到的每一行数据前加上行号并将其写入stdout：
 ~~~
 $ cat a* | tee out.txt | cat -n 
@@ -657,19 +657,19 @@ A3
 默认情况下，tee命令会将文件覆盖，但它提供了一个-a选项，可用于追加内容。
 ~~~
 $ cat a* | tee -a out.txt | cat –n
-~~~ 
+~~~
 带有参数的命令可以写成：command FILE1 FILE2 ...，或者就简单地使用command FILE。
 
 要发送输入内容的两份副本给stdout，使用-作为命令的文件名参数即可：
 ~~~
 $ cmd1 | cmd2 | cmd -
-~~~ 
+~~~
 例如：
 ~~~
 $ echo who is this | tee - 
 who is this 
 who is this
-~~~ 
+~~~
 也可以将/dev/stdin作为输出文件名来代替stdin。类似地，使用/dev/stderr代表标准错误，/dev/stdout代表标准输出。这些特殊的设备文件分别对应stdin、stderr和stdout。
 
 ### 1.6.3 工作原理
@@ -688,13 +688,13 @@ who is this
 ~~~
 $ cat file | cmd 
 $ cmd1 | cmd2
-~~~ 
+~~~
 1. 将文件重定向到命令
 
 借助小于号（<），我们可以像使用stdin那样从文件中读取数据：
 ~~~
 $ cmd < file
-~~~ 
+~~~
 2. 重定向脚本内部的文本块
 
 可以将脚本中的文本重定向到文件。要想将一条警告信息添加到自动生成的文件顶部，可以使用下面的代码：
@@ -708,7 +708,7 @@ EOF
 ~~~
 $ cat log.txt 
 This is a generated file. Do not edit. Changes will be overwritten.
-~~~ 
+~~~
 3. 自定义文件描述符
 
 文件描述符是一种用于访问文件的抽象指示器（abstract indicator）。存取文件离不开被称为“文件描述符”的特殊数字。0、1和2分别是stdin、stdout和stderr预留的描述符编号。
@@ -732,12 +732,12 @@ $ exec 3<input.txt #使用文件描述符3打开并读取文件
 ~~~
 $ echo this is a test line > input.txt 
 $ exec 3<input.txt
-~~~ 
+~~~
 现在你就可以在命令中使用文件描述符3了。例如：
 ~~~
 $ cat<&3 
 this is a test line
-~~~ 
+~~~
 如果要再次读取，我们就不能继续使用文件描述符3了，而是需要用exec重新创建一个新的文件描述符（可以是4）来从另一个文件中读取或是重新读取上一个文件。
 
 创建一个用于写入（截断模式）的文件描述符：
@@ -750,11 +750,11 @@ $ exec 4>output.txt
 $ echo newline >&4 
 $ cat output.txt 
 newline
-~~~ 
+~~~
 创建一个用于写入（追加模式）的文件描述符：
 ~~~
 $ exec 5>>input.txt
-~~~ 
+~~~
 例如：
 ~~~
 $ exec 5>>input.txt 
@@ -789,7 +789,7 @@ array_var[2]="test3"
 array_var[3]="test4" 
 array_var[4]="test5" 
 array_var[5]="test6"
-~~~ 
+~~~
 (2) 打印出特定索引的数组元素内容：
 ~~~
 echo ${array_var[0]} 
@@ -797,17 +797,17 @@ test1
 index=5 
 echo ${array_var[$index]} 
 test6
-~~~ 
+~~~
 (3) 以列表形式打印出数组中的所有值：
 ~~~
 $ echo ${array_var[*]} 
 test1 test2 test3 test4 test5 test6
-~~~ 
+~~~
 也可以这样使用：
 ~~~
 $ echo ${array_var[@]} 
 test1 test2 test3 test4 test5 test6
-~~~ 
+~~~
 (4) 打印数组长度（即数组中元素的个数）：
 ~~~
 $ echo ${#array_var[*]}
@@ -829,7 +829,7 @@ $ declare -A ass_array
  使用行内“索引-值”列表：
 ~~~
 $ ass_array=([index1]=val1 [index2]=val2)
-~~~ 
+~~~
  使用独立的“索引值”进行赋值：
 ~~~
 $ ass_array[index1]=val1 
@@ -839,27 +839,27 @@ $ ass_array[index2]=val2
 ~~~
 $ declare -A fruits_value 
 $ fruits_value=([apple]='100 dollars' [orange]='150 dollars')
-~~~ 
+~~~
 用下面的方法显示数组内容：
 ~~~
 $ echo "Apple costs ${fruits_value[apple]}" 
 Apple costs 100 dollars
-~~~ 
+~~~
 2. 列出数组索引
 
 每一个数组元素都有对应的索引。普通数组和关联数组的索引类型不同。我们可以用下面的方法获取数组的索引列表：
 ~~~
 $ echo ${!array_var[*]}
-~~~ 
+~~~
 也可以这样
 ~~~
 $ echo ${!array_var[@]}
-~~~ 
+~~~
 以先前的fruits_value数组为例，运行如下命令：
 ~~~
 $ echo ${!fruits_value[*]} 
 orange apple
-~~~ 
+~~~
 对于普通数组，这个方法同样可行。
 
 ## 1.8 别名
@@ -873,17 +873,17 @@ orange apple
 （1）创建别名。
 ~~~
 $ alias new_command='command sequence'
-~~~ 
+~~~
 下面的命令为apt-get install创建了一个别名：
 ~~~
 $ alias install='sudo apt-get install'
-~~~ 
+~~~
 定义好别名之后，我们就可以用install来代替sudo apt-get install了。
 
 (2) alias命令的效果只是暂时的。一旦关闭当前终端，所有设置过的别名就失效了。为了使别名在所有的shell中都可用，可以将其定义放入`~/.bashrc`文件中。每当一个新的交互式shell进程生成时，都会执行 `~/.bashrc`中的命令。
 ~~~
 $ echo 'alias cmd="command seq"' >> ~/.bashrc
-~~~ 
+~~~
 (3) 如果需要删除别名，只需将其对应的定义（如果有的话）从~/.bashrc中删除，或者使用unalias命令。也可以使用`alias example=`，这会取消别名example。
 
 (4) 我们可以创建一个别名rm，它能够删除原始文件，同时在backup目录中保留副本。
@@ -902,7 +902,7 @@ alias rm='cp $@ ~/backup && rm $@'
 创建一个和原生命令同名的别名很容易，你不应该以特权用户的身份运行别名化的命令。我们可以转义要使用的命令，忽略当前定义的别名：
 ~~~
 $ \command
-~~~ 
+~~~
 字符\可以转义命令，从而执行原本的命令。在不可信环境下执行特权命令时，在命令前加上\来忽略可能存在的别名总是一种良好的安全实践。这是因为攻击者可能已经将一些别有用心的命令利用别名伪装成了特权命令，借此来盗取用户输入的重要信息。
 
 2. 列举别名
@@ -934,15 +934,15 @@ tput lines
  打印出当前的终端名：
 ~~~shell script
 tput longname
-~~~ 
+~~~
  将光标移动到坐标(100,100)处：
 ~~~shell script
 tput cup 100 100
-~~~ 
+~~~
  设置终端背景色：
 ~~~shell script
 tput setb n
-~~~ 
+~~~
 其中，n可以在0到7之间取值。
 
  设置终端前景色：
@@ -956,7 +956,7 @@ tput setf n
  设置文本样式为粗体：
 ~~~shell script
 tput bold
-~~~ 
+~~~
  设置下划线的起止：
 ~~~shell script
 tput smul 
@@ -1002,37 +1002,37 @@ echo Password read.
 ~~~
 $ date 
 Thu May 20 23:09:04 IST 2010
-~~~ 
+~~~
 (2) 打印纪元时：
 ~~~
 $ date +%s 
 1290047248
-~~~ 
+~~~
 data命令可以将很多不同格式的日期转换成纪元时。这就允许你使用多种日期格式作为输入。如果要从系统日志中或者其他标准应用程序生成的输出中获取日期信息，就完全不用烦心日期的格式问题。
 
 将日期转换成纪元时：
 ~~~
 $ date --date "Wed mar 15 08:09:16 EDT 2017" +%s 
 1489579718
-~~~ 
+~~~
 选项`--date`指定了作为输入的日期。我们可以使用任意的日期格式化选项来打印输出。
 
 date命令可以根据指定的日期找出这一天是星期几：
 ~~~
 $ date --date "Jan 20 2001" +%A 
 Saturday
-~~~ 
+~~~
 1.10.3节中的表1-1是一份日期格式字符串列表。
 
 (3) 用带有前缀+的格式化字符串作为date命令的参数，可以按照你的选择打印出相应格式的日期。例如：
 ~~~
 $ date "+%d %B %Y" 
 20 May 2010
-~~~ 
+~~~
 (4) 设置日期和时间：
 ~~~
 # date -s "格式化的日期字符串"
-~~~ 
+~~~
 例如：
 ~~~
 # date -s "21 June 2009 11:01:22"
@@ -1120,7 +1120,7 @@ done
 (1) 使用选项-x，启用shell脚本的跟踪调试功能：
 ~~~
 $ bash -x script.sh
-~~~ 
+~~~
 运行带有-x选项的脚本可以打印出所执行的每一行命令以及当前状态。
 
 > 你也可以使用sh -x script。
@@ -1136,7 +1136,7 @@ do
  set +x 
 done 
 echo "Script executed"
-~~~ 
+~~~
 在上面的脚本中，只会打印出echo $i的调试信息，因为使用-x和+x对调试区域进行了限制。
 
 该脚本并没有使用上例中的seq命令，而是用{start..end}来迭代从start到end之间的值。这个语言构件（construct）在执行速度上要比seq命令略快。
@@ -1158,7 +1158,7 @@ done
 可以将调试功能设置为on来运行上面的脚本：
 ~~~
 $ _DEBUG=on ./script.sh
-~~~ 
+~~~
 我们在每一条需要打印调试信息的语句前加上DEBUG。如果没有把 `_DEBUG=on`传递给脚本，那么调试信息就不会打印出来。在Bash中，命令:告诉shell不要进行任何操作。
 
 ### 1.11.2 工作原理
@@ -1184,11 +1184,11 @@ shebang的妙用
 如果每一行前面都加上+，那么就很难在默认输出中跟踪执行流程了。可以将环境变量PS4设置为'`$LINENO:`'，显示出每行的行号：
 ~~~
 PS4='$LINENO: '
-~~~ 
+~~~
 调试的输出信息可能会很长。如果使用了-x或set -x，调试输出会被发送到stderr。可以使用下面的命令将其重定向到文件中：
 ~~~
 sh -x testScript.sh 2> debugout.txt
-~~~ 
+~~~
 Bash 4.0以及后续版本支持对调试输出使用自定义文件描述符：
 ~~~
 exec 6> /tmp/debugout.txt 
@@ -1220,7 +1220,7 @@ fname()
 甚至是这样（对于简单的函数）：
 ~~~
 fname() { statement; }
-~~~ 
+~~~
 (2) 只需使用函数名就可以调用函数：
 ~~~
 $ fname ; #执行函数
@@ -1264,13 +1264,13 @@ $> lsg txt
  file1.txt 
  file2.txt 
  file3.txt
-~~~ 
+~~~
  如果想获得/sbin/ifconfig文件中设备对应的IP地址，可以尝试这样做：
 ~~~
 $> alias wontWork='/sbin/ifconfig | grep' 
 $> wontWork eth0 
 eth0 Link encap:Ethernet HWaddr 00:11::22::33::44:55
-~~~ 
+~~~
  grep命令找到的是字符串eth0，而不是IP地址。如果我们使用函数来实现的话，可以将设备名作为参数传入ifconfig，不再交给grep：
 ~~~
 $> function getIP() { /sbin/ifconfig $1 | grep 'inet '; } 
@@ -1308,14 +1308,14 @@ $> sh test.sh
 $> export -f getIP 
 $> sh test.sh 
  inet addr: 192.168.1.2 Bcast: 192.168.255.255 Mask:255.255.0.0
-~~~ 
+~~~
 3. 读取命令返回值（状态）
 
 命令的返回值被保存在变量$?中。
 ~~~shell script
 cmd; 
 echo $?;
-~~~ 
+~~~
 返回值被称为退出状态。它可用于确定命令执行成功与否。如果命令成功退出，那么退出状态为0，否则为非0。
 
 下面的脚本可以报告命令是否成功结束：
@@ -1336,13 +1336,13 @@ fi
 大多数应用都能够接受不同格式的参数。假设-p、-v是可用选项，-k N是另一个可以接受数字的选项，同时该命令还要求使用一个文件名作为参数。那么，它有如下几种执行方式：
 
  $ command -p -v -k 1 file
- 
+
  $ command -pv -k 1 file
 
  $ command -vpk 1 file
- 
+
  $ command file -pvk 1
- 
+
 在脚本中，命令行参数可以依据其在命令行中的位置来访问。第一个参数是$1，第二个参数是$2，以此类推。
 
 下面的语句可以显示出前3个命令行参数：
@@ -1374,7 +1374,7 @@ Unix shell脚本最棒的特性之一就是可以轻松地将多个命令组合�
 在这种情况下，这些命令被称为过滤器（filter）。我们使用管道（pipe）连接每个过滤器，管道操作符是|。例如：
 ~~~
 $ cmd1 | cmd2 | cmd3
-~~~ 
+~~~
 这里我们组合了3个命令。cmd1的输出传递给cmd2，cmd2的输出传递给cmd3，最终的输出（来自cmd3）会出现在显示器中或被导入某个文件。
 
 ### 1.13.2 实战演练
@@ -1384,27 +1384,27 @@ $ cmd1 | cmd2 | cmd3
 (1) 先从组合两个命令开始：
 ~~~
 $ ls | cat -n > out.txt
-~~~ 
+~~~
 ls（列出当前目录内容）的输出被传给cat -n，后者为通过stdin所接收到的输入内容加上行号，然后将输出重定向到文件out.txt。
 
 (2) 将命令序列的输出赋给变量：
 ~~~
 cmd_output=$(COMMANDS)
-~~~ 
+~~~
 这种方法叫作子shell法。例如：
 ~~~shell script
 cmd_output=$(ls | cat -n) 
 echo $cmd_output
-~~~ 
+~~~
 另一种方法叫作反引用（有些人也称它为反标记），也可以用于存储命令输出：
 ~~~
 cmd_output=`COMMANDS`
-~~~ 
+~~~
 例如：
 ~~~shell script
 cmd_output=`ls | cat -n` 
 echo $cmd_output
-~~~ 
+~~~
 反引用与单引号可不是一回事，该字符位于键盘的 ~ 键上。
 
 ### 1.13.3 补充内容
@@ -1472,20 +1472,20 @@ read -s var
 (3) 使用read显示提示信息：
 ~~~shell script
 read -p "Enter input:" var
-~~~ 
+~~~
 (4) 在给定时限内读取输入：
 ~~~shell script
 read -t timeout var
-~~~ 
+~~~
 例如：
 ~~~
 $ read -t 2 var 
 #在2秒内将键入的字符串读入变量var
-~~~ 
+~~~
 (5) 用特定的定界符作为输入行的结束：
 ~~~shell script
 read -d delim_char var
-~~~ 
+~~~
 例如：
 ~~~
 $ read -d ":" var 
@@ -1526,7 +1526,7 @@ repeat() { while true; do $@ && return; done }
 在大多数现代系统中，true是作为/bin中的一个二进制文件来实现的。这就意味着每执行一次之前提到的while循环，shell就不得不生成一个进程。为了避免这种情况，可以使用shell的内建命令:，该命令的退出状态总是为0：
 ~~~shell script
 repeat() { while :; do $@ && return; done }
-~~~ 
+~~~
 尽管可读性不高，但是肯定比第一种方法快。
 
 2. 加入延时
@@ -1534,11 +1534,11 @@ repeat() { while :; do $@ && return; done }
 假设你要用repeat()从Internet上下载一个暂时不可用的文件，不过这个文件只需要等一会就能下载。一种方法如下：
 ~~~shell script
 repeat wget -c http://www.example.com/software-0.1.tar.gz
-~~~ 
+~~~
 如果采用这种形式，会产生很多发往www.example.com的流量，有可能会对服务器造成影响。（可能也会牵连到你自己；如果服务器认为你是在向其发起攻击，就会把你的IP地址列入黑名单。）要解决这个问题，我们可以修改函数，加入一段延时：
 ~~~shell script
 repeat() { while :; do $@ && return; sleep 30; done }
-~~~ 
+~~~
 这样命令每30秒才会运行一次。
 
 ## 1.16 字段分隔符与迭代器
@@ -1554,7 +1554,7 @@ repeat() { while :; do $@ && return; sleep 30; done }
 考虑CSV数据的情况：
 ~~~csv
 data="name, gender,rollno,location"
-~~~ 
+~~~
 我们可以使用IFS读取变量中的每一个条目。
 ~~~shell script
 oldIFS=$IFS 
@@ -1564,14 +1564,14 @@ do
  echo Item: $item 
 done 
 IFS=$oldIFS
-~~~ 
+~~~
 输出如下：
 ~~~
 Item: name 
 Item: gender 
 Item: rollno 
 Item: location
-~~~ 
+~~~
 IFS的默认值为空白字符（换行符、制表符或者空格）。
 
 当IFS被设置为逗号时，shell将逗号视为一个定界符，因此变量$item在每次迭代中读取由逗号分隔的子串作为变量值。
@@ -1604,7 +1604,7 @@ echo $user's shell is $shell;
 输出为：
 ~~~
 root's shell is /bin/bash
-~~~ 
+~~~
 循环在对一系列值进行迭代时非常有用。Bash提供了多种类型的循环。
 
  面向列表的for循环
@@ -1626,7 +1626,7 @@ echo {a..z} {A..Z}; #生成大小写字母序列
 下面的代码中，变量i在每次迭代的过程里都会保存一个范围在a到z之间的字符：
 ~~~shell script
 for i in {a..z}; do actions; done;
-~~~ 
+~~~
  迭代指定范围的数字
 ~~~shell script
 for((i=0;i<10;i++)) 
@@ -1697,7 +1697,7 @@ fi
 如果忘记了这个空格，脚本就会报错。
 ~~~
 [$var -eq 0 ] or [ $var -eq 0]
-~~~ 
+~~~
 对变量或值进行算术条件测试：
 ~~~
 [ $var -eq 0 ] #当$var等于0时，返回真
@@ -1718,7 +1718,7 @@ fi
 [ $var1 -ne 0 -a $var2 -gt 2 ] #使用逻辑与-a 
 [ $var1 -ne 0 -o $var2 -gt 2 ] #逻辑或-o
 ~~~
- 
+
  文件系统相关测试
 
 我们可以使用不同的条件标志测试各种文件系统相关的属性。
@@ -1803,11 +1803,11 @@ fi
 输出如下：
 ~~~
 str1 is nonempty and str2 is empty string.
-~~~ 
+~~~
 test命令可以用来测试条件。用test可以避免使用过多的括号，增强代码的可读性。之前讲过的`[]`中的测试条件同样可以用于test命令。例如：
 ~~~shell script
 if [ $var -eq 0 ]; then echo "True"; fi
-~~~ 
+~~~
 也可以写成：
 ~~~shell script
 if test $var -eq 0 ; then echo "True"; fi
@@ -1829,7 +1829,7 @@ PS1='Hello $USER'; export PS1
 PATH=$PATH:/opt/MySpecialApplication/bin; export PATH 
 # 常用命令的便捷方式
 function lc () {/bin/ls -C $* ; }
-~~~ 
+~~~
 应该使用哪些定制文件？
 
 Linux和Unix中能够放置定制脚本的文件不止一个。这些配置文件分为3类：登录时执行的、启动交互式shell时执行的以及调用shell处理脚本文件时执行的。
@@ -1851,22 +1851,22 @@ Linux和Unix中能够放置定制脚本的文件不止一个。这些配置文�
 $> cat myscript.sh 
 #!/bin/bash 
 echo "Running"
-~~~ 
+~~~
 不会执行任何配置文件，除非定义了环境变量BASH_ENV：
 ~~~
 $> export BASH_ENV=~/.bashrc 
 $> ./myscript.sh
-~~~ 
+~~~
 使用ssh运行下列命令时：
 ~~~
 ssh 192.168.1.100 ls /tmp
-~~~ 
+~~~
 会启动一个bash shell，读取并执行/etc/bash.bashrc和$HOME/.bashrc，但不包括/etc/profile或.profile。
 
 如果调用ssh登录会话：
 ~~~
 ssh 192.168.1.100
-~~~ 
+~~~
 这会创建一个新的登录bash shell，该shell会读取并执行以下文件：
 /etc/profile 
 /etc/bash.bashrc 
@@ -1878,12 +1878,12 @@ $HOME/.profile or .bashrc_profile
 ~~~
 alias l "ls -l" 
 /etc/bash.bashrc /etc/bashrc
-~~~ 
+~~~
 也可以用来保存个人配置，比如设置需要由其他bash实例继承的路径信息，就像下面这样：
 ~~~
 CLASSPATH=$CLASSPATH:$HOME/MyJavaProject; export CLASSPATH 
 $HOME/.bash_login $HOME/.bash_profile $HOME/.profile
-~~~ 
+~~~
 > 如果.bash_login或.bash_profile存在，则不会读取.profile。不过其他shell可能会读取该文件。
 
 另外还可以保存一些需要在新shell创建时定义的个人信息。如果你希望在X11终端会话中能够使用别名和函数的话，可以将其定义在$HOME/.bashrc和/etc/bash.bashrc中。
@@ -1917,7 +1917,7 @@ cat命令是一个经常会用到的简单命令，它本身表示conCATenate（
 用cat读取文件内容的一般语法是：
 ~~~
 $ cat file1 file2 file3 ...
-~~~ 
+~~~
 该命令将作为命令行参数的文件内容拼接在一起并将结果发送到stdout。 
 
  打印单个文件的内容
@@ -1925,25 +1925,25 @@ $ cat file1 file2 file3 ...
 $ cat file.txt 
 This is a line inside file.txt 
 This is the second line inside file.txt
-~~~ 
+~~~
  打印多个文件的内容
 ~~~
 $ cat one.txt two.txt 
 This line is from one.txt 
 This line is from two.txt
-~~~ 
+~~~
 cat命令不仅可以读取文件、拼接数据，还能够从标准输入中读取。
 
 管道操作符可以将数据作为cat命令的标准输入：
 ~~~shell script
 OUTPUT_FROM_SOME COMMANDS | cat
-~~~ 
+~~~
 cat也可以将文件内容与终端输入拼接在一起。
 
 下面的命令将stdin和另一个文件中的数据组合在一起：
 ~~~
 $ echo 'Text through stdin' | cat - file.txt
-~~~ 
+~~~
 在上例中，-被作为stdin文本的文件名。
 
 ### 2.2.2 补充内容
@@ -1955,7 +1955,7 @@ cat命令还有一些用于文件查看的选项。可以在终端会话中输�
 有时候文本文件中可能包含多处连续的空白行。如果你想删除这些额外的空白行，可以这样做：
 ~~~
 $ cat -s file
-~~~ 
+~~~
 考虑下面的例子:
 ~~~
 $ cat multi_blanks.txt 
@@ -1973,7 +1973,7 @@ line 2
 line 3
  
 line 4
-~~~ 
+~~~
 另外也可以用tr删除所有的空白行，我们会在2.6节详细讨论。
 
 2. 将制表符显示为^I
@@ -1992,7 +1992,7 @@ def function():
 ^Ivar = 5 
 ^I^Inext = 6 
 ^Ithird = 7^I
-~~~ 
+~~~
 3. 行号
 
 cat命令的-n选项会在输出的每一行内容之前加上行号。例如：
@@ -2031,7 +2031,7 @@ script和scriptreplay命令在绝大多数GNU/Linux发行版上都可以找到�
 开始录制终端会话：
 ~~~
 $ script -t 2> timing.log -a output.session
-~~~ 
+~~~
 完整的录制过程如下：
 ~~~
 $ script -t 2> timing.log -a output.session 
@@ -2093,7 +2093,7 @@ ls: cannot access name: No such file or directory
 $> find . -type f -print0 | xargs -0 ls -l 
 -rw-rw-rw-. 1 user group 5 Aug 24 15:00 ./file name
 ~~~
- 
+
 ### 2.4.3 补充内容
 
 上面的例子演示了如何使用find列出文件层次中所有的文件和目录。find命令能够基于通配符或正则表达式、目录树深度、文件日期、文件类型等条件查找文件。
@@ -2121,14 +2121,14 @@ new.txt some.jpg text.pdf stuff.png
 $ find . \( -name '*.txt' -o -name '*.pdf' \) -print 
 ./text.pdf 
 ./new.txt
-~~~ 
+~~~
 上面的命令会打印出所有的.txt和.pdf文件，因为这个find命令能够匹配所有这两类文件。\（以及\）用于将 -name '*.txt' -o -name '*.pdf'视为一个整体。
 
 下面的命令演示了如何使用-and操作符选择名字以s开头且其中包含e的文件：
 ~~~
 $ find . \( -name '*e*' -and -name 's*' \) 
 ./some.jpg
-~~~ 
+~~~
 -path选项可以限制所匹配文件的路径及名称。例如，`$ find /home/users -path '*/slynux/*' -name '*.txt' –print`能够匹配文件/home/users/slynux/readme.txt，但无法匹配/home/users/slynux.txt。
 
 > -regex选项和-path类似，只不过前者是基于正则表达式来匹配文件路径的。
@@ -2142,7 +2142,7 @@ new.PY next.jpg test.py script.sh
 $ find . -regex '.*\.(py\|sh\)$'
 ./test.py 
 script.sh
-~~~ 
+~~~
 -iregex选项可以让正则表达式在匹配时忽略大小写。例如：
 ~~~
 $ find . -iregex '.*\(\.py\|\.sh\)$'
@@ -2156,7 +2156,7 @@ $ find . -iregex '.*\(\.py\|\.sh\)$'
 find也可以用!排除匹配到的模式：
 ~~~
 $ find . ! -name "*.txt" -print
-~~~ 
+~~~
 上面的find命令能够匹配所有不以.txt结尾的文件。该命令的运行结果如下：
 ~~~
 $ ls 
@@ -2166,7 +2166,7 @@ $ find . ! -name "*.txt" -print
 ./next.jpg 
 ./test.py 
 ./new.PY
-~~~ 
+~~~
 3. 基于目录深度的搜索
 
 find命令在查找时会遍历完所有的子目录。默认情况下，find命令不会跟随符号链接。`-L`选项可以强制其改变这种行为。但如果碰上了指向自身的链接，find命令就会陷入死循环中。
@@ -2177,7 +2177,7 @@ find命令在查找时会遍历完所有的子目录。默认情况下，find命
 下面的例子展示了如何列出运行在含有文件bundlemaker.def的目录下的所有任务：
 ~~~
 $ find -L /proc -maxdepth 1 -name 'bundlemaker.def' 2>/dev/null
-~~~ 
+~~~
  -L选项告诉find命令跟随符号链接
 
  从/proc目录开始查找
@@ -2187,7 +2187,7 @@ $ find -L /proc -maxdepth 1 -name 'bundlemaker.def' 2>/dev/null
  -name 'bundlemaker.def'指定待查找的文件
 
  2>/dev/null将有关循环链接的错误信息发送到空设备中
- 
+
 -mindepth选项类似于-maxdepth，不过它设置的是find开始进行查找的最小目录深度。这个选项可以用来查找并打印那些距离起始路径至少有一定深度的文件。例如，打印出深度距离当前目录至少两个子目录的所有名字以f开头的文件：
 ~~~
 $ find . -mindepth 2 -name "f*" -print 
@@ -2208,21 +2208,21 @@ find命令可以使用-type选项对文件搜索进行过滤。借助这个选�
 只列出所有的目录（包括子目录）：
 ~~~
 $ find . -type d -print
-~~~ 
+~~~
 将文件和目录分别列出可不是件容易事。不过有了find就好办了。例如，只列出普通文件：
 ~~~
 $ find . -type f -print
-~~~ 
+~~~
 只列出符号链接：
 ~~~
 $ find . -type l -print
-~~~ 
+~~~
 表2-1列出了find能够识别出的类型与参数。
 
 |文件类型 |类型参数|
 |------|------|
 |普通文件 |f|
-|符号链接 |l| 
+|符号链接 |l|
 |目录 |d |
 |字符设备 |c |
 |块设备 |b|
@@ -2248,15 +2248,15 @@ Unix/Linux文件系统中的每一个文件都有3种时间戳，如下所示。
  打印出在最近7天内被访问过的所有文件。
 ~~~
 $ find . -type f -atime -7 -print
-~~~ 
+~~~
  打印出恰好在7天前被访问过的所有文件。
 ~~~
 $ find . -type f -atime 7 -print
-~~~ 
+~~~
  打印出访问时间超过7天的所有文件。
 ~~~
 $ find . -type f -atime +7 -print
-~~~ 
+~~~
 -mtime选项会根据修改时间展开搜索，-ctime会根据变化时间展开搜索。
 
 -atime、-mtime以及-ctime都是以“天”为单位来计时的。find命令还支持以“分钟”为计时单位的选项。这些选项包括：
@@ -2270,13 +2270,13 @@ $ find . -type f -atime +7 -print
 打印出7分钟之前访问的所有文件：
 ~~~
 $ find . -type f -amin +7 -print
-~~~ 
+~~~
 –newer选项可以指定一个用于比较修改时间的参考文件，然后找出比参考文件更新的（更近的修改时间）所有文件。
 
 例如，找出比file.txt修改时间更近的所有文件：
 ~~~
 $ find . -type f -newer file.txt -print
-~~~ 
+~~~
 find命令的时间戳处理选项有助于编写系统备份和维护脚本。
 
 6. 基于文件大小的搜索
@@ -2289,7 +2289,7 @@ $ find . -type f -size +2k
 $ find . -type f -size -2k 
 # 大小等于2KB的文件
 $ find . -type f -size 2k
-~~~ 
+~~~
 除了k之外，还可以用其他文件大小单位。
 
  b：块（512字节）。
@@ -2319,7 +2319,7 @@ $ find . -type f -name "*.php" ! -perm 644 –print
 PHP/custom.php 
 $ ls -l PHP/custom.php 
 -rw-rw-rw-. root root 513 Mar 13 2016 PHP/custom.php
-~~~ 
+~~~
 我们也可以根据文件的所有权进行搜索。用选项 -user USER就能够找出由某个特定用户所拥有的文件。
 
 参数USER可以是用户名或UID。
@@ -2328,7 +2328,7 @@ $ ls -l PHP/custom.php
 ~~~
 $ find . -type f -user slynux -print
 ~~~
- 
+
 8. 利用find执行相应操作
 
 find命令能够对其所查找到的文件执行相应的操作。无论是删除文件或是执行任意的Linux命令都没有问题。
@@ -2338,7 +2338,7 @@ find命令能够对其所查找到的文件执行相应的操作。无论是删�
 find命令的-delete选项可以删除所匹配到的文件。下面的命令能够从当前目录中删除.swp文件：
 ~~~
 $ find . -type f -name "*.swp" -delete
-~~~ 
+~~~
 (2) 执行命令
 
 利用-exec选项，find命令可以结合其他命令使用。
@@ -2350,7 +2350,7 @@ $ find . -type f -name "*.swp" -delete
 find命令使用一对花括号{}代表文件名。在下面的例子中，对于每一个匹配的文件，find命令会将{}替换成相应的文件名并更改该文件的所有权。如果find命令找到了root所拥有的两个文件，那么它会将其所有者改为slynux：
 ~~~
 # find . -type f -user root -exec chown slynux {} \;
-~~~ 
+~~~
 > 注意该命令结尾的\;。必须对分号进行转义，否则shell会将其视为find命令的结束，而非chown命令的结束。
 
 为每个匹配到的文件调用命令可是个不小的开销。如果指定的命令接受多个参数（如chown），你可以换用加号（+）作为命令的结尾。这样find会生成一份包含所有搜索结果的列表，然后将其作为指定命令的参数，一次性执行。
@@ -2360,13 +2360,13 @@ find命令使用一对花括号{}代表文件名。在下面的例子中，对�
 $ find . -type f -name '*.c' -exec cat {} \;>all_c_files.txt 
 $ find . -type f -name '*.c' -exec cat {} > all_c_files.txt \; 
 $ fine . -type f -name '*.c' -exec cat {} >all_c_files.txt +
-~~~ 
+~~~
 我们使用 > 操作符将来自find的数据重定向到all_c_files.txt文件，没有使用>>（追加）的原因是find命令的全部输出就只有一个数据流（stdin），而只有当多个数据流被追加到单个文件中时才有必要使用>>。
 
 下列命令可以将10天前的 .txt文件复制到OLD目录中：
 ~~~
 $ find . -type f -mtime +10 -name "*.txt" -exec cp {} OLD \;
-~~~ 
+~~~
 find命令还可以采用类似的方法与其他命令结合使用。
 
 > 我们无法在-exec选项中直接使用多个命令。该选项只能够接受单个命令，不过我们可以耍一个小花招。把多个命令写到一个 shell脚本中（例如command.sh），然后在-exec中使用这个脚本：
@@ -2378,7 +2378,7 @@ $ find . -type f -name "*.txt" -exec printf "Text file: %s\n" {} \;
 Config file: /etc/openvpn/easy-rsa/openssl-1.0.0.cnf 
 Config file: /etc/my.cnf
 ~~~
- 
+
 9. 让find跳过特定的目录
 
 在find的执行过程中，跳过某些子目录能够提升性能。例如，在版本控制系统（如Git）管理的开发源代码树中查找特定文件时，文件系统的每个子目录里都会包含一个目录，该目录中保存了和版本控制相关的信息。这些目录通常跟我们没什么关系，所以没必要去搜索它们。
@@ -2386,8 +2386,489 @@ Config file: /etc/my.cnf
 在搜索时排除某些文件或目录的技巧叫作修剪。下面的例子演示了如何使用-prune选项排除某些符合条件的文件：
 ~~~
 $ find devel/source_path -name '.git' -prune -o -type f -print
-~~~ 
+~~~
 `-name ".git" –prune`是命令中负责进行修剪的部分，它指明了.git目录应该被排除在外。`-type f –print`描述了要执行的操作。
 
 ## 2.5 玩转xargs
 
+## 2.15 交互输入自动化
+
+我们知道命令可以接受命令行参数。Linux也支持很多交互式应用程序，如passwd和ssh。
+
+我们可以创建自己的交互式shell脚本。对于普通用户而言，相较于记忆命令行参数及其正确的顺序，同一系列提示信息打交道要更容易。例如，一个备份用户工作成果的脚本看起来应该像这样：
+
+~~~
+$ backupWork.sh 
+ What folder should be backed up? notes
+ What type of files should be backed up? .docx
+~~~
+
+如果你需要返回到同一交互式应用，实现交互式应用自动化能够节省大量的时间；如果你正在开发此类应用，这也可以避免你陷入重复输入的挫折感中。
+
+### 2.15.1 预备知识
+
+任务自动化的第一步就是运行程序，然后注意需要执行什么操作。之前讲过的脚本命令可能会派上用场。
+
+### 2.15.2 实战演练
+
+观察交互式输入的顺序。参照上面的代码，我们可以将涉及的步骤描述如下：
+
+notes[Return]docx[Return] 
+
+输入notes，按回车键，然后输入docx，再按回车键。这一系列操作可以被转换成下列字符串：
+
+**"notes\ndocx\n"** 
+
+按下回车键时会发送\n。添加\n后，就生成了发送给stdin的字符串。
+
+通过发送与用户输入等效的字符串，我们就可以实现在交互过程中自动发送输入。
+
+### 2.15.3 工作原理
+
+先写一个读取交互式输入的脚本，然后用这个脚本做自动化演示：
+
+~~~shell
+#!/bin/bash 
+# backup.sh 
+# 使用后缀备份文件。不备份以~开头的临时文件
+read -p " What folder should be backed up: " folder 
+read -p " What type of files should be backed up: " suffix 
+find $folder -name "*.$suffix" -a ! -name '~*' -exec cp {} \ 
+ $BACKUP/$LOGNAME/$folder 
+echo "Backed up files from $folder to $BACKUP/$LOGNAME/$folder"
+~~~
+
+按照下面的方法向脚本发送自动输入：
+
+~~~shell
+$ echo -e "notes\ndocx\n" | ./backup.sh 
+Backed up files from notes to /BackupDrive/MyName/notes
+~~~
+
+像这样的交互式脚本自动化能够在开发和调试过程中节省大量输入。另外还可以确保每次测试都相同，不会出现由于输入错误导致的bug假象。
+
+我们用echo -e来生成输入序列。-e选项表明echo会解释转义序列。如果输入内容比较多，可以用单独的输入文件结合重定向操作符来提供输入：
+
+~~~shell
+$ echo -e "notes\ndocx\n" > input.data 
+$ cat input.data 
+notes 
+docx
+~~~
+
+你也可以选择手动构造输入文件，不使用echo命令：
+
+~~~shell
+$ ./interactive.sh < input.data
+~~~
+
+这种方法是从文件中导入交互式输入数据。
+
+如果你是一名逆向工程师，那可能免不了要同缓冲区溢出攻击打交道。要实施攻击，我们需要将十六进制形式的shellcode（例如\xeb\x1a\x5e\x31\xc0\x88\x46）进行重定向。这些字符没法直接输入，因为键盘上并没有其对应的按键。因此，我们需要使用：
+
+~~~shell
+echo -e "\xeb\x1a\x5e\x31\xc0\x88\x46" 
+~~~
+
+这条命令会将这串字节序列重定向到有缺陷的可执行文件中。
+
+echo命令和重定向可以实现交互式输入的自动化。但这种技术存在问题，因为输入内容没有经过验证，我们认定目标应用总是以相同的顺序接收数据。但如果程序要求的输入顺序不同，或是对某些输入内容不做要求，那就要出岔子了。
+
+expect程序能够执行复杂的交互操作并适应目标应用的变化。该程序在世界范围内被广泛用于控制硬件测试、验证软件构建、查询路由器统计信息等。
+
+### 2.15.4 补充内容
+
+expect是一个和shell类似的解释器。它基于TCL语言。我们将讨论如何使用spawn、expect和send命令实现简单的自动化。借助于TCL语言的强大功能，expect能够完成更为复杂的任务。你可以通过网站http://www.tcl.tk学到有关TCL语言的更多内容。
+
+**用expect实现自动化**
+
+Linux发行版默认并不包含expect。你得用软件包管理器（apt-get或yum）手动进行安装。
+
+expect有3个主要命令，见表2-2。
+
+| 命令   | 描述                   |
+| ------ | ---------------------- |
+| spawn  | 允许新的目标应用       |
+| expect | 关注目标应用发送的模式 |
+| send   | 向目标应用发送字符串   |
+
+下面的例子会先执行备份脚本，然后查找模式`*folder*`或`*file*`，以此确定备份脚本是否要求输入目录名或文件名并作出相应的回应。如果重写备份脚本，要求先输入备份文件类型，后输入备份目录，这个自动化脚本依然能够应对。
+
+~~~shell
+#!/usr/bin/expect 
+#文件名: automate_expect.tcl 
+spawn ./backup .sh 
+expect { 
+    "*folder*" { 
+        send "notes\n" 
+        exp_continue 
+    } 
+    "*type*" { 
+        send "docx\n" 
+        exp_continue 
+    }
+}
+~~~
+
+运行该脚本：
+
+~~~shell
+$ ./automate_expect.tcl
+~~~
+
+spawn命令的参数是需要自动化运行的应用程序及其参数。
+
+expect命令接受一组模式以及匹配模式时要执行的操作。操作需要放入花括号中。
+
+send命令是要发送的信息。和echo -n -e类似，send不会自动添加换行符，也能够理解转义字符。
+
+## 2.16 利用并行进程加速命令执行
+
+# 第4章 让文本飞
+
+## 4.6 使用awk进行高级文本处理
+
+awk命令可以处理数据流。它支持关联数组、递归函数、条件语句等功能。
+
+### 4.6.1 预备知识
+
+awk脚本的结构如下：
+
+~~~shell
+awk 'BEGIN{ print "start" } pattern { commands } END{ print "end" }' file
+~~~
+
+awk命令也可以从stdin中读取输入。
+
+awk脚本通常由3部分组成：BEGIN、END和带模式匹配选项的公共语句块（common statement block）。这3个部分都是可选的，可以不用出现在脚本中。
+
+awk以逐行的形式处理文件。BEGIN之后的命令会先于公共语句块执行。对于匹配PATTERN 的行，awk会对其执行PATTERN之后的命令。最后，在处理完整个文件之后，awk会执行END之后的命令。
+
+### 4.6.2 实战演练
+
+简单的awk脚本可以放在单引号或双引号中：
+
+~~~shell
+awk 'BEGIN { statements } { statements } END { end statements }'
+~~~
+
+或者
+
+~~~shell
+awk "BEGIN { statements } { statements } END { end statements }"
+~~~
+
+下面的命令会输出文件行数：
+
+~~~shell
+$ awk 'BEGIN { i=0 } { i++ } END { print i}' filename
+~~~
+
+或者
+
+~~~shell
+$ awk "BEGIN { i=0 } { i++ } END { print i }" filename
+~~~
+
+### 4.6.3 工作原理
+
+awk命令的工作方式如下。
+
+(1) 首先执行BEGIN { commands } 语句块中的语句。
+
+(2) 接着从文件或stdin中读取一行，如果能够匹配pattern，则执行随后的commands语句块。重复这个过程，直到文件全部被读取完毕。
+
+(3) 当读至输入流末尾时，执行END { commands } 语句块。
+
+BEGIN语句块在awk开始从输入流中读取行之前被执行。这是一个可选的语句块，诸如变量初始化、打印输出表格的表头等语句通常都可以放在BEGIN语句块中。
+
+END语句块和BEGIN语句块类似。它在awk读取完输入流中所有的行之后被执行。像打印所有行的分析结果这种常见任务都是在END语句块中实现的。
+
+最重要的部分就是和pattern关联的语句块。这个语句块同样是可选的。如果不提供，则默认执行{ print }，即打印所读取到的每一行。awk对于读取到的每一行都会执行该语句块。这就像一个用来读取行的while循环，在循环体中提供了相应的语句。
+
+每读取一行，awk就会检查该行是否匹配指定的模式。模式本身可以是正则表达式、条件语句以及行范围等。如果当前行匹配该模式，则执行{ }中的语句。
+
+模式是可选的。如果没有提供模式，那么awk就认为所有的行都是匹配的：
+
+~~~shell
+$ echo -e "line1\nline2" | awk 'BEGIN { print "Start" } { print }  END { print "End" } ' 
+Start 
+line1 
+line2 
+End
+~~~
+
+当使用不带参数的print时，它会打印出当前行。
+
+print能够接受参数。这些参数以逗号分隔，在打印参数时则以空格作为参数之间的分隔符。在awk的print语句中，双引号被当作拼接操作符（concatenation operator）使用。例如：
+
+~~~shell
+$ echo | awk '{ var1="v1"; var2="v2"; var3="v3"; print var1,var2,var3 ; }'
+~~~
+
+echo命令向标准输出写入一行，因此awk的 { } 语句块中的语句只被执行一次。如果awk的输入中包含多行，那么 { } 语句块中的语句也就会被执行相应的次数。
+
+拼接的使用方法如下：
+
+~~~shell
+$ echo | awk '{ var1="v1"; var2="v2"; var3="v3"; print var1 "-" var2 "-" var3 ; }'
+~~~
+
+该命令输出如下：
+
+~~~
+v1-v2-v3
+~~~
+
+{ }就像一个循环体，对文件中的每一行进行迭代。
+
+> **TIP**: 
+>
+> 我们通常将变量初始化语句（如var=0;）放入BEGIN语句块中。在END{} 语句块中，往往会放入用于打印结果的语句。
+
+### 4.6.4 补充内容
+
+awk命令与诸如grep、find和tr这类命令不同，它功能众多，而且拥有很多能够更改命令行为的选项。awk命令是一个解释器，它能够解释并执行程序，和shell一样，它也包括了一些特殊变量。
+
+#### 1. 特殊变量
+
+以下是awk可以使用的一些特殊变量。
+
+- NR：表示记录编号，当awk将行作为记录时，该变量相当于当前行号。
+- NF：表示字段数量，在处理当前记录时，相当于字段数量。默认的字段分隔符是空格。
+- $0：该变量包含当前记录的文本内容。
+- $1：该变量包含第一个字段的文本内容。
+- $2：该变量包含第二个字段的文本内容。
+
+例如：
+
+~~~shell
+$ echo -e "line1 f2 f3\nline2 f4 f5\nline3 f6 f7" | \ 
+awk '{ \
+ print "Line no:"NR",No of fields:"NF, "$0="$0, \
+ "$1="$1,"$2="$2,"$3="$3 \
+}' 
+Line no:1,No of fields:3 $0=line1 f2 f3 $1=line1 $2=f2 $3=f3 
+Line no:2,No of fields:3 $0=line2 f4 f5 $1=line2 $2=f4 $3=f5 
+Line no:3,No of fields:3 $0=line3 f6 f7 $1=line3 $2=f6 $3=f7
+~~~
+
+我们可以用`print $NF`打印一行中最后一个字段，用 ​`$(NF-1)`打印倒数第二个字段，其他字段以此类推。awk也支持printf()函数，其语法和C语言中的同名函数一样。
+
+下面的命令会打印出每一行的第二和第三个字段：
+
+~~~shell
+$awk '{ print $3, $2 }' file
+~~~
+
+我们可以使用NR统计文件的行数：
+
+~~~shell
+$ awk 'END{ print NR }' file
+~~~
+
+这里只用到了END语句块。每读入一行，awk都会更新NR。当到达文件末尾时，NR中的值就是最后一行的行号。你可以将每一行中第一个字段的值按照下面的方法累加：
+
+~~~shell
+$ seq 5 | awk 'BEGIN { sum=0; print "Summation:" } { print $1"+"; sum+=$1 } END { print "=="; print sum }' 
+Summation: 
+1+ 
+2+ 
+3+ 
+4+ 
+5+ 
+== 
+15
+~~~
+
+#### 2. 将外部变量值传递给awk
+
+借助选项-v，我们可以将外部值（并非来自stdin）传递给awk：
+
+~~~shell
+$ VAR=10000 
+$ echo | awk -v VARIABLE=$VAR '{ print VARIABLE }' 
+10000
+~~~
+
+还有另一种灵活的方法可以将多个外部变量传递给awk。例如：
+
+~~~shell
+$ var1="Variable1" ; var2="Variable2" 
+$ echo | awk '{ print v1,v2 }' v1=$var1 v2=$var2 
+Variable1 Variable2
+~~~
+
+在上面的方法中，变量以键值对的形式给出，使用空格分隔（`v1=$var1 v2=$var2`），作为awk的命令行参数紧随在BEGIN、{}和END语句块之后。
+
+#### 3. 用getline读取行
+
+awk默认读取文件中的所有行。如果只想读取某一行，可以使用getline函数。它可以用于在BEGIN语句块中读取文件的头部信息，然后在主语句块中处理余下的实际数据。
+
+该函数的语法为：getline var。变量var中包含了特定行。如果调用时不带参数，我们可以用 `$0`、`$1`和`$2`访问文本行的内容。例如：
+
+~~~shell
+$ seq 5 | awk 'BEGIN { getline; print "Read ahead first line", $0 } 
+{ print $0 }' 
+Read ahead first line 1 
+2 
+3 
+4 
+5
+~~~
+
+#### 4. 使用过滤模式对awk处理的行进行过滤
+
+我们可以为需要处理的行指定一些条件：
+
+~~~shell
+$ awk 'NR < 5' # 行号小于5的行
+$ awk 'NR==1,NR==4' # 行号在1到5之间的行
+$ awk '/linux/' # 包含模式为linux的行（可以用正则表达式来指定模式）
+$ awk '!/linux/' # 不包含模式为linux的行
+~~~
+
+#### 5. 设置字段分隔符
+
+默认的字段分隔符是空格。我们也可以用选项-F指定不同的分隔符：
+
+~~~shell
+$ awk -F: '{ print $NF }' /etc/passwd
+~~~
+
+或者
+
+~~~shell
+awk 'BEGIN { FS=":" } { print $NF }' /etc/passwd
+~~~
+
+在BEGIN语句块中可以用OFS="delimiter"设置输出字段分隔符。
+
+#### 6. 从awk中读取命令输出
+
+awk可以调用命令并读取输出。把命令放入引号中，然后利用管道将命令输出传入getline：
+
+~~~shell
+"command" | getline output ;
+~~~
+
+下面的代码从/etc/passwd文件中读入一行，然后显示出用户登录名及其主目录。在BEGIN语句块中将字段分隔符设置为:，在主语句块中调用了grep。
+
+~~~shell
+$ awk 'BEGIN {FS=":"} { "grep root /etc/passwd" | getline; \ 
+ print $1,$6 }' 
+root /root
+~~~
+
+#### 7. awk的关联数组
+
+除了数字和字符串类型的变量，awk还支持关联数组。关联数组是一种使用字符串作为索引的数组。你可以通过中括号中索引的形式来分辨出关联数组：
+
+~~~shell
+arrayName[index] 
+~~~
+
+就像用户定义的简单变量一样，你也可以使用等号为数组元素赋值：
+
+~~~shell
+myarray[index]=value 
+~~~
+
+#### 8. 在awk中使用循环
+
+在awk中可以使用for循环，其格式与C语言中的差不多： 
+
+~~~shell
+for(i=0;i<10;i++) { print $i ; }
+~~~
+
+另外awk还支持列表形式的for循环，也可以显示出数组的内容：
+
+~~~shell
+for(i in array) { print array[i]; }
+~~~
+
+下面的例子展示了如何将收集到的数据存入数组并显示出来。这个脚本从/etc/password中读取文本行，以:作为分隔符将行分割成字段，然后创建一个关联数组，数组的索引是登录ID，对应的值是用户名：
+
+~~~shell
+$ awk 'BEGIN {FS=":"} {nam[$1]=$5} END {for {i in nam} {print i,nam[i]}}' /etc/passwd 
+root root 
+ftp FTP User 
+userj Joe User
+~~~
+
+#### 9. awk内建的字符串处理函数
+
+awk有很多内建的字符串处理函数。
+
+- length(string)：返回字符串string的长度。
+- index(string, search_string)：返回search_string在字符串string中出现的位置。
+- split(string, array, delimiter)：以delimiter作为分隔符，分割字符串string，将生成的字符串存入数组array。 
+- substr(string, start-position, end-position) ：返回字符串 string 中 以start-position和end-position作为起止位置的子串。
+- sub(regex, replacement_str, string)：将正则表达式regex匹配到的第一处内容替换成replacment_str。 
+- gsub(regex, replacement_str, string)：和sub()类似。不过该函数会替换正则表达式regex匹配到的所有内容。
+- match(regex, string)：检查正则表达式regex是否能够在字符串string中找到匹配。如果能够找到，返回非0值；否则，返回0。match()有两个相关的特殊变量，分别是RSTART和RLENGTH。变量RSTART包含了匹配内容的起始位置，而变量RLENGTH包含了匹配内容的长度。
+
+## 4.7 统计特定文件中的词频
+
+计算机善于计数。我们经常要进行各种统计，例如发送垃圾邮件的站点数、不同页面的下载量或是文本中单词出现的频率。这则攻略将展示如何统计文本中的单词词频。其中用到的技术也可以应用于日志文件、数据库输出等方面。
+
+### 4.7.1 预备知识
+
+我们可以使用awk的关联数组来解决这个问题，而且实现方法还不止一种。单词是由空格或点号分隔的字母组合。首先，我们需要解析出给定文件中出现的所有单词，然后统计每个单词的出现次数。单词解析可以用正则表达式配合sed、awk或grep等工具来完成。
+
+### 4.7.2 实战演练
+
+我们已经了解了实现原理。现在来动手创建如下的脚本：
+
+~~~shell
+#!/bin/bash 
+# 文件名：word_freq.sh 
+# 用途: 计算文件中单词的词频
+if [ $# -ne 1 ]; 
+then 
+    echo "Usage: $0 filename"; 
+    exit -1 
+fi 
+filename=$1 
+egrep -o "\b[[:alpha:]]+\b" $filename | awk '{ count[$0]++ } END{ printf("%-14s%s\n","Word","Count") ; \
+	for(ind in count) { \
+		printf("%-14s%d\n",ind,count[ind]); \
+	} \
+}'
+~~~
+
+输出如下
+
+~~~
+$ ./word_freq.sh words.txt 
+Word Count 
+used 1 
+this 2 
+counting 1
+~~~
+
+### 4.7.3 工作原理
+
+egrep命令将文本文件转换成单词流，每行一个单词。模式\b[[:alpha:]]+\b能够匹配每个单词并去除空白字符和标点符号。选项-o打印出匹配到的单词，一行一个。
+
+awk命令统计每个单词。它针对每一行文本执行{}语句块中的语句，因此我们不需要再专门为此写一个循环。`count[$0]++`命令负责计数，其中`$0`是当前行，count是关联数组。所有的行处理完毕后，END{}语句块打印出各个单词及其数量。
+
+整个处理过程也能够使用我们学过的其他工具来改写。可以利用tr命令将大写单词和非大写单词合计为一个单词，然后用sort命令排序输出：
+
+~~~shell
+egrep -o "\b[[:alpha:]]+\b" $filename | tr [A-Z] [a-z] | \ 
+ awk '{ count[$0]++ } \
+ END{ printf("%-14s%s\n","Word","Count") ; \
+ for(ind in count) \
+ { printf("%-14s%d\n",ind,count[ind]); \
+ } \
+ }' | sort
+~~~
+
+### 4.7.4 参考
+
+- 1.7节讲解了Bash中的数组。
+- 4.6节讲解了awk命令。
+
+## 4.8 压缩或解压缩JavaScript
