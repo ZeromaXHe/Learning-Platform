@@ -259,7 +259,11 @@ $$
 | ψ    | Ψ    | /psai/                  | 普西          | \psi                   | $\psi \Psi \varPsi$                 |
 | ω    | Ω    | /'əʊmɪɡə/               | 奥米加/欧米伽 | \omega                 | $\omega \Omega \varOmega$           |
 
+## 花体
 
+`\mathcal X`: $\mathcal X$
+
+例如：$X\in \mathcal X \subseteq \bold R^n$
 
 ## 上标和下标
 
@@ -271,6 +275,7 @@ $$
 |                                                              | `\overleftarrow{a b}`                                        | $\overleftarrow{a b}$                                        |
 |                                                              | `\overrightarrow{c d}`                                       | $\overrightarrow{c d}$                                       |
 |                                                              | `\widehat{e f g}`                                            | $\widehat{e f g}$                                            |
+| 上波浪线                                                     | `\widetilde p`                                               | $\widetilde p$                                               |
 | 上弧 (注: 正确应该用 \overarc, 但在这里行不通。要用建议的语法作为解决办法) | `\overset{\frown} {AB}`                                      | $\overset{\frown} {AB}$                                      |
 | 上划线                                                       | `\overline{h i j}`                                           | $\overline{h i j}$                                           |
 | 下划线                                                       | `\underline{k l m}`                                          | $\underline{k l m}$                                          |
