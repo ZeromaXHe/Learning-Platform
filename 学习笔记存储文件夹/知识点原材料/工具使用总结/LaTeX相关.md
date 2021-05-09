@@ -82,17 +82,18 @@ https://blog.csdn.net/young951023/article/details/79601664
 
 ## 运算符
 
-| 名称 | 语法                 | 效果                 |
-| ---- | -------------------- | -------------------- |
-| 向量 | `\vec`               | $\vec c$             |
-| 点乘 | `\cdot`              | $\cdot$              |
-| 叉乘 | `\times`             | $\times$             |
-| 除   | `\div`               | $\div$               |
-| 求和 | `\sum_1^n`           | $\sum_1^n$           |
-| 积分 | `\int_1^n`           | $\int_1^n$           |
-| 极限 | `lim_{x \to \infty}` | $lim_{x \to \infty}$ |
-| 分数 | `\frac{3}{8}`        | $\frac{3}{8}$        |
-| 根号 | `\sqrt[n]{3}`        | $\sqrt[n]{3}$        |
+| 名称     | 语法                 | 效果                 |
+| -------- | -------------------- | -------------------- |
+| 向量     | `\vec`               | $\vec c$             |
+| 点乘     | `\cdot`              | $\cdot$              |
+| 叉乘     | `\times`             | $\times$             |
+| 除       | `\div`               | $\div$               |
+| 求和     | `\sum_1^n`           | $\sum_1^n$           |
+| 积分     | `\int_1^n`           | $\int_1^n$           |
+| 极限     | `lim_{x \to \infty}` | $lim_{x \to \infty}$ |
+| 分数     | `\frac{3}{8}`        | $\frac{3}{8}$        |
+| 根号     | `\sqrt[n]{3}`        | $\sqrt[n]{3}$        |
+| 复合函数 | `f \circ g`          | $f \circ g$          |
 
 ## 集合
 
