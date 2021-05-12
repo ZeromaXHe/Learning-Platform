@@ -1499,6 +1499,128 @@ V get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionExcepti
 
 ### 8.5.2 线程池监控
 
+尽管线程池的大小、工作队列的容量、线程空闲时间限制这些线程池的属性可通过配置的方式进行指定（而不是硬编码在代码中），但是所指定的值是否恰当则需要通过监控来判断。例如，如果我们选择有界队列作为工作队列，那么这个队列的容量以多少为宜呢，这需要在软件测试过程中对线程池进行监控来确实。另外，考虑到测试环境和软件实际允许环境总是存在差别的，出于软件运维的考虑我们也可能需要对线程池进行监控。ThreadPoolExecutor类提供了对线程池进行监控的相关方法，如表8-2所示。
+
+| 方法                    | 用途                                                         |
+| ----------------------- | ------------------------------------------------------------ |
+| getPoolSize()           | 获取当前线程池大小                                           |
+| getQueue()              | 返回工作队列实例，通过该实例可获取工作队列的当前大小         |
+| getLargestPoolSize()    | 获取工作者线程曾经达到的最大数，该数值有助于确认线程池的最大大小设置是否合理 |
+| getActiveCount()        | 获取线程池中当前正在执行任务的工作者线程数（近似值）         |
+| getTaskCount()          | 获取线程池到目前为止所接收到的任务数（近似值）               |
+| getCompletedTaskCount() | 获取线程池到目前为止已经处理完毕的任务数（近似值）           |
+
+此外，ThreadPoolExecutor提供的两个钩子方法（Hook Method）：beforeExecute(Thread t, Runnable r) 和 afterExecute(Thread t, Runnable r)也能够用于实现监控。设executor为任意一个ThreadPoolExecutor实例，在任意一个任务r被线程池executor中的任意一个工作者线程t执行前，executor.beforeExecute(t, r)会被执行；当t执行完r之后，不管r的执行是否成功的还是抛出了异常，executor.afterExecute(t, r)始终会被执行。因此，如果有必要的话我们可以通过创建ThreadPoolExecutor的子类并在子类的beforeExecute/afterExecute方法实现监控逻辑，比如计算任务执行的平均耗时。
+
+### 8.5.3 线程池死锁
+
+如果线程池中执行的任务在其执行过程中又会向同一个线程池提交另外一个任务，而前一个任务的执行结束又依赖于后一个任务的执行结果，那么就有可能出现这样的情形：线程池中的所有工作者线程都处于等待其他任务的处理结果而这些任务仍在工作队列中等待执行，这时由于线程池中已经没有可以对工作队列中的任务进行处理的工作者线程，这种等待就会一直持续下去从而形成死锁（Deadlock）。
+
+因此，适合提交给同一线程池实例执行的任务是相互独立的任务，而不是彼此有依赖关系的任务。对于彼此存在依赖关系的任务，我们可以考虑分别使用不同的线程池实例来执行这些任务。
+
+> **注意**
+>
+> 同一个线程池只能用于执行相互独立的任务。彼此有依赖关系的任务需要提交给不同的线程池执行以避免死锁。
+
+### 8.5.4 工作者线程的异常终止
+
+如果任务是通过ThreadPoolExecutor.submit调用提交给线程池的，那么这些任务在其执行过程中即便是抛出了未捕获的异常也不会导致对其进行执行的工作者线程异常终止。当然，上文我们已经介绍过这种情形下任务所抛出的异常可以通过Future.get()所抛出的ExecutionException来获取。
+
+如果任务是通过ThreadPoolExecutor.execute方法提交给线程池的，那么这些任务在其执行过程中一旦抛出了未捕获的异常，则对其进行执行的工作者线程就会异常终止。尽管ThreadPoolExecutor能够侦测到这种情况并在工作者线程异常终止的时候创建并启动新的替代工作者线程，但是由于线程的创建与启动都有其开销，因此这种情形下我们会尽力避免任务在其执行过程中抛出未捕获的异常。我们可以通过ThreadPoolExecutor的构造器参数或者ThreadPoolExecutor.setThreadFactory方法为线程池关联一个线程工厂。在这个线程工厂里面我们可以为其创建的工作者线程关联一个UncaughtExceptionHandler，通过这个关联的UncaughtExceptionHandler我们可以侦测到任务执行过程中抛出的未捕获异常。不过，由于ThreadPoolExecutor内部实现的原因，只有通过ThreadPoolExecutor.execute调用（而不是ThreadPoolExecutor.submit调用）提交给线程池执行的任务，其执行过程中抛出的未捕获异常才会导致UncaughtExceptionHandler.uncaughtException方法被调用。
+
+> **注意**
+>
+> 通过ThreadPoolExecutor.submit调用提交给线程池执行的任务，其执行过程中抛出的未捕获异常并不会导致与该线程池中的工作者线程所关联的UncaughtExceptionHandler的uncaughtException方法被调用。
+
+# 第9章 Java异步编程
+
+## 9.1 同步计算与异步计算
+
+从多个任务的角度来看，任务可以是串行执行的，也可以是并发执行的。从单个任务的角度来看，任务的执行方式可以是同步的（Synchronous），也可以是异步的（Asynchronous）。这里的同步与线程同步机制中的“同步”不是同一个概念。
+
+以同步方式执行的任务，我们称之为**同步任务**，其任务的发起与任务的执行是在同一条时间线上进行的。换而言之，任务的发起与任务的执行是串行的。同步任务就好比我们以电话的形式将一个消息通知给朋友的情形：我们先拨打对方的号码（任务的发起）。只有在电话接通（任务开始执行）之后我们才能够将消息告诉对方（任务执行的过程）。
+
+以异步方式执行的任务，我们称之为**异步任务**，其任务的发起与任务的执行是在不同的时间线上进行的。换而言之，任务的发起与执行是并发的。异步任务好比我们以短信的形式将一个消息通知给朋友的情形：我们只要给对方发送一条短信（任务的发起）便认为已经通知到对方了，而不必关心对方何时阅读这条短信，而实际上对方可能在第二天阅读这条短信（任务开始执行）。
+
+同步方式与异步方式的说法是相对的：同一个任务我们既可以说它是异步任务，也可以说它是同步任务。假设我们用一个Runnable实例task来表示一个任务，如果我们直接调用task.run()来执行该任务，那么我们就可以称该任务为同步任务；如果我们通过 new Thread(task).start() 调用创建并启动一个专门的工作者线程来执行该任务，或者将该任务提交给一个Executor实例executor执行（即调用executor.execute(task）），那么我们就可以称该任务为异步任务。同步方式与异步方式的称呼不仅仅取决于一个任务的具体执行方式，还取决于我们的观察角度。在上述例子中，假设我们将task提交给线程池执行，那么从该任务提交线程（即ThreadPoolExecutor.submit方法的执行线程）的角度来看它是一个异步任务，而从线程池中的工作者线程（即实际执行该任务的线程）的角度来看该任务则可能是一个同步任务。
+
+同步任务的发起线程在其发起该任务之后必须等待该任务执行结束才能够执行其他操作，这种等待往往意味着阻塞（Blocking），即任务的发起线程会被暂停，直到任务执行结束。
+
+例如，直接通过InputStream.read()读取一个文件中的内容就是一个同步任务，在InputStream.read()调用返回数据前该任务的发起线程会被暂停。同步任务也并不一定总是使其发起线程被阻塞，同步线程的发起线程也可能以轮询的方式来等待任务的结束。所谓**轮询**（Polling）是指任务的发起线程不断地检查其发起的任务是否执行结束，若任务已执行结束则执行下一步操作，否则继续检查任务，直至该任务完成。阻塞意味着在同步任务执行结束前，该任务的发起线程并没有在运行（其生命周期状态不为RUNNABLE），而轮询意味着在同步任务执行结束前，该任务的发起线程仍然在运行，只不过此时该线程的主要动作是检查相应的任务是否执行结束。同步任务的发起线程是采用阻塞的方式还是轮询方式来等待任务的结束很大程度上取决于我们使用的API。例如，使用java.nio.channels.Selector类来编写网络应用程序的服务端代码的时候，我们能够采用轮询的方式来实现等待同步任务的结束，而多数情况下我们只能够以阻塞方式来实现等待同步任务的结束。单个线程便可以实现同步任务的执行。在使用单个线程的情况下，多个同步任务只能够以同步的方式执行。
+
+异步任务的发起线程在其发起该任务之后不必等待该任务结束便可以继续执行其他操作，即异步任务的发起与实际执行可以是并发的。多线程编程本质上是异步的。比如一个线程通过`ThreadPoolExecutor.submit(Callable<T>)`调用向线程池提交一个任务（任务的发起），在该调用返回之后该线程便可以执行其他操作了，而该任务可能在此之后才被线程池中的某一个工作者线程所执行，这里任务的提交与执行是并发的，而不是串行的。可见，异步任务可以使其发起线程不必因等待其执行结束而被阻塞，即异步任务执行方式往往意味着非阻塞（Non-blocking）。然而，阻塞与非阻塞只是任务执行方式的一种属性，它与任务执行方式之间并没有必然的关系：同步任务执行方式多数情况下意味着阻塞，但是它也可能意味着非阻塞（轮询）；异步任务执行方式多数情况下意味着非阻塞，但是他也可能意味着阻塞。例如，如果我们在向线程池提交一个任务之后立刻调用Future.get()来试图获取该任务的处理结果(即ThreadPoolExecutor.submit(someTask).get())，那么尽管该任务是异步执行的，但是其发起线程仍然可能由于Future.get()调用时该任务尚未被线程池执行结束而被阻塞。异步任务的执行需要借助多个线程来实现。多个异步任务能够以并发的方式被执行。
+
+> **注意**
+>
+> - 阻塞与非阻塞只是任务执行方式（同步/异步）本身的一种属性，它们与任务执行方式之间并未有必然的联系：异步任务既可能是非阻塞的，也可能是阻塞的；同步任务即可能是阻塞的，也可能是非阻塞的。
+> - 同步方式与异步方式的说法是相对的，它取决于任务的执行方式以及我们的观察角度。
+
+同步方式的优点是代码简单、直观，缺点是它往往意味着阻塞，而阻塞会限制系统的吞吐率。异步方式往往意味着非阻塞，因而有利于提高系统的吞吐率。异步方式的代价是更为复杂的代码和更多的资源投入。例如，以异步方式执行任务需要借助额外的工作者线程，并且还需要对这些工作者线程进行管理（启动、停止等）。
+
+## 9.2 Java Executor框架
+
+Runnable接口和Callable接口都是对任务处理逻辑的抽象，这种抽象使得我们无须关心任务的具体处理逻辑：不管是什么样的任务，其处理逻辑总是展现为一个具有统一签名的方法——Runnable.run()或者Callable.call()。java.util.concurrent.Executor接口则是对任务的执行进行的抽象，该接口仅定义了如下方法：
+
+~~~java
+void execute(Runnable command)
+~~~
+
+其中，command参数代表需要执行的任务。Executor接口使得任务的提交方（相当于生产者）只需要知道它调用Executor.execute方法便可以使指定的任务被执行，而无须关心任务具体的执行细节：比如，任务是采用一个专门的工作者线程执行的，还是采用线程池执行的；采用什么样的线程池执行的；多个任务是以何种顺序被执行的。可见，Executor接口使得任务的提交能够与任务执行的具体细节解耦（Decoupling）。和对任务处理逻辑的抽象类似，对任务执行的抽象也能给我们带来信息隐藏（Information）和关注点分离（Separation Of Concern）的好处。
+
+解耦任务的提交与任务的具体执行细节所带来的好处的一个例子是，它在一定程度上能够屏蔽任务同步执行与异步执行的差异。这个任务不管是同步执行还是异步执行，对于其提交方来说并没有太大差别，这就为更改任务的具体执行方式提供了灵活性和便利：更改任务的具体执行细节可能不会影响到任务的提交方，而这意味着更小的代码改动量和测试量。
+
+~~~java
+public class SynchronousExecutor implements Executor {
+    @Override
+    public void execute(Runnable command) {
+        command.run();
+    }
+}
+~~~
+
+可见，Executor接口一定程度上缩小了同步编程与异步编程的代码编写方式。
+
+Executor接口比较简单，功能也十分有限：首先，它只能为客户端代码执行任务，而无法将任务的处理结果返回给客户端代码；其次，Executor接口实现类内部往往会维护一些工作者线程，当我们不再需要一个Executor实例的时候，往往需要主动将该实例内部维护的工作者线程停掉以释放相应的资源，而Executor接口并没定义相应的方法。
+
+ExecutorService接口继承自Executor接口，它解决了上述问题。ExecutorService接口定义了几个submit方法，这些方法能够接受Callable接口或者Runnable接口表示的任务并返回相应的Future实例，从而使客户端代码提交任务后可以获取任务的执行结果。ExecutorService接口还定义了shutdown()方法和shutdownNow()方法来关闭相应的服务（比如关闭其维护的工作者线程）。ThreadPoolExecutor是ExecutorService的默认实现类。
+
+### 9.2.1 实用工具类Executors
+
+第8章我们已经介绍到实用工具类java.util.concurrent.Executors，它除了能够返回默认线程工厂（Executors.defaultThreadFactory()）、能够将Runnable实例转换为Callable实例（Executors.callable方法）之外，还提供了一些能够返回ExecutorService实例的快捷方法，如表9-1所示。这些ExecutorService实例往往使我们在不必手动创建ThreadPoolExecutor实例的情况下使用线程池。
+
+| 方法                                                         | 适用条件及注意实现                                           |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| public static ExecutorService newCachedThreadPool()          | 适合用于执行大量耗时较短且提交比较频繁的任务。如果提交的任务执行耗时较长，那么可能导致线程池中的工作者线程无限制地增加，最后导致过多的上下文切换，从而使得整个系统变慢 |
+| public static ExecutorService newCachedThreadPool(ThreadFactory threadFactory) | 同上                                                         |
+| public static ExecutorService newFixedThreadPool(int nThreads) | 由于该方法返回的线程池的核心线程池大小等于其最大线程池大小，因此该线程池中的工作者线程永远不会超时。我们必须在不再需要该线程池时主动将其关闭 |
+| public static ExecutorService newFixedThreadPool(int nThreads, ThreadFactory threadFactory) | 同上                                                         |
+| public static ExecutorService newSingleThreadExecutor()      | 适合用来实现单（多）生产者-单消费者模式。该方法的返回值无法被转换为ThreadPoolExecutor类型 |
+| public static ExecutorService newSingleThreadExecutor(ThreadFactory threadFactory) | 同上                                                         |
+
+- Executors.newCachedThreadPool()。该方法的返回值相当于：
+
+  ~~~java
+  new ThreadPoolExecutor(0, Integer.MAX_VALUE, 60L, TimeUnit.SECONDS, new SynchronousQueue<Runnable>());
+  ~~~
+
+  即一个核心线程池大小为0，最大线程池大小不受限，工作者线程允许的最大空闲时间（keepAliveTime）为60秒，内部以SynchronousQueue为工作队列（以下称之为workQueue）的一个线程池。这种配置意味着该线程池中的所有工作者线程在空闲了指定的时间后都可以被自动清理掉。由于该线程池的核心线程池大小为0，因此提交给该线程池执行的第一个任务会导致该线程池中的第一个工作者线程被创建并启动。后续继续给该线程池提交任务的时候，由于当前线程池大小已经超过核心线程池大小（0），因此ThreadPoolExecutor此时会将任务缓存到工作队列之中（即调用workerQueue.offer方法）。
+
+  SynchronousQueue内部并不维护用于存储队列元素的实际存储空间。一个线程（生产者线程）在执行SynchronousQueue.offer(E)的时候，如果没有其他线程（消费者线程）因执行SynchronousQueue.take()而被暂停，那么SynchronousQueue.offer(E)调用会直接返回false，即入队列失败。因此，在该线程池中的所有工作者线程都在执行任务，即无空闲工作者线程的情况下给其提交任务会导致该任务无法被缓存成功。而ThreadPoolExecutor在任务缓存失败且线程池当前大小未达到最大线程池大小（这里的最大线程池大小实际相当于不限）的情况下会创建并启动新的工作者线程。在极端情况下，给该线程池每提交一个任务都会导致一个新的工作者线程被创建并启动，而这最终会导致系统中的线程过多，从而导致过多的上下文切换而使得整个系统被拖慢。因此，Executors.newCachedThreadPool()所返回的线程池适合于用来执行大量耗时较短且提交频率较高的任务。而提交频率较高且耗时较长的任务（尤其是包含阻塞操作的任务）则不适合用Executors.newCachedThreadPool()所返回的线程池来执行。
+
+- Executors.newFixedThreadPool(int nThreads)。该方法的返回值相当于
+
+  ~~~java
+  new ThreadPoolExecutor(nThreads, nThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>());
+  ~~~
+
+  即一个以无界队列为工作队列，核心线程池大小与最大线程池大小均为nThreads且线程池中的空闲工作者线程不会被自动清理的线程池，这是一种线程池大小一旦达到其核心线程池大小就既不会增加也不会减少工作者线程的固定大小的线程池。因此，这样的线程池实例一旦不再需要，我们必须主动将其关闭。
+
+- Executors.newSingleThreadExecutor()。该方法的返回值基本相当于Executors.newFixedThreadPoll(1)所返回的线程池。不过，该线程池并非ThreadPoolExecutor实例，而是一个封装了ThreadPoolExecutor实例且对外仅暴露ExecutorService接口所定义的方法的一个ExecutorService实例。该线程池便于我们实现单（多）生产者-单消费者模式。该线程池确保了在任意一个时刻只有一个任务会被执行，这就形成了类似锁将原本并发的操作改为串行的操作的效果。因此，该线程池适合于用来执行访问了非线程安全对象而我们又不希望因此而引入锁的任务。该线程池也适合于用来执行I/O操作，因为I/O操作往往受限于相应的I/O设备，使用多个线程执行同一种I/O操作（比如多个线程各自读取一个文件）可能并不会提高I/O效率，所以如果使用一个线程执行I/O足以满足要求，那么仅使用一个线程即可，这样可以保障程序的简单性以避免一些不必要的问题（比如死锁）。
+
+### 9.2.2 异步任务的批量执行：CompletionService
+
+
+
 # 第12章 Java多线程程序的性能调校
 
 ## 12.1 Java虚拟机对内部锁的优化
