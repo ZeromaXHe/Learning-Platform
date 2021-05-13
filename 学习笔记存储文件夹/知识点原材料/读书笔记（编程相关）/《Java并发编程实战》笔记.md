@@ -63,7 +63,90 @@ public interface ExecutorService extends Executor {
 }
 ~~~
 
-ExecutorService的生命周期有3种状态：运行、关闭和已终止。
+ExecutorService的生命周期有3种状态：运行、关闭和已终止。ExecutorService在初始创建时处于运行状态。shutdown方法将执行平缓的关闭过程：不再接受新的任务，同时等待已经提交的任务执行完成——包括那些还未开始执行的任务。shutdownNow方法将执行粗暴的关闭过程：它将尝试取消所有运行中的任务，并且不再启动队列中尚未开始执行的任务。
+
+在ExecutorService关闭后提交的任务将由“拒绝执行处理器（Rejected Execution Handler）”来处理（请参见8.3.3节），它会抛弃任务，或者使得execute方法抛出一个未检查的RejectedExecutionException。等所有任务都完成后，ExecutorService将转入终止状态。可以调用awaitTermination来等待ExecutorService到达终止状态，或者通过调用isTerminated来轮询ExecutorService是否已经终止。通常在调用awaitTermination之后会立即调用shutdown，从而产生同步地关闭ExecutorService的效果。（第7章将进一步介绍Executor的关闭和任务取消等方面的内容。）
+
+### 6.2.5 延迟任务与周期任务
+
+Timer类负责管理延迟任务（“在100ms后执行该任务”）以及周期任务（“每10ms执行一次该任务”）。然而，Timer存在一些缺陷，因此应该考虑使用ScheduledThreadPoolExecutor来代替它。可以通过ScheduledThreadPoolExecutor的构造函数或newScheduledThreadPool工厂方法来创建该类的对象。
+
+Timer在执行所有定时任务时只会创建一个线程。如果某个任务的执行时间过长，那么将破坏其他TimerTask的定时精确性。例如某个周期TimerTask需要每10ms执行一次，而另一个TimerTask需要执行40ms，那么这个周期任务或者在40ms任务执行完成后快速连续地调用4次，或者彻底“丢失”4次调用（取决于它是基于固定速率来调度还是基于固定延时来调度）。线程池能弥补这个缺陷，它可以提供多个线程来执行延时任务和周期任务。
+
+Timer的另一个问题是，如果TimerTask抛出了一个未检查的异常，那么Timer将表现出糟糕的行为。Timer线程并不捕获异常，因此当TimerTask抛出未检查的异常时将终止定时线程。这种情况下，Timer也不会恢复线程的执行，而是会错误地认为整个Timer都被取消了。因此，已经被调度但尚未执行的TimerTask将不会再执行，新的任务也不能被调用。（这个问题称之为“线程泄漏[Thread Leakage]”， 7.3节将介绍该问题以及如何避免它。）
+
+在Java5.0或更高的JDK中，将很少使用Timer。
+
+如果要构建自己的调度服务，那么可以使用DelayQueue，它实现了BlockingQueue，并为ScheduledThreadPoolExecutor提供调度功能。DelayQueue管理着一组Delayed对象。每个Delayed对象都有一个相应的延迟时间：在DelayQueue中，只有某个元素逾期后，才能从DelayQueue中执行take操作。从DelayQueue中返回的对象将根据它们的延迟时间进行排序。
+
+## 6.3 找出可利用的并行性
+
+### 6.3.2 携带结果的任务Callable与Future
+
+Executor框架使用Runnable作为其基本的任务表现形式。Runnable是一种有很大局限的抽象，虽然run能写入到日志文件或者将结果放入某个共享的数据结构，但它不能返回一个值或抛出一个受检查的异常。
+
+许多任务实际上都是存在延迟的计算——执行数据库查询，从网络上获取资源，或者计算某个复杂的功能。对于这些任务，Callable是一种更好的抽象：它认为主入口点（即call）将返回一个值，并可能抛出一个异常。（要使用Callable来表示无返回值的任务，可使用`Callable<Void>`）在Executor中包含了一些辅助方法能将其他类型的任务封装为一个Callable，例如Runnable和java.security.PrivilegedAction。
+
+Runnable和Callable描述的都是抽象的计算任务。这些任务通常是有范围的，即都有一个明确的起始点，并且最终会结束。Executor执行的任务有4个生命周期阶段：创建、提交、开始和完成。由于有些任务可能要执行很长的时间，因此通常希望能够取消这些任务。在Executor框架中，已提交但尚未开始的任务可以取消，但对于那些已经开始执行的任务，只有当它们能响应中断时，才能取消。取消一个已经完成的任务不会有任何影响。（第7章将进一步介绍取消操作。）
+
+Future表示一个任务的生命周期，并提供了相应的方法来判断是否已经完成或取消，以及获取任务的结果和取消任务等。在程序清单6-11中给出了Callable和Future。在Future规范中包含的隐含意义是，任务的生命周期只能前进，不能后退，就像ExecutorService的生命周期一样。当某个任务完成后，它就永远停留在“完成”状态上。
+
+~~~java
+public interface Callable<V> {
+    V call() throws Exception;
+}
+
+public interface Future<V> {
+    boolean cancel(boolean mayInterruptIfRunning);
+    boolean isCancelled();
+    boolean isDone();
+    V get() throws InterruptedException, ExecutionException, CancellationException;
+    V get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, CancellationException, TimeoutException;
+}
+~~~
+
+get方法的行为取决于任务的状态（尚未开始、正在运行、已完成）。如果任务已完成，那么get就会立即返回或者抛出一个Exception，如果任务没有完成，那么get将阻塞并直到任务完成。如果任务抛出了异常，那么get将该异常封装为ExecutionException并重新抛出。如果任务被取消，那么get将抛出CancellationException。如果get抛出了ExecutionException，那么可以通过getCause来获取被封装的初始异常。
+
+可以通过许多方法创建一个Future来描述任务。ExecutionService中的所有submit方法都将返回一个Future，从而将一个Runnable或Callable提交给Executor，并得到一个Future用来获得任务的执行结果或者取消任务。还可以显式地为某个指定的Runnable或Callable实例化一个FutureTask。（由于FutureTask实现了Runnable，因此可以将它提交给Executor来执行，或者直接调用它的run方法。）
+
+从Java6开始，ExecutorService实现可以改写AbstractExecutorService中的newTaskFor方法，从而根据已提交的Runnable或Callable来控制Future的实例化过程。在默认实现中仅创建了一个新的FutureTask，如程序清单6-12所示。
+
+~~~java
+protected <T> RunnableFuture<T> newTaskFor(Callable<T> task) {
+    return new FutureTask<T>(task);
+}
+~~~
+
+在将Runnable或Callable提交到Executor的过程中，包含了一个安全发布过程（请参见3.5节），即将Runnable或Callable从提交线程发布到最终执行任务的线程。类似地，在设置Future结果的过程中也包含了一个安全发布，即将这个结果从计算它的线程发布到任何通过get获得它的线程。
+
+### 6.3.4 在异构任务并行化中存在的局限
+
+只有当大量相互独立且同构的任务可以并发进行处理时，才能体现出将程序的工作负载分配到多个任务中带来的真正性能提升。
+
+### 6.3.5 CompletionService：Executor与BlockingQueue
+
+如果向Executor提交了一组计算任务，并且希望在计算完成后获得结果，那么可以保留与每个任务关联的Future，然后反复使用get方法，同时将参数timeout指定为0，从而通过轮询来判断任务是否完成。这种方法虽然可行，但却有些繁琐。幸运的是，还有一种更好的方法：完成服务（CompletionService）。
+
+CompletionService将Executor和BlockingQueue的功能融合在一起。你可以将Callable任务提交给它来执行，然后使用类似于队列操作的take和poll等方法来获得已完成的结果，而这些结果会在完成时将被封装为Future。ExecutorCompletionService实现了CompletionService，并将计算部分委托给一个Executor。
+
+ExecutorCompletionService的实现非常简单。在构造函数中创建一个BlockingQueue来保存计算完成的结果。当计算完成时，调用FutureTask中的done方法。当提交某个任务时，该任务将首先包装为一个QueueingFuture，这是FutureTask的一个子类，然后再改写子类的done方法，并将结果放入BlockingQueue中，如程序清单6-14所示。take和poll方法委托给了BlockingQueue，这些方法会在得出结果之前阻塞。
+
+~~~java
+private class QueueingFuture<V> extends FutureTask<V> {
+    QueueingFuture(Callable<V> c) {
+        super(c);
+    }
+    QueueingFuture(Runnable t, V r) {
+        super(t, r);
+    }
+    
+    protected void done() {
+        completionQueue.add(this);
+    }
+}
+~~~
+
+
 
 # 第8章 线程池的使用
 
