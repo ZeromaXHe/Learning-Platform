@@ -292,6 +292,76 @@ newFixedThreadPool工厂方法将线程池的基本大小和最大大小设置�
 
 ### 8.3.2 管理队列任务
 
+在有限的线程池中会限制可并发执行的任务数量。（单线程的Executor是一种值得注意的特例：它们能确保不会有任务并发执行，因为它们通过线程封闭来实现线程安全性。）
+
+在6.1.2节中曾介绍，如果无限制地创建线程，那么将导致不稳定性，并通过采用固定大小的线程池（而不是每收到一个请求就创建一个新线程）来解决这个问题。然而，这个方案并不完整。在高负载情况下，应用程序仍可能耗尽资源，只是出现问题的概率较小。如果新请求的到达速率超过了线程池的处理速率，那么新到来的请求将累积起来。在线程池中，这些请求会在一个由Executor管理的Runnable队列中等待，而不会像线程那样去竞争CPU资源。通过一个Runnable和一个链表节点来表现一个等待中的任务，当然比使用线程来表示的开销低很多，但如果客户提交给服务器请求的速率超过了服务器的处理速率，那么仍可能会耗尽资源。
+
+即使请求的平均到达速率很稳定，也仍然会出现请求突增的情况。尽管队列有助于缓解任务的突增问题，但如果任务持续高速地到来，那么最终还是会抑制请求的到达率以避免耗尽内存。（这类似于通信网络中的流量控制：可以缓存一定数量的数据，但最终需要通过某种方式来告诉发送端停止发送数据，或者丢弃过多的数据并希望发送端在空闲时重传被丢弃的数据）甚至在耗尽内存之前，响应性能也将随着任务队列的增长而变得越来越糟。
+
+ThreadPoolExecutor允许提供一个BlockingQueue来保存等待执行的任务。基本的任务排队方法有3种：无界队列、有界队列和同步移交（Synchronous Handoff）。队列的选择与其他的配置参数有关，例如线程池的大小等。
+
+newFixedThreadPool和newSingleThreadExecutor在默认情况下将使用一个无界的LinkedBlockingQueue。如果所有工作者线程都处于忙碌状态，那么任务将在队列中等候。如果任务持续快速地到达，并且超过了线程池处理它们的速度，那么队列将无限制地增加。
+
+一种更稳妥的资源策略是使用有界队列，例如ArrayBlockingQueue、有界的LinkedBlockingQueue、PriorityBlockingQueue。有界队列有助于避免资源耗尽的情况发生，但它又带来了新的问题：当队列填满后，新的任务该怎么办？（有许多饱和策略[Saturation Policy]可以解决这个问题。请参见8.3.3节。）在使用有界的工作队列时，队列的大小与线程池的大小必须一起调节。如果线程池较小而队列较大，那么有助于减少内存使用量，降低CPU的使用率，同时还可以减少上下文切换，但付出的代价是可能会限制吞吐量。
+
+对于非常大的或者无界的线程池，可以通过使用SynchronousQueue来避免任务排队，以及直接将任务从生产者移交给工作者线程。SynchronousQueue不是一个真正的队列，而是一种在线程之间进行移交的机制。要将一个元素放入SynchronousQueue中，必须有另一个线程正在等待接受这个元素。如果没有线程正在等待，并且线程池的当前大小小于最大值，那么ThreadPoolExecutor将创建一个新的线程，否则根据饱和策略，这个任务将被拒绝。使用直接移交将更高效，因为任务会直接移交给执行它的线程，而不是被首先放在队列中，然后由工作者线程从队列中提取该任务。只有当线程池是无界的或者可以拒绝任务时，SynchronousQueue才有实际价值。在newCachedThreadPool工厂方法中就使用了SynchronousQueue。
+
+当使用像LinkedBlockingQueue或ArrayBlockingQueue这样的FIFO（先进先出）队列时，任务的执行顺序与它们的到达顺序相同。如果想进一步控制任务执行顺序，还可以使用PriorityBlockingQueue，这个队列将根据优先级来安排任务。任务的优先级是通过自然顺序或Comparator（如果任务实现了Comparable）来定义的。
+
+> 对于Executor，newCachedThreadPool工厂方法是一种很好的默认选择，它能提供比固定大小的线程池更好的排队性能。当需要限制当前任务的数量以满足资源管理需求时，那么可以选择固定大小的线程池，就像在接受网络客户请求的服务器应用程序中，如果不进行限制，那么很容易发生过载问题。
+
+只有当任务相互独立时，为线程池或工作队列设置界限才是合理的。如果任务之间存在依赖性，那么有界的线程池或队列就可能导致线程“饥饿”死锁问题。此时应该使用无界的线程池，例如newCachedThreadPool。
+
+### 8.3.3 饱和策略
+
+当有界队列被填满后，饱和策略开始发挥作用。ThreadPoolExecutor的饱和策略可以通过调用setRejectedExecutorHandler来修改。（如果某个任务被提交到了一个已被关闭的Executor时，也会用到饱和策略。）JDK提供了几种不同的RejectedExecutionHandler实现，各种实现都包含有不同的饱和策略：AbortPolicy、CallerRunsPolicy、DiscardPolicy和DiscardOldestPolicy。
+
+“中止（Abort）”策略是默认的饱和策略，该策略将抛出未检查的RejectedExecutionException。调用者可以捕获这个异常，然后根据需求编写自己的处理代码。当新提交的任务无法保存到队列中等待执行时，“抛弃（Discard）”策略会悄悄抛弃该任务。“抛弃最旧的（Discard-Oldest）”策略则会抛弃下一个将被执行的任务，然后尝试重新提交新的任务。（如果工作队列是一个优先队列，那么“抛弃最旧的”策略将导致抛弃优先级最高的任务，因此最好不要将“抛弃最旧的”饱和策略和优先级队列放在一起使用。）
+
+“调用者运行（Caller-Runs）”策略实现了一种调节机制，该策略既不会抛弃任务，也不会抛出异常，而是将某些任务回退到调用者，从而降低新任务的流量。它不会在线程池的某个线程中执行新提交的任务，而是在一个调用了execute的线程中执行该任务。我们可以将WebServer示例修改为使用有界队列和“调用者运行”饱和策略，当线程池中的所有线程都被占用，并且工作队列被填满后，下一个任务会在调用execute时在主线程中执行。由于执行任务需要一定的时间，因此主线程至少在一段时间内不能提交任何任务，从而使得工作者线程有时间来处理完正在执行的任务。在这期间，主线程不会调用accept，因此到达的请求将被保存在TCP层的队列中而不是在应用程序的队列中。如果持续过载，那么TCP层将最终发现它的请求队列被填满，因此同样会开始抛弃请求。当服务器过载时，这种过载情况会逐渐向外蔓延开来——从线程池到工作队列到应用程序再到TCP层，最终达到客户端，导致服务器在高负载下实现一种平缓的性能降低。
+
+当创建Executor时，可以选择饱和策略或者对执行策略进行修改。程序清单8-3给出了如何创建一个固定大小的线程池，同时使用“调用者运行”饱和策略。
+
+~~~java
+ThreadPoolExecutor executor = new ThreadPoolExecutor(N_THREAD, N_THREADS, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(CAPACITY));
+executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+~~~
+
+当工作队列被填满后，没有预定义的饱和策略来阻塞execute。然而，通过使用Semaphore（信号量）来限制任务的到达率，就可以实现这个功能。
+
+### 8.3.4 线程工厂
+
+每当线程池需要创建一个线程时，都是通过线程工厂方法（请参见程序清单8-5）来完成的。默认的线程工厂方法将创建一个新的、非守护的线程，并且不包含特殊的配置信息。通过指定一个线程工厂方法，可以定制线程池的配置信息。在ThreadFactory中只定义了一个方法newThread，每当线程池需要创建一个新线程时都会调用这个方法。
+
+~~~java
+public interface ThreadFactory {
+	Thread newThread(Runnable r);
+}
+~~~
+
+然而，在许多情况下都需要使用定制的线程工厂方法。例如，你希望为线程池中的线程指定一个UncaughtExceptionHandler，或者实例化一个定制的Thread类用于执行调试信息的记录。你还可能希望修改线程的优先级（这通常并不是一个好主意。请参见10.3.1节）或者守护状态（同样，这也不是一个好主意。请参见7.4.2节）。或许你只是希望给线程取一个更有意义的名称，用来解释线程的转储信息和错误日志。
+
+如果在应用程序中需要利用安全策略来控制对某些特殊代码库的访问权限，那么可以通过Executor中的privilegedThreadFactory工厂来定制自己的线程工厂。通过这种方式创建出来的线程，将与创建privilegedThreadFactory的线程拥有相同的访问权限、AccessControlContext和contextClassLoader。如果不使用privilegedThreadFactory，线程池创建的线程将从在需要新线程时调用execute或submit的客户程序中继承访问权限，从而导致令人困惑的安全性异常。
+
+### 8.3.5 在调用构造函数后再定制ThreadPoolExecutor
+
+在调用完ThreadPoolExecutor的构造函数后，仍然可以通过设置函数（Setter）来修改大多数传递给它的构造函数的参数（例如线程池的基本大小、最大大小、存活时间、线程工厂以及拒绝执行处理器（Rejected Execution Handler））。如果Executor是通过Executors中某个（newSingleThreadExecutor除外）工厂方法创建的，那么可以将结果的类型转换为ThreadPoolExecutor以访问设置器，如程序清单8-8所示。
+
+~~~java
+ExecutorService exec = Executors.newCachedThreadPool();
+if (exec instanceof ThreadPoolExecutor){
+    ((ThreadPoolExecutor) exec).setCorePoolSize(10);
+} else {
+    throw new AssertionError("Oops, bad assumption");
+}
+~~~
+
+在Executors中包含一个unconfigurableExecutorService工厂方法，该方法对一个现有的ExecutorService进行包装，使其只暴露出ExecutorService的方法，因此不能对它进行配置。newSingleThreadExecutor返回按这种方式封装的ExecutorService，而不是最初的ThreadPoolExecutor。虽然单线程的Executor实际上被实现为一个只包含唯一线程的线程池，但它同样确保了不会并发地执行任务。如果在代码中增加单线程Executor的线程池大小，那么得破坏它的执行语义。
+
+你可以在自己的Executor中使用这项技术以防止执行策略被修改。如果将ExecutorService暴露给不信任的代码，又不希望对其进行修改，就可以通过unconfigurableExecutorService来包装它。
+
+## 8.4 扩展ThreadPoolExecutor
+
 
 
 # 第14章 构建自定义的同步工具
