@@ -1619,7 +1619,77 @@ ExecutorService接口继承自Executor接口，它解决了上述问题。Execut
 
 ### 9.2.2 异步任务的批量执行：CompletionService
 
+尽管Future接口使得我们能够方便地获取异步任务的处理结果，但是如果需要一次性提交一批异步任务并获取这些任务的处理结果的话，那么仅使用Future接口写出来的代码将颇为烦琐。java.util.concurrent.CompletionService接口为异步任务的批量提交以及获取这些任务的处理结果提供了便利。
 
+CompletionService接口定义的一个submit方法可用于提交异步任务，该方法的签名与ThreadPoolExecutor的一个submit方法相同：
+
+~~~java
+Future<V> submit(Callable<V> task)
+~~~
+
+task参数代表待执行的异步任务，该方法的返回值可用于获取相应异步任务的处理结果。如果是批量提交异步任务，那么通常我们并不关心该方法的返回值。若要获取批量提交的异步任务的处理结果，那么我们可以使用CompletionService接口专门为此定义的方法，其中的一个方法是：
+
+~~~java
+Future<V> take() throws InterruptedException
+~~~
+
+该方法与Blocking Queue.take()相似，它是一个阻塞方法，其返回值是一个已经执行结束的异步任务对应的Future实例，该实例就是提交相应任务时`submit(Callable<V>)`调用的返回值。如果take()被调用时没有已执行结束的异步任务，那么take()的执行线程就会被暂停，直到有异步任务执行结束。因此，我们批量提交了多少个异步任务，则多少次连续调用CompletionService.take()便可以获取这些任务的处理结果。
+
+CompletionService也定义了两个非阻塞方法用于获取异步任务的处理结果：
+
+~~~java
+Future<V> poll()
+Future<V> poll(long timeout, TimeUnit unit) throws InterruptedException
+~~~
+
+这两个方法与BlockingQueue的poll方法相似，它们的返回值是已执行结束的异步任务对应的Future实例。
+
+Java标准库提供的CompletionService接口的实现类是ExecutorCompletionService。ExecutorCompletionService的一个构造器是：
+
+~~~java
+ExecutorCompletionService(Executor executor, BlockingQueue<Future<V>> completionQueue)
+~~~
+
+由此可见，ExecutorCompletionService相当于Executor实例与BlockingQueue实例的一个融合体。其中，Executor实例负责接收并执行异步任务，而BlockingQueue实例则用于存储已执行完毕的异步任务对应的Future实例。ExecutorCompletionService会为其客户端提交的每个异步任务（Callable实例或者Runnable实例）都创建一个相应的Future实例，通过该实例其客户端代码便可以获取相应异步任务的处理结果。ExecutorCompletionService每执行完一个异步任务，就将该任务对应的Future实例存入其内部维护的BlockingQueue实例之中，而其客户端代码则可以通过ExecutorCompletionService.take()调用来获取这个Future实例。
+
+使用ExecutorCompletionService的另外一个构造器ExecutorCompletionService(Executor executor)创建实例相当于：
+
+~~~java
+new ExecutorCompletionService<V>(executor, new LinkedBlockingQueue<Future<V>>());
+~~~
+
+`ExecutorService.invokeAll(Collection<? extends Callable<T>> tasks)`也能够用来批量提交异步任务，该方法能够并发执行tasks参数所指定的一批任务，但是该方法只有在tasks参数所指定的一批任务中的所有任务都执行结束之后才返回，其返回值是一个包含各个任务对应的Future实例的列表（List）。因此，使用invokeAll方法提交批量任务的时候，任务提交方等待invokeAll方法返回的时间取决于这批任务中最耗时的任务的执行耗时。
+
+## 9.3 异步计算助手：FutureTask
+
+无论是Runnable实例还是Callable实例所表示的任务，只要我们将其提交给线程池执行，那么这些任务就是异步任务。采用Runnable实例来表示异步任务，其优点是任务既可以交给一个专门的工作者线程执行（以相应的Runnable实例为参数创建并启动一个工作者线程），也可以交给一个线程池或者Executor的其他实现类来执行；其缺点是我们无法直接获取任务的执行结果。使用Callable实例来表示异步任务，其优点是我们可以通过`ThreadPoolExecutor.submit(Callable<T>)`的返回值获取任务的处理结果；其缺点是Callable实例表示的异步任务只能交给线程池执行，而无法直接交给一个专门的工作者线程或者Executor实现类执行。因此，使用Callable实例来表示异步任务会使任务执行方式的灵活性大为受限。
+
+java.util.concurrent.FutureTask类则融合了Runnable接口和Callable接口的优点：FutureTask是Runnable接口的一个实现类，因此FutureTask表示的异步任务可以交给专门的工作者线程执行，也可以交给Executor实例（比如线程池）执行；FutureTask还能够直接返回其代表的异步任务的处理结果。`ThreadPoolExecutor.submit(Callable<T> task)`的返回值就是一个FutureTask实例。FutureTask是java.util.concurrent.RunnableFuture接口的一个既是Runnable接口的实现类也是Future接口的实现。FutureTask的一个构造器可以将Callable实例转换为Runnable实例，该构造器的声明如下：
+
+~~~java
+public FutureTask(Callable<V> callable)
+~~~
+
+该构造器使得我们能够方便地创建一个能够返回处理结果的异步任务。我们可以将任务的处理逻辑封装在一个Callable实例中，并以该实例为参数创建一个FutureTask实例。由于FutureTask类实现了Runnable接口，因此上述构造器的作用就相当于将Callable实例转换为Runnable实例，而FutureTask实例本身也代表了我们要执行的任务。我们可以用FutureTask实例（Runnable实例）为参数来创建并启动一个工作者线程以执行相应的任务，也可以将FutureTask实例交给Executor执行（通过Executor.execute(Runnable task)调用）。FutureTask类还实现了Future接口，这使得我们在调用Executor.execute(Runnable task)这样只认Runnable接口的方法来执行任务的情况下依然能够获取任务的执行结果：一个工作者线程（可以是线程池中的一个工作者线程）负责调用FutureTask.run()执行相应的任务，另外一个线程则调用FutureTask.get()来获取任务的执行结果。因此，FutureTask实例可被看作一个异步任务，它使得任务的执行和对任务执行结果的处理得以并发执行，从而有利于提高系统的并发性。
+
+`ThreadPoolExecutor.submit(Callable<T> task)`方法继承自`AbstractExecutorService.submit(Callable<T> task)`。`AbstractExecutorService.submit(Callable<T> task)`内部实现就是借助FutureTask的，如图9-2所示，submit方法会根据指定的Callable实例task创建一个FutureTask实例ftask，并通过Executor.execute(Runnable)调用异步执行task所代表的任务，然后返回ftask，以便该方法的调用方能够获取任务的执行结果。
+
+~~~java
+public <T> Future<T> submit(Callable<T> task) {
+    if (task == null) throw new NullPointerException();
+    RunnableFuture<T> ftask = newTaskFor(task);
+    execute(task);
+    return ftask;
+}
+~~~
+
+FutureTask还支持以回调（Callback）的方式处理任务的执行结果。当FutureTask实例所代表的任务执行结束后，FutureTask.done()会被执行。FutureTask.done()是个protected方法，FutureTask子类可以覆盖该方法并在其中实现对任务执行结果的处理。FutureTask.done()中的代码可以通过FutureTask.get()调用来获取任务的执行结果，此时由于任务已经执行结束，因此FutureTask.get()调用并不会使得当前线程暂停。但是，由于任务的执行结束既包括正常终止，也包括异常终止以及任务被取消而导致的终止，因此FutureTask.done()方法中的代码可能需要在调用FutureTask.get()前调用FutureTask.isCancelled()来判断任务是否被取消，以免FutureTask.get()调用抛出CancellationException异常（运行时异常），如清单9-3所示。
+
+### 9.3.1 实践：实现XML文档的异步解析
+
+FutureTask的使用既可以发挥异步编程的好处，又可以在一定程度上屏蔽同步编程与异步编程之间的差异，这简化了代码。
+
+### 9.3.2 可重复执行的异步任务
 
 # 第12章 Java多线程程序的性能调校
 
