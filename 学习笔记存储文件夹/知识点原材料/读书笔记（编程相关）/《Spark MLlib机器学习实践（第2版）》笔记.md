@@ -472,3 +472,325 @@ MLlib先天就支持较多的数据格式， 从最基本的Spark数据集RDD到
 以上就是MLlib支持的数据类型， 其中分布式矩阵根据不同的作用和应用场景， 又分为四种不同的类型（在4.1.5小节介绍） 。 下面笔者将带领大家对每个数据类型进行分析。  
 
 ### 4.1.2 从本地向量集起步
+
+# 第6章 MLlib线性回归理论与实战
+
+回归分析（regression analysis） 是一种用来确定两种或两种以上变量间相互依赖的定量关系的统计分析方法， 运用十分广泛。 回归分析可以按以下要素分类：
+
+- 按照涉及的自变量的多少， 分为回归和多重回归分析；
+- 按照自变量的多少， 可分为一元回归分析和多元回归分析；
+- 按照自变量和因变量之间的关系类型， 可分为线性回归分析和非线性回归分析。
+
+如果在回归分析中， 只包括一个自变量和一个因变量， 且二者的关系可用一条直线近似表示， 这种回归分析称为一元线性回归分析。 如果回归分析中包括两个或两个以上的自变量， 且因变量和自变量之间是线性关系， 则称为多重线性回归分析。
+
+回归分析是最常用的机器学习算法之一， 可以说回归分析理论与实际研究的建立使得机器学习作为一门系统的计算机应用学科得以确认。
+
+MLlib中， 线性回归是一种能够较为准确预测具体数据的回归方法， 它通过给定的一系列训练数据， 在预测算法的帮助下预测未知的数据。
+
+本章将向读者介绍线性回归的基本理论与MLlib中使用的预测算法， 以及为了防止过度拟合而进行的正则化处理， 这些不仅仅是回归算法的核心， 也是MLlib的最核心部分。  
+
+本章主要知识点：
+
+- 随机梯度下降算法详解
+- MLlib回归的过拟合
+- MLlib线性回归实战  
+
+## 6.1 随机梯度下降算法详解
+
+机器学习中回归算法的种类有很多， 例如神经网络回归算法、 蚁群回归算法、 支持向量机回归算法等， 这些都可以在一定程度上达成回归拟合的目的。
+
+MLlib中使用的是较为经典的随机梯度下降算法， 它充分利用了Spark框架的迭代计算特性， 通过不停地判断和选择当前目标下的最优路径， 从而能够在最短路径下达到最优的结果， 继而提高大数据的计算效率。  
+
+### 6.1.1 道士下山的故事
+
+如果想以最快的速度下山， 那么最快的办法就是顺着坡度最陡峭的地方走下去。 但是由于不熟悉路， 道士在下山的过程中， 每走过一段路程需要停下来观望， 从而选择最陡峭的下山路线。 这样一路走下来的话， 可以在最短时间内走到山脚。  
+
+随机梯度下降算法和这个类似， 如果想要使用最迅捷的方法， 那么最简单的办法就是在下降一个梯度的阶层后， 寻找一个当前获得的最大坡度继续下降。 这就是随机梯度算法的原理。  
+
+### 6.1.2 随机梯度下降算法的理论基础
+
+从上一小节的例子可以看到， 随机梯度下降算法就是不停地寻找某个节点中下降幅度最大的那个趋势进行迭代计算， 直到将数据收缩到符合要求的范围为止。 它可以用数学公式表达如下：
+$$
+f(\theta) = \theta_0x_0 + \theta_1x_1 + \dots + \theta_nx_n = \sum \theta_ix_i
+$$
+在上一章介绍最小二乘法的时候， 笔者通过最小二乘法说明了直接求解最优化变量的方法， 也介绍了在求解过程中的前提条件是要求计算值与实际值的偏差的平方最小。
+
+但是在随机梯度下降算法中， 对于系数需要通过不停地求解出当前位置下最优化的数据。 这句话通过数学方式表达的话就是不停地对系数θ求偏导数。 即公式如下：  
+$$
+\frac {\partial}{\partial\theta} f(\theta) = \frac{\partial}{\partial\theta}\frac{1}{2} \sum(f(\theta)-y_i)2 = (f(\theta) - y)x_i
+$$
+公式中θ会向着梯度下降的最快方向减少， 从而推断出θ的最优解。因此可以说随机梯度下降算法最终被归结为通过迭代计算特征值从而求出最合适的值。 θ求解的公式如下：  
+$$
+\theta = \theta - \alpha(f(\theta) - y_i)x_i
+$$
+公式中$\alpha$是下降系数， 用较为通俗的话来说就是用以计算每次下降的幅度大小。 系数越大则每次计算中差值越大， 系数越小则差值越小，但是计算时间也相对延长。  
+
+### 6.1.3 随机梯度下降算法实战
+
+实现随机梯度下降算法的关键是拟合算法的实现。 而本例的拟合算法实现较为简单， 通过不停地修正数据值从而达到数据的最优值。 具体实现代码如程序6-1所示：    
+
+~~~scala
+import scala.collection.mutable.HashMap 
+object SGD { 
+    val data = HashMap[Int,Int]() //创建数据集 def
+    getData()： HashMap[Int,Int] = { 
+        //生成数据集内容
+        for(i <- 1 to 50){ //创建50个数据 
+            data += (i -> (12*i)) //写入公式
+            y=2x 
+        } 
+        data //返回数据集 
+    } 
+    var θ ： Double = 0 //第一步假设 θ 为0 
+    var α ： Double = 0.1 //设置步进系数 
+    def sgd(x： Double,y： Double) = {
+        //设置迭代公式 
+        θ = θ - α * ( (θ *x) - y) //迭代公式
+	} 
+    def main(args： Array[String]) {
+        val dataSource = getData() //获取数据集 
+        dataSource.foreach(myMap =>{
+            //开始迭代 
+            sgd(myMap._1,myMap._2) //输入数据 
+        })
+		println("最终结果 θ 值为" + θ ) //显示结果 
+    } 
+}
+~~~
+
+## 6.2 MLlib回归的过拟合
+
+有计算就有误差， 误差不可怕， 我们需要的是采用何种方法消除误差。
+
+回归分析在计算过程中， 由于特定分析数据和算法选择的原因， 结果会对分析数据产生非常强烈的拟合效果； 而对于测试数据， 却表现得不理想， 这种效果和原因称为过拟合。 本节将分析过拟合产生的原因和效果， 并给出一个处理手段供读者学习和掌握。  
+
+### 6.2.1 过拟合产生的原因
+
+在上一节的最后， 我们建议和鼓励读者对数据的量进行调整从而获得更多的拟合修正系数。 相信读者也发现， 随着数据量的增加， 拟合的系数在达到一定值后会发生较大幅度的偏转。 在上一节程序6-1的例子中， 步进系数在0.1的程度下， 数据量达到70以后就发生偏转。 产生这样原因就是MLlib回归会产生过拟合现象。  
+
+如果测试数据过于侧重某些具体的点， 则会对整体的曲线形成构成很大的影响， 从而影响到待测数据的测试精准度。 这种对于测试数据过于接近而实际数据拟合程度不够的现象称为过拟合， 而解决办法就是对数据进行处理， 而处理过程称为回归的正则化。  
+
+正则化使用较多的一般有两种方法， lasso回归（L1回归） 和岭回归（L2回归） 。 其目的是通过对最小二乘估计加入处罚约束， 使某些系数的估计为0。  
+
+更加直观的理解就是， 防止通过拟合算法最后计算出的回归公式比较大地响应和依赖某些特定的特征值， 从而影响回归曲线的准确率。  
+
+### 6.2.2 lasso回归与岭回归
+
+由前面对过拟合产生的原因分析来看， 如果能够消除拟合公式中多余的拟合系数， 那么产生的曲线可以较好地对数据进行拟合处理。 因此可以认为对拟合公式过拟合的消除最直接的办法就是去除其多余的公式， 那么通过数学公式表达如下：
+$$
+f(B') = f(B) + J(\theta)
+$$
+从公式可以看到， f(B')是f(B)的变形形式， 其通过增加一个新的系数公式J(θ)从而使原始数据公式获得了正则化表达。 这里J(θ)又称为损失函数， 它通过回归拟合曲线的范数L1和L2与一个步进数α相乘得到。
+
+范数L1和范数L2是两种不同的系数惩罚项， 首先来看L1范数。L1范数指的是回归公式中各个元素的绝对值之和， 其又称为“稀疏规则算子（Lasso regularization） ”。 其一般公式如下：  
+$$
+J(\theta) = \alpha \times ||x||
+$$
+即可以通过这个公式计算使得f(B')能够取得最小化。
+
+而L2范数指的是回归公式中各个元素的平方和， 其又称为“岭回归（Ridge Regression） ”可以用公式表示为：  
+$$
+J(\theta) = \alpha \sum x^2
+$$
+
+> **提示**
+> MLlib中SGD算法支持L1和L2正则化方法， 而LBFGS只支持L2正则化， 不支持L1正则化。  
+
+L1范数和L2范数相比较而言， L1能够在步进系数α在一定值的情况下将回归曲线的某些特定系数修正为0。 而L1回归由于其平方的处理方法从而使得回归曲线获得较高的计算精度。  
+
+## 6.3 MLlib线性回归实战
+
+### 6.3.1 MLlib线性回归基本准备
+
+### 6.3.2 MLlib线性回归实战： 商品价格与消费者收入之间的关系
+
+### 6.3.3 对拟合曲线的验证
+
+# 第7章 MLlib分类实战
+
+本章开始进入MLlib算法中的一个新的领域——分类算法。 分类算法又称为分类器， 是数据挖掘和机器学习领域中的一个非常重要的分支和方向， 它原本是统计分析中的一个工具， 而近年来随着统计学应用的广泛推进， 分类算法得到越来越多的应用， 大数据的分类是分类算法的未来应用趋势。
+
+目前， MLlib中分类算法在全部算法中占据了非常重要的部分， 其中包括逻辑回归、 支持向量机（SVM） 、 贝叶斯分类器等， 它们包含的一些基本理论和算法， 将在本章着重进行介绍。
+
+本章有些算法理论部分较为深奥， 我们将侧重于在工程应用方面为读者做通俗易懂的解释， 希望能够帮助读者在掌握算法使用方法的情况下了解其背后的原理。
+
+本章主要知识点：
+
+- 逻辑回归
+- 支持向量机
+- 朴素贝叶斯  
+
+## 7.1 逻辑回归详解
+
+逻辑回归和线性回归类似， 但它不属于回归分析家族， 差异主要是在于变量不同， 因此其解法和生成曲线也不尽相同。
+
+MLlib中将逻辑回归归类在分类算法中， 也是无监督学习的一个重要算法， 本节将主要介绍其基本理论和算法示例。  
+
+### 7.1.1 逻辑回归不是回归算法
+
+逻辑回归并不是回归算法， 而是分类算法。
+
+逻辑回归是目前数据挖掘和机器学习领域中使用较为广泛的一种对数据进行处理的算法， 一般用于对某些数据或事物的归属及可能性进行评估。 目前较为广泛地应用在流行病学中， 比较常用的情形是探索某疾病的危险因素， 根据危险因素预测某疾病发生的概率等。
+
+例如， 想探讨胃癌发生的危险因素， 可以选择两组人群， 一组是胃癌组， 一组是非胃癌组， 两组人群肯定有不同的体征和生活方式等。 这里的因变量就是是否胃癌， 即“是”或“否”， 为两分类变量， 自变量就可以包括很多了， 例如年龄、 性别、 饮食习惯、 幽门螺杆菌感染等。 自变量既可以是连续的， 也可以是分类的。
+
+再一次提醒， 逻辑回归并不是回归算法， 而是用来分类的一种算法， 特别是用在二分分类中。
+
+在上一章中， 笔者向读者演示了使用线性回归对某个具体数据进行预测的方法， 虽然可以看到， 在二元或者多元的线性回归计算中， 最终结果与实际相差较大， 但是其能够返回一个具体的预测数据。
+
+但是现实生活中， 某些问题的研究却没有正确的答案。
+
+在前面讨论的胃癌例子中， 尽管收集到了各种变量因素， 但是在胃癌被确诊定性之前， 任何人都无法对某人是否将来会诊断出胃癌做出断言， 而只能说“有可能”患有胃癌。 这个就是逻辑回归， 他不会直接告诉你结果的具体数据而会告诉你可能性是在哪里。  
+
+### 7.1.2 逻辑回归的数学基础
+
+前面的讲解已经知道， 逻辑回归实际上就是对已有数据进行分析从而判断其结果可能是多少， 它可以通过数学公式来表达。  
+
+如果使用传统的(x,y)值的形式标示， 则y为0或者1， x为数据集中数据的特征向量。  
+
+逻辑回归的具体公式如下：  
+$$
+f(x) = \frac{1}{1+e^{-\theta^Tx}}
+$$
+与线性回归相同， 这里的θ是逻辑回归的参数， 即回归系数， 如果再将其进一步变形， 使其能够反映二元分类问题的公式， 则公式为：  
+$$
+f(y=1|x,\theta) = \frac{1}{1+e^{-\theta^Tx}}
+$$
+这里y值是由已有的数据集中数据和θ共同决定。 实际上这个公式求计算是在满足一定条件下， 最终取值的对数机率， 即由数据集的可能性的比值的对数变换得到。 通过公式表示为 :
+$$
+log(x) = \ln\frac{f(y=1|x,\theta)}{f(y=0|x,\theta)} = \theta_0 + \theta_1x_1 + \theta_2x_2 + \dots + \theta_nx_n
+$$
+通过这个逻辑回归倒推公式可以看到， 最终逻辑回归的计算可以转化成数据集的特征向量与系数θ共同完成， 然后求得其加权和作为最终的判断结果。  
+
+由前面数学分析来看， 最终逻辑回归问题又称为对系数θ的求值问题。 回忆本书在讲解线性回归算法求最优化θ值的时候， 通过随机梯度算法能够较为准确和方便地求得其最优值。 这点请读者自行复习一下上一章讲解的内容。  
+
+### 7.1.3 一元逻辑回归示例
+
+~~~scala
+import org.apache.spark.mllib.classification.LogisticRegressionWith
+import org.apache.spark.mllib.linalg.Vectors 
+import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark.{SparkConf, SparkContext}
+
+object LogisticRegression{
+    val conf = new SparkConf() //创建环境变量
+    .setMaster("local") //设置本地化处理 
+    .setAppName("LogisticRegression ") //设定名称 
+    val sc = new SparkContext(conf) //创建环境变量实例 
+    def main(args： Array[String]) { 
+        val data = sc.textFile("c： /u.txt") //获取数据集路径
+        val parsedData = data.map { 
+            line => //开始对数据集处理
+            val parts = line.split('|') //根据逗号进行分区
+            LabeledPoint(parts(0).toDouble, Vectors.dense(parts(1).split("").map(_.toDouble)))
+        }.cache() //转化数据格式 
+        val model = LogisticRegressionWithSGD.train(parsedData,50) //建立模型 
+        val target = Vectors.dense(-1) //创建测试值
+        val resulet = model.predict(target) //根据模型计算结果 
+        println(resulet) //打印结果 
+    } 
+}
+~~~
+
+Spark的初始化数据读取这里就不再重复， parsedData最终形成了一个LabeledPoint[RDD]形式的数据集， 而model是通过随机梯度下降算法迭代形成的逻辑回归模型， target是待测试数据， result是根据模型求出的结果。  
+
+### 7.1.4 多元逻辑回归示例
+
+在本章开头的胃癌可能性例子中， 对胃癌的影响因素很多， 例如年龄、 性别、 饮食习惯、 幽门螺杆菌感染等。 而在判断其可能性的时候，需要综合考虑多种因素， 因此在进行数据回归分析时， 并不能简单地使用一元逻辑回归。
+
+本小节采用的例子是MLlib中自带的数据集sample_libsvm_data.txt，其内容格式如图7-1所示。  
+
+在这里首先介绍一下libSVM的数据格式：
+
+~~~
+Label 1： value 2： value ...
+~~~
+
+Label是类别的标识， 比如图中的0或者1， 可根据需要自己随意定， 比如100， 20， 13。 本例子由于是做的回归分析， 那么其定义为0或者1。
+
+Value是要训练的数据， 从分类的角度来说就是特征值， 数据之间使用空格隔开。 而每个“： ”用于标注向量的序号和向量值。 例如数据：
+
+~~~
+1 1:12 3:7 4:1
+~~~
+
+指的是表示为1的那组数据集， 第1个数据值为12， 第3个数据值为7， 第4个数据值为1， 第2个数据缺失。 特征冒号前面的（姑且称做序号） 可以不连续。 这样做的好处可以减少内存的使用， 并提高计算矩阵内积时的运算速度。
+
+线性回归处理完整代码如程序7-2所示。  
+
+~~~scala
+import
+org.apache.spark.mllib.classification.LogisticRegressionWith
+import org.apache.spark.mllib.util.MLUtils 
+import org.apache.spark.{SparkConf, SparkContext} 
+object LogisticRegression2 { 
+    val conf = new SparkConf() //创建环境变量
+    .setMaster("local") //设置本地化处理
+    .setAppName("LogisticRegression2 ") //设定名称 
+    val sc = new SparkContext(conf) //创建环境变量实例 
+    def main(args: Array[String]) {
+        val data = MLUtils.loadLibSVMFile(sc, "c://sample_libsvm_data.txt") // 读取数据文件 
+        val model = LogisticRegressionWithSGD.train(data, 50) //训练数据模型 
+        println(model.weights.size) //打印θ 值
+        println(model.weights) //打印θ 值个数
+        println(model.weights.toArray.filter(_！ = 0).size)
+        //打印θ 中不为0的数 
+    } 
+}
+~~~
+
+其中为了更加便于显示， 分别打印了θ中包含0和不包含0的个数，打印结果如下：
+
+~~~
+692 418
+~~~
+
+692为θ中包含0值的个数， 418为不包含0的个数。  
+
+### 7.1.5 MLlib逻辑回归验证
+
+7.1.4小节中， 笔者使用了自带的例子进行逻辑回归曲线的处理。 根据计算， 获得了θ的个数在不包含0的情况下达到418个， 如此多的数据通过人工手动进行验证是不可能的。 因此需要一个可以自动对其进行验证的功能。
+
+MLlib中MulticlassMetrics类是对数据进行分类的类， 其中包括各种方法。 通过调用其中的precision方法可以对验证数据进行验证。 全部代码如程序7-3所示。  
+
+~~~scala
+import
+org.apache.spark.mllib.classification.LogisticRegressionWith
+import org.apache.spark.mllib.regression.LabeledPoint
+import org.apache.spark.mllib.util.MLUtils 
+import org.apache.spark.{SparkConf, SparkContext} 
+import org.apache.spark.mllib.evaluation.MulticlassMetrics
+
+object LinearRegression3{
+    val conf = new SparkConf()//创建环境变量 
+    .setMaster("local") //设置本地化处理
+    .setAppName("LogisticRegression3") //设定名称 
+    val sc = new SparkContext(conf) //创建环境变量实例 
+    def main(args: Array[String]) { 
+        val data = MLUtils.loadLibSVMFile(sc, "c://sample_libsvm_data.txt") // 读取数据集 
+        val splits = data.randomSplit(Array(0.6, 0.4), seed =
+11L)//对数据集切分 
+        val parsedData = splits(0) //分割训练数据 
+        val parseTtest = splits(1) //分割测试数据
+        val model = LogisticRegressionWithSGD.train(parsedData,50)//训练模型
+        println(model.weights) //打印θ 值 
+        val predictionAndLabels = parseTtest.map { 
+            //计算测试值
+            case LabeledPoint(label, features) => //计算测试值
+            val prediction = model.predict(features) //计算测试值 
+            (prediction, label) //存储测试和预测值 
+        } 
+        val metrics = new MulticlassMetrics(predictionAndLabels)//创建验证类 
+        val precision = metrics.precision //计算验证值
+        println("Precision = " + precision) //打印验证值 
+    } 
+}
+~~~
+
+从上面代码中可以看到， data.randomSplit将数据集切分为60％的parsedData和40％的parseTtest两部分， 分别用作训练数据集和测试数据集。 之后使用训练数据集对模型进行训练。
+
+通过使用训练结束后的模型对测试机进行实际测试，predictionAndLabels是一个预测值与实际值的RDD向量。 之后再建立MulticlassMetrics类验证测试值和实际值之间的差异。  
+
+### 7.1.6 MLlib逻辑回归实例： 肾癌的转移判断
+
+## 7.2 支持向量机详解
