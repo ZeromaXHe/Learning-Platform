@@ -184,13 +184,199 @@ sc.parallelize(List("1", "2", "3")).map(x => broadcastAList.value ++ x).collect
 
 ## 1.4 Spark Scala 编程入门
 
+下面我们用上一节所提到的内容来编写一个简单的Spark数据处理程序。该程序将依次用Scala、Java和Python三种语言来编写。所用数据是客户在我们在线商店的商品购买记录。该数据存在一个CSV文件中，名为UserPurchaseHistory.csv，内容如下所示。文件的每一行对应一条购买记录，从左到右的各列值依次为客户名称、商品名以及商品价格。
+
+~~~
+John,iPhone Cover,9.99 
+John,Headphones,5.49 
+Jack,iPhone Cover,9.99 
+Jill,Samsung Galaxy Cover,8.95 
+Bob,iPad Cover,5.49
+~~~
+
+对于Scala程序而言，需要创建两个文件：Scala代码文件以及项目的构建配置文件。项目将使用**SBT**（Scala Build Tool，Scala构建工具）来构建。
+
+我们的SBT配置文件是build.sbt，其内容如下面所示（注意，各行代码之间的空行是必需的）
+
+~~~sbt
+name := "scala-spark-app" 
+
+version := "1.0" 
+
+scalaVersion := "2.10.4" 
+
+libraryDependencies += "org.apache.spark" %% "spark-core" % "1.2.0 "
+~~~
+
+最后一行代码是添加Spark到本项目的依赖库。相应的Scala程序在ScalaApp.scala这个文件里。接下来我们会逐一讲解代码的各个部分。首先，导入所需要的Spark类：
+
+~~~scala
+import org.apache.spark.SparkContext 
+import org.apache.spark.SparkContext._ 
+/** 
+ * 用Scala编写的一个简单的Spark应用
+ */ 
+object ScalaApp {
+~~~
+
+在主函数里，我们要初始化所需的SparkContext对象，并且用它通过textFile函数来访问CSV数据文件。之后对每一行原始字符串以逗号为分隔符进行分割，提取出相应的用户名、产品和价格信息，从而完成对原始文本的映射：
+
+~~~scala
+def main(args: Array[String]) { 
+    val sc = new SparkContext("local[2]", "First Spark App") 
+    // 将CSV格式的原始数据转化为(user,product,price)格式的记录集
+    val data = sc.textFile("data/UserPurchaseHistory.csv") 
+    	.map(line => line.split(",")) 
+    	.map(purchaseRecord => (purchaseRecord(0), purchaseRecord(1), purchaseRecord(2)))
+~~~
+
+现在，我们有了一个RDD，其每条记录都由(user, product, price)三个字段构成。我们可以对商店计算如下指标：
+
+- 购买总次数
+- 客户总个数
+- 总收入
+- 最畅销的产品
+
+计算方法如下：
+
+~~~scala
+// 求购买次数
+val numPurchases = data.count() 
+// 求有多少个不同客户购买过商品
+val uniqueUsers = data.map{ case (user, product, price) => user }.distinct().count() 
+// 求和得出总收入
+val totalRevenue = data.map{ case (user, product, price) => price.toDouble }.sum() 
+// 求最畅销的产品是什么
+val productsByPopularity = data 
+    .map{ case (user, product, price) => (product, 1) } 
+    .reduceByKey(_ + _) 
+    .collect() 
+    .sortBy(-_._2) 
+val mostPopular = productsByPopularity(0)
+~~~
+
+最后那段计算最畅销产品的代码演示了如何进行Map/Reduce模式的计算，该模式随Hadoop而流行。第一步，我们将(user, product, price)格式的记录映射为(product, 1)格式。然后，我们执行一个reduceByKey操作，它会对各个产品的1值进行求和。
+
+转换后的RDD包含各个商品的购买次数。有了这个RDD后，我们可以调用collect函数，这会将其计算结果以Scala集合的形式返回驱动程序。之后在驱动程序的本地对这些记录按照购买次数进行排序。（注意，在实际处理大量数据时，我们通常通过sortByKey这类操作来对其进行并行排序。）
+
+最后，可在终端上打印出计算结果：
+
+~~~scala
+        println("Total purchases: " + numPurchases) 
+        println("Unique users: " + uniqueUsers) 
+        println("Total revenue: " + totalRevenue) 
+        println("Most popular product: %s with %d purchases".format(mostPopular._1, mostPopular._2)) 
+	} 
+}
+~~~
+
+可以在项目的主目录下执行sbt run命令来运行这个程序。如果你使用了IDE的话，也可以从Scala IDE直接运行。
+
 ## 1.5 Spark Java 编程入门
 
 Java API与Scala API本质上很相似。Scala代码可以很方便地调用Java代码，但某些Scala代码却无法在Java里调用，特别是那些使用了隐式类型转换、默认参数和采用了某些Scala反射机制的代码。
 
 一般来说，这些特性在Scala程序中会被广泛使用。这就有必要另外为那些常见的类编写相应的Java版本。由此，SparkContext有了对应的Java版本JavaSparkContext，而RDD则对应JavaRDD。
 
+1.8及之前版本的Java并不支持匿名函数，在函数式编程上也没有严格的语法规范。于是，套用到Spark的Java API上的函数必须要实现一个带有call函数的WrappedFunction接口。这会使得代码冗长，所以我们经常会创建临时类来传递给Spark操作。这些类会实现操作所需的接口以及call函数，以取得和用Scala编写时相同的效果。
+
+Spark提供对Java 8匿名函数（lambda）语法的支持。使用该语法能让Java 8书写的代码看上去很像等效的Scala版。
+
 用Scala编写时，键/值对记录的RDD能支持一些特别的操作（比如reduceByKey和saveAsSequenceFile）。这些操作可以通过隐式类型转换而自动被调用。用Java编写时，则需要特别类型的JavaRDD来支持这些操作。它们包括用于键/值对的JavaPairRDD，以及用于数值记录的JavaDoubleRDD。
+
+项目中包含一个名为JavaApp.java的Java源文件：
+
+~~~java
+import org.apache.spark.api.java.JavaRDD; 
+import org.apache.spark.api.java.JavaSparkContext; 
+import org.apache.spark.api.java.function.DoubleFunction; 
+import org.apache.spark.api.java.function.Function; 
+import org.apache.spark.api.java.function.Function2; 
+import org.apache.spark.api.java.function.PairFunction; 
+import scala.Tuple2; 
+import java.util.Collections; 
+import java.util.Comparator; 
+import java.util.List; 
+/** 
+ * 用Java编写的一个简单的Spark应用
+ */ 
+public class JavaApp { 
+    public static void main(String[] args) {
+~~~
+
+正如在Scala项目中一样，我们首先需要初始化一个上下文对象。值得注意的是，这里所使用的是JavaSparkContext类而不是之前的SparkContext。类似地，调用JavaSparkContext对象，利用textFile函数来访问数据，然后将各行输入分割成多个字段。请注意下面代码的高亮部分是如何使用匿名类来定义一个分割函数的。该函数确定了如何对各行字符串进行分割。
+
+~~~java
+JavaSparkContext sc = new JavaSparkContext("local[2]", "First Spark App"); 
+// 将CSV格式的原始数据转化为(user,product,price)格式的记录集
+JavaRDD<string[]> data = 
+    sc.textFile("data/UserPurchaseHistory.csv") 
+    .map(new Function<String, String[]>() {
+        @Override
+        public String[] call(String s) throws Exception { 
+            return s.split(","); 
+        } 
+    });
+~~~
+
+现在可以算一下用Scala时计算过的指标。这里有两点值得注意的地方，一是下面Java API中有些函数（比如distinct和count）实际上和在Scala API中一样，二是我们定义了一个匿名类并将其传给map函数。匿名类的定义方式可参见代码的高亮部分。
+
+~~~java
+// 求总购买次数
+long numPurchases = data.count(); 
+// 求有多少个不同客户购买过商品
+long uniqueUsers = data.map(new Function<String[], String>() { 
+    @Override
+    public String call(String[] strings) throws Exception { 
+        return strings[0]; 
+    } 
+}).distinct().count(); 
+// 求和得出总收入
+double totalRevenue = data.map(new DoubleFunction<String[]>() {
+    @Override
+    public Double call(String[] strings) throws Exception { 
+        return Double.parseDouble(strings[2]); 
+    } 
+}).sum();
+~~~
+
+下面的代码展现了如何求出最畅销的产品，其步骤与Scala示例的相同。多出的那些代码看似复杂，但它们大多与Java中创建匿名函数有关，实际功能与用Scala时一样：
+
+~~~java
+        // 求最畅销的产品是哪个
+        // 首先用一个PairFunction和Tuple2类将数据映射成为(product,1)格式的记录
+        // 然后，用一个Function2类来调用reduceByKey操作，该操作实际上是一个求和函数
+        List<Tuple2<String, Integer>> pairs = 
+            data.map(new PairFunction<String[], String, Integer>() {
+                @Override 
+                public Tuple2<String, Integer> call(String[] strings) throws Exception { 
+                    return new Tuple2(strings[1], 1); 
+                } 
+            }).reduceByKey(new Function2<Integer, Integer, Integer>() {
+                @Override
+                public Integer call(Integer integer, Integer integer2) throws Exception { 
+                    return integer + integer2; 
+                } 
+            }).collect(); 
+        // 最后对结果进行排序。注意，这里会需要创建一个Comparator函数来进行降序排列
+        Collections.sort(pairs, new Comparator<Tuple2<String, Integer>>() { 
+            @Override 
+            public int compare(Tuple2<String, Integer> o1, 
+                               Tuple2<String, Integer> o2) { 
+                return -(o1._2() - o2._2()); 
+            } 
+        }); 
+        String mostPopular = pairs.get(0)._1(); 
+        int purchases = pairs.get(0)._2(); 
+        System.out.println("Total purchases: " + numPurchases); 
+        System.out.println("Unique users: " + uniqueUsers); 
+        System.out.println("Total revenue: " + totalRevenue); 
+        System.out.println(String.format("Most popular product: %s with %d purchases", mostPopular, purchases)); 
+	} 
+}
+~~~
+
+从前面代码可以看出，Java代码和Scala代码相比虽然多了通过内部类来声明变量和函数的引用代码，但两者的基本结构类似。读者不妨分别练习这两种版本的代码，并比较一下计算同一个指标时两种语言在表达上的异同。
 
 ## 1.6 Spark Python 编程入门
 
