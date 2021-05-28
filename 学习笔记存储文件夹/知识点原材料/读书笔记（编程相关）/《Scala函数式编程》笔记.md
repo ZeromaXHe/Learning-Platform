@@ -285,3 +285,129 @@ def factorial(n: Int): Int = {
 
 ### 2.4.2 第一个高阶函数
 
+现在我们已经有了阶乘函数，让我们编辑一下之前的程序把它也引入进去。
+
+~~~scala
+object MyModule {
+    ... // 这里是abs和factorial的定义。
+    private def formatAbs(x: Int) = {
+        val msg = "The absolute value of %d is %d."
+        msg.format(x, abs(x))
+    }
+    
+    private def formatFactorial(n: Int) = {
+        val msg = "The factorial of %d is %d."
+        msg.format(n, factorial(n))
+    }
+    
+    def main(args: Array[String]): Unit = {
+        println(formatAbs(-42))
+        println(formatFactorial(7))
+    }
+}
+~~~
+
+formatAbs和formatFactorial这两个函数几乎是相同的，可以将它们泛化为一个formatResult函数，它接收一个函数参数。
+
+~~~scala
+def formatResult(name: String, n: Int, f: Int => Int) = {
+    val msg = "The %s of %d is %d."
+    msg.format(name, n, f(n))
+}
+~~~
+
+formatResult是一个高阶函数（HOF），它接收一个函数f为参数。我们给f参数声明一个类型，就像其他参数那样，它的类型是 Int => Int（读作 int to int或int 箭头 int），表示f接收一个整型参数并返回一个整型结果。
+
+abs函数与这个类型匹配，它接收Int并返回Int。同样，factorial也与这个类型匹配。因此我们可以把abs或factorial当参数传给formatResult
+
+> **变量命名约定**
+>
+> 对于高阶函数的参数，以f、g或h来命名是一种习惯做法。在函数式编程中，我们倾向于使用短的变量名，甚至单个字母命名。因为高阶函数的参数通常没法表示参数到底执行什么，无法体现它们的含义。许多函数式程序员觉得短名称让代码更易读，因为代码结构第一眼看上去更简单。
+
+## 2.5 多态函数：基于类型的抽象
+
+目前我们定义的函数都是**单态的**（monomorphic）：函数只操作一种数据类型，比如abs和factorial的指定参数类型是Int。高阶函数formatResult也是固定的操作Int=>Int类型的函数。通常，特别是在写高阶函数时，希望写出的这段代码能够适用于任何类型，它们被称为“**多态函数**”。这里先介绍一下它的概念，在本章的后边会有更多的应用。
+
+### 2.5.1 一个多态函数的例子
+
+我们经常是先注意到若干个单态函数有相似的结构，才发现应该用一个多态函数来解决问题。比如，下面的单态函数findFirst返回数组里第一个匹配到key的索引，或在匹配不到的情况下返回-1。它是从一个字符串数组里查找一个字符串的特例。
+
+~~~scala
+def findFirst(ss: Array[String], key: String): Int = {
+    @annotation.tailrec
+    def loop(n: Int): Int = 
+    	// 如果n到了数组的结尾，返回-1，表示这个key在数组里不存在。
+    	if (n >= ss.length) -1
+    	// ss(n)抽取数组ss里的第n个元素。
+    	// 如果第n个元素等于key返回n，表示这个元素出现在数组的索引。
+    	else if (ss(n) == key) n 
+    	// 否则，传入n加1，继续查找
+    	else loop(n + 1)
+    // 从数组的第一个元素开始启动loop
+    loop(0)
+}
+~~~
+
+这段代码的细节不是我们关注的重点，重要的是不管是从Array[String]中查找一个String，还是从Array[Int]中查找一个Int，或从任何Array[A]中查找一个A，它们看起来几乎都是相同的。我们可以写一个更泛化的适用任何类型A的findFirst函数，它接收一个函数参数，用来对A进行判定。
+
+~~~scala
+// 用类型A做参数替代掉String类型的硬编码，并且用一个对数组里每个元素进行测试的函数替代掉之前用于判断元素是否与给定key相等的硬编码。
+def findFirst[A](as: Array[A], p: A => Boolean): Int = {
+    @annotation.tailrec
+    def loop(n: Int): Int = 
+    	if (n >= ss.length) -1
+    	// 如果函数p匹配当前元素，就找到了相匹配的元素，返回数组当前索引值。
+    	else if (p(as(n)) n 
+    	else loop(n + 1)
+
+    loop(0)
+}
+~~~
+
+这是一个多态函数的例子，有时也称作“**泛型函数**”。我们对数组和用于查找的函数，**基于类型**进行了抽象化。要写一个多态函数，我们引入了一种使用逗号分隔的类型参数（type parameter）。紧跟在函数名称后使用中括号括起来（这里是单个类型参数[A]）。可以给类型参数起任何名字，不过习惯上通常用短的、单个大写的字母来命名类型参数，比如[A, B, C]。
+
+在类型参数列表中引入的**类型变量**，可在其他类型签名中引用（类似于参数列表中的参数变量可在函数体中引用）。在findFirst函数中类型变量A被两个地方引用：一处是数组元素要求是类型A（声明为Array[A]），另一处是函数P必须接收类型A（声明为A=>Boolean）。这两处类型签名中引用相同的类型变量，意味着它们的类型必须相同。当我们调用findFirst时编译器会强制检测，如果在Array[Int]中查找一个String，可能会造成类型匹配错误。
+
+### 2.5.2 对高阶函数传入匿名函数
+
+在使用高阶函数时，不必非要提供一些有名函数，可以传入**匿名函数**或**函数字面量**。这一点很方便，举例来说，我们可以在REPL中用下面的方式测试findFirst函数：
+
+~~~scala
+scala> findFirst(Array(7,9,13), (x: Int) => x == 9)
+res2: Int = 1
+~~~
+
+这里有一些新语法，表达式Array(7, 9, 13)是一段“数组字面量”，它用3个整数构造一个数组。注意构造数组时并没有使用new关键字。
+
+语法`(x: Int) => x == 9`是一段“函数字面量”或“匿名函数”。不必先定义一个有名称的方法，可以利用语法的便利，在调用时再定义。这个特定的函数接收一个Int类型参数x，并返回一个Boolean类型的值，表示x是否等于9。
+
+通常函数的参数声明在=>箭头的左边，可以在箭头右边的函数体内使用它们。比如写一个比较两个整数是否相等的函数：
+
+~~~scala
+scala> (x: Int, y: Int) => x == y
+res3: (Int, Int) => Boolean = <function2>
+~~~
+
+在REPL结果中的`<function2>`符号表示res3是一个接收2个参数的函数。如果Scala可以从上下文推断输入参数的类型，函数参数可以省略掉类型符号。例如，(x, y) => x < y。
+
+> **在Scala中函数也是值**
+>
+> 当我们定义一个函数字面量的时候，实际上定义了一个包含一个apply方法的Scala对象。Scala对这个方法名有特别的规则，一个有apply方法的对象可以把它当成方法一样调用。我们定义一个函数字面量(a, b) => a < b，它其实是一段创建函数对象的语法糖：
+>
+> ~~~scala
+> val lessThan = new Function2[Int, Int, Boolean] {
+>     def apply(a: Int, b: Int) = a < b
+> }
+> ~~~
+>
+> lessThan的类型是Function2[Int, Int, Boolean]，通常写成(Int, Int) => Boolean。注意Function2接口（在Scala中是trait）包含一个apply方法，当我们以lessThan(10, 20)的方式调用函数lessThan时它实际是对apply调用的语法糖：
+>
+> ~~~scala
+> scala> val b = lessThan.apply(10, 20)
+> b: Boolean = true
+> ~~~
+>
+> Function2 只是一个由Scala标准库提供的普通的特质（接口），代表接收两个参数的函数对象。同样在标准库里还提供了Function1、Function3等其他函数对象，接收的参数个数从名称里能看出来。因为这些函数在Scala中就是普通对象，所以它们也是一等值。通常我们说“函数”这个名词时是指一等函数对象还是一个方法，取决于上下文。
+
+## 2.6 通过类型来实现多态
+
