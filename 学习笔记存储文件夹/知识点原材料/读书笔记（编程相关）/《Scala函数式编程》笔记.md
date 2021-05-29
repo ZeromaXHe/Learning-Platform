@@ -411,3 +411,143 @@ res3: (Int, Int) => Boolean = <function2>
 
 ## 2.6 通过类型来实现多态
 
+或许在前面写isSorted函数时你已注意到实现一个多态函数时，各种可能的实现方式明显减少了。针对某种类型A的多态函数，唯一可以对A进行操作的方式是传入一个函数参数（或按照给出的操作来定义一个函数）。在某些例子里你会发现对一个多态类型的实现可能被限制为只有一种实现方式。
+
+我们看一个例子，这个函数签名表示它只有一种实现方式。它是执行“部分应用”的高阶函数。函数partial1接收一个值和一个带有两个参数的函数，并返回一个带有一个参数的函数。**部分应用**（partial application）这个名词，表示函数被应用的参数不是它所需要的完整的参数：
+
+~~~scala
+def partial1[A, B, C](a: A, f: (A, B) => C): B => C
+~~~
+
+函数partial1有三个类型参数：A、B和C。它带有两个参数，参数f本身是一个有两个类型分别为A和B的参数、返回值为C的函数。函数partial1的返回值也是一个函数，类型为B=>C。
+
+~~~scala
+def partial1[A, B, C](a: A, f: (A, B) => C): B => C = 
+	(b: B) => f(a, b)
+~~~
+
+完成！结果是一个高阶函数接收一个带有两个参数的函数，进行部分应用。即我们有一个A和一个需要A和B产生C的函数，可以得到一个只需要B就可以产生C的函数（因为我们已经有A了）。
+
+**练习2.3**
+
+我们看另一个柯里化（currying）的例子，把带有两个参数的函数f转换为只有一个参数的部分应用函数f。这里只有实现可编译通过。
+
+~~~scala
+def curry[A,B,C](f: (A, B) => C): A => (B => C)
+~~~
+
+**练习2.4**
+
+实现反柯里化（uncurry），与柯里化正相反。注意，因为右箭头=>是右结合的，A => (B => C) 可以写为 A => B => C。
+
+~~~scala
+def uncurry[A,B,C](f: A => B => C): (A, B) => C
+~~~
+
+看最后一个例子——函数组合，也就是把一个函数的输出结果当作输入提供给另一个函数。实现这个函数完全取决于它的类型签名。
+
+**练习2.5**
+
+实现一个高阶函数，可以组合两个函数为一个函数。
+
+~~~scala
+def compose[A,B,C](f: B => C, g: A => B): A => C
+~~~
+
+这是一个常见的行为，所以Scala标准库中的Function1（带有一个参数的函数接口）提供了Compose方法。要对函数f和g进行组合，只需要简单地写成 f compose g。同时还提供了andThen方法，f andThen g 等价于 g compose f：
+
+~~~scala
+scala> val f = (x: Double) => math.Pi / 2 - x
+f: Double => Double = <function1>
+
+scala> val cos = f andThen math.sin
+cos: Double => Double = <function1>
+~~~
+
+对于像这样小的一行程序，还不算困难，但对于真实世界中的大型代码呢？在函数式编程中，被证明是一样的。多态高阶函数的适用范围极其广泛，因为它们不是面向特定领域，而是对发生在很多上下文里的通用模式的抽象。正因为这样，编写大型程序与编写小型程序时的“味道”非常相似。本书将会写很多这种广泛适用的函数。本章给出的练习尝试说服你在写这一类函数时应该采取这种风格。
+
+# 3 函数式数据结构
+
+我们在引言里提到函数式编程不会更新变量，或修改可变的数据结构。这会导致一个紧迫的问题：在函数式编程中可以用哪种数据结构？怎么在Scala中定义和操作它们？在这一章，我们将学习并应用**函数式数据结构**的概念，借用这个机会介绍在函数式编程中如何定义数据类型，了解与之相关的“**模式匹配**”，并练习编写或泛化一些纯函数。
+
+## 3.1 定义函数式数据结构
+
+函数式数据结构，只能被纯函数操作。记住，纯函数一定不能修改原始数据或产生副作用。**因此，函数式数据结构被定义为不可变的**。
+
+这是否意味着我们要对数据做很多额外的复制？或许会让你吃惊，答案是否定的。首先让我们先检验一下或许是最普遍存在的函数式数据结构：单向链表。这里定义在本质上与Scala标准库中的List数据类型相同，这段代码所引入的新语法和概念我们会通过细节来讨论。
+
+~~~scala
+package fpinscala.datastructures
+
+// List是一个泛型的数据类型，类型参数用A表示。
+sealed trait List[+A]
+// 用于表现空List的List数据构造器
+case object Nil extends List[Nothing]
+// 另一个数据构造器，呈现非空List。
+// 注意尾部是另一个List[A],当然这个尾部也可能为Nil或另一个Cons。
+case class Cons[+A](head: A, tail: List[A]) extends List[A]
+
+// List伴生对象。包含创建List和对List操作的一些函数。
+object List {
+    // 利用模型匹配对一个整数型List进行合计
+    def sum(ints: List[Int]): Int = ints match {
+        // 空列表的累加值为0
+        case Nil => 0
+        // 对一个头部是x的列表表示累加，这个过程是用x加上该列表剩余部分的累加值
+        case Cons(x,xs) => x + sum(xs)
+    }
+    
+    def product(ds: List[Double]): Double = ds match {
+        case Nil => 1.0
+        case Cons(0.0, _) => 0.0
+        case Cons(x,xs) => x * product(xs)
+    }
+    
+    // 可变参数（译注：可以是一个或多个该类型的参数）函数语法
+    def apply[A](as: A*): List[A] = 
+    	if (as.isEmpty) Nil
+    	else Cons(as.head, apply(as.tail: _*))
+}
+~~~
+
+先看一下数据类型的定义，以sealed trait关键字开头。通常我们使用trait关键字引入一种数据类型，trait是一种可以包含一些具体方法（可选）的抽象接口。这里我们定义了一个没有任何方法的List特质，前边的sealed关键字意味着这个特质的所有实现都必须定义在这个文件里。（这里也可以用抽象类代替trait，它们两个的区别对我们目前的目的并不重要。）
+
+List有两种实现，或者说构造器（每种都由case关键字引入），表示List有两种可能的形式。如顶部所示，List如果为空，使用数据构造器Nil表示，如果非空，使用数据构造器Cons（Construct的缩写）表示。一个非空List由初始元素head和后续紧跟的也是List结构（可能为空）的tail组成。
+
+~~~scala
+case object Nil extends List[Nothing]
+case class Cons[+A](head: A, tail: List[A]) extends List[A]
+~~~
+
+~~~scala
+// 这两个是相同的
+List("a", "b")
+Cons("a", Cons("b", Nil))
+~~~
+
+正如函数可以是多态的，数据类型也可以。通过在sealed trait List之后添加类型参数[+A]，然后在Cons数据构造器内部使用A，我们定义List数据类型所包含的元素类型是多态的，也就意味着对于Int元素（用List[Int]表示）、Double元素（用List[Double]表示）、String元素（用List[String]表示）等，可以用同样的定义（类型参数A前面+表示A是发生协变的）。
+
+一个数据构造器声明，给我们一个函数来构造那种类型的数据类型。下面是一个例子：
+
+~~~scala
+val ex1: List[Double] = Nil
+val ex2: List[Int] = Cons(1, Nil)
+val ex3: List[String] = Cons("a", Cons("b", Nil))
+~~~
+
+case object Nil 让我们用Nil来构造一个空List，case class Cons 让我们用 Cons(1, Nil)、Cons("a", Cons("b", Nil)) 等方式来构造任意长度的单向链表。因为List是多态函数，参数化的类型A可以实例化为不同的类型。这里ex2例子中将类型参数A实例化为Int，而ex3例子中实例化为String。ex1例子很有趣，Nil可以是一个List[Double]类型的实例。之所以允许这样，因为空List中无元素，可以认为是任何类型的List。
+
+每一种数据构造器同时也引入一种可用于模式匹配的模式，如同函数里的sum和product，接下来会通过更多细节来检验模式匹配。
+
+> **关于型变（variance）**
+>
+> 在trait List[+A] 声明里，类型参数A前边的+是一个型变的符号，标志着A是协变的或正向（positive）的参数。意味着假设Dog是Animal的子类，那么List[Dog]是List[Animal]的子类。（多数情况下，所有类型X和Y，如果X是Y的子类型，那么List[X]是List[Y]的子类型）。我们可以在A的前面去掉+号，那样会标记List的参数类型是非型变的（invariant）。
+>
+> 但注意Nil继承List[Nothing]，Nothing是所有类型的子类型，也就是说使用型变符号后Nil可以当成是List[Int]或List[Double]等任何List的具体类型。
+>
+> 先别太担心型变的概念，当前讨论的重点更多在于工件是如何用Scala子类型编写数据构造器的，所以不必担心现在没有彻底搞清楚。当然可能写的代码根本不会使用型变注释，函数签名也会更简单（然而类型接口通常更糟）。本书会在方便使用的地方使用型变注释，但你可以随便使用哪种方式。
+
+## 3.2 模式匹配
+
+
+
