@@ -172,6 +172,10 @@ $ sudo chmod -R 777 某一目录
 
 不确定这个指令是来自哪的，好像是得在Linux先装个东西。
 
+~~~shell
+yum install lrzsz
+~~~
+
 上传本地文件 rz
 
 下载到本地 sz
@@ -210,4 +214,10 @@ E37: No write since last change (add ! to override)
 
 存盘后在使用vim命令检查是否保存，如未保存，编辑后重复以上操作。（不想保存就:q!）
 
- 
+# 环境变量
+
+编辑/etc/profile文件 vim /etc/profile
+
+文件末尾添加需要的环境变量 export PATH = "/usr/local/nginx/sbin/:$PATH"
+
+source /etc/profile
