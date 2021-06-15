@@ -428,3 +428,309 @@ for (Row r : predictions.select("id", "text", "probability", "prediction").colle
 
 ## 1.4 提取，转换和选择特征
 
+这一节介绍特征相关的算法，简单分为下面的几组：
+
+- 提取：从“原始”数据中提取特征
+- 转换：缩放，转换，或者修改特征
+- 选择：从一大组特征中选择一个子集
+- 局部敏感哈希（Locality Sensitive Hashing, LSH）：这类算法将特征转换的各个方面与其他算法相结合。
+
+### 1.4.1 特征提取器
+
+#### TF-IDF
+
+词频-逆文档频率（TF-IDF）是一种广泛用于文本挖掘的特征向量化方法，用于反映词条对语料库中文档的重要性。
+
+#### Word2Vec
+
+#### CountVectorizer
+
+#### FeatureHasher
+
+### 1.4.2 特征转换器
+
+#### Tokenizer
+
+#### StopWordsRemover
+
+#### n-gram
+
+#### Binarizer
+
+#### PCA
+
+#### PolynomialExpansion
+
+#### Discrete Cosine Transform (DCT)
+
+#### StringIndexer
+
+#### IndexToString
+
+#### OneHotEncoder (从2.3.0起废弃)
+
+#### OneHotEncoderEstimator
+
+#### VectorIndexer
+
+#### Interaction
+
+#### Normalizer
+
+#### StandardScaler
+
+#### MinMaxScaler
+
+#### MaxAbsScaler
+
+#### Bucketizer
+
+#### ElementwiseProduct
+
+#### SQLTransformer
+
+#### VectorAssembler
+
+#### VectorSizeHint
+
+#### QuantileDiscretizer
+
+#### Imputer
+
+### 1.4.3 特征选择器
+
+#### VectorSlicer
+
+#### RFormula
+
+#### ChiSqSelector
+
+### 1.4.4 局部敏感哈希（LSH）
+
+#### LSH操作
+
+#### LSH算法
+
+## 1.5 分类和回归
+
+### 1.5.1 分类
+
+#### 逻辑回归
+
+逻辑回归是一种流行的预测分类响应的方法。 它是广义线性模型的一个特例，可以预测结果的概率。 在 spark.ml 逻辑回归中，可以使用二项逻辑回归来预测二元结果，也可以使用多项逻辑回归来预测多类结果。 使用 `family` 参数在这两种算法之间进行选择，或者不设置它，Spark 将推断出正确的变体。
+
+> 通过将 `family` 参数设置为“multinomial”，多项逻辑回归可用于二元分类。 它将产生两组系数和两个截距。
+>
+> 在对具有常数非零列的数据集进行无截距拟合 LogisticRegressionModel 时，Spark MLlib 为常量非零列输出零系数。 此行为与 R glmnet 相同，但与 LIBSVM 不同。
+
+##### 二项逻辑回归
+
+以下示例展示了如何使用弹性网络正则化训练二项式和多项式逻辑回归模型以进行二元分类。`elasticNetParam` 相当于 α ，`regParam` 相当于 λ。
+
+~~~java
+import org.apache.spark.ml.classification.LogisticRegression;
+import org.apache.spark.ml.classification.LogisticRegressionModel;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.SparkSession;
+
+// Load training data
+Dataset<Row> training = spark.read().format("libsvm")
+    .load("data/mllib/sample_libsvm_data.txt");
+
+LogisticRegression lr = new LogisticRegression()
+    .setMaxIter(10)
+    .setRegParam(0.3)
+    .setElasticNetParam(0.8);
+
+// Fit the model
+LogisticRegressionModel lrModel = lr.fit(training);
+
+// Print the coefficients and intercept for logistic regression
+System.out.println("Coefficients: "
+                   + lrModel.coefficients() + " Intercept: " + lrModel.intercept());
+
+// We can also use the multinomial family for binary classification
+LogisticRegression mlr = new LogisticRegression()
+    .setMaxIter(10)
+    .setRegParam(0.3)
+    .setElasticNetParam(0.8)
+    .setFamily("multinomial");
+
+// Fit the model
+LogisticRegressionModel mlrModel = mlr.fit(training);
+
+// Print the coefficients and intercepts for logistic regression with multinomial family
+System.out.println("Multinomial coefficients: " + lrModel.coefficientMatrix()
+                   + "\nMultinomial intercepts: " + mlrModel.interceptVector());
+~~~
+
+`spark.ml`的逻辑回归实现也支持从训练集中提取出模型的摘要。请注意，在 LogisticRegressionSummary 中存储为 DataFrame 的预测和指标带有 @transient 注释，因此仅在驱动程序上可用。
+
+LogisticRegressionTrainingSummary 提供 LogisticRegressionModel 的摘要。 在二元分类的情况下，某些额外的指标是可用的，例如 ROC 曲线。 可以通过 binarySummary 方法访问二进制摘要。 请参阅 BinaryLogisticRegressionTrainingSummary。
+
+继续前面的例子：
+
+~~~java
+import org.apache.spark.ml.classification.BinaryLogisticRegressionTrainingSummary;
+import org.apache.spark.ml.classification.LogisticRegression;
+import org.apache.spark.ml.classification.LogisticRegressionModel;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.functions;
+
+// Extract the summary from the returned LogisticRegressionModel instance trained in the earlier
+// example
+BinaryLogisticRegressionTrainingSummary trainingSummary = lrModel.binarySummary();
+
+// Obtain the loss per iteration.
+double[] objectiveHistory = trainingSummary.objectiveHistory();
+for (double lossPerIteration : objectiveHistory) {
+    System.out.println(lossPerIteration);
+}
+
+// Obtain the receiver-operating characteristic as a dataframe and areaUnderROC.
+Dataset<Row> roc = trainingSummary.roc();
+roc.show();
+roc.select("FPR").show();
+System.out.println(trainingSummary.areaUnderROC());
+
+// Get the threshold corresponding to the maximum F-Measure and rerun LogisticRegression with
+// this selected threshold.
+Dataset<Row> fMeasure = trainingSummary.fMeasureByThreshold();
+double maxFMeasure = fMeasure.select(functions.max("F-Measure")).head().getDouble(0);
+double bestThreshold = fMeasure.where(fMeasure.col("F-Measure").equalTo(maxFMeasure))
+    .select("threshold").head().getDouble(0);
+lrModel.setThreshold(bestThreshold);
+~~~
+
+##### 多项逻辑回归
+
+通过多项逻辑 (softmax) 回归支持多类分类。 在多项逻辑回归中，该算法生成 $K$ 组系数，或维度为 $K\times J$ 的矩阵，其中 $K$ 是结果类别的数量，$J$ 是特征的数量。 如果算法符合截距项，则长度为 $K$ 的截距向量可用。
+
+> 多项式系数可用作 `coefficientMatrix`，截距可用作 `interceptVector`。
+>
+> 不支持使用多项族训练的逻辑回归模型的 `coefficient` 和 `intercept` 方法。 改用 `coefficientMatrix` 和 `interceptVector`。
+
+结果类 $k\in 1,2,\dots,K$ 的条件概率使用 softmax 函数建模。
+$$
+P(Y=k|X,\beta_k,\beta_{0k}) = \frac{e^{\beta_k X}+\beta_{0k}}{\sum^{K-1}_{k'=0}e^{\beta_{k'}\cdot X + \beta_{0k'}}}
+$$
+我们使用多项响应模型最小化加权负对数似然，并使用弹性网络惩罚来控制过度拟合。
+$$
+\min_{\beta,\beta_0} - [\sum^L_{i=1} \omega_i \cdot \log P(Y=y_i|X_i)] + \lambda[\frac{1}{2}(1-\alpha)||\beta||^2_2 + \alpha||\beta||_1]
+$$
+以下示例展示了如何使用弹性网络正则化训练多类逻辑回归模型，以及提取多类训练摘要以评估模型。
+
+~~~java
+import org.apache.spark.ml.classification.LogisticRegression;
+import org.apache.spark.ml.classification.LogisticRegressionModel;
+import org.apache.spark.ml.classification.LogisticRegressionTrainingSummary;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.SparkSession;
+
+// Load training data
+Dataset<Row> training = spark.read().format("libsvm")
+    .load("data/mllib/sample_multiclass_classification_data.txt");
+
+LogisticRegression lr = new LogisticRegression()
+    .setMaxIter(10)
+    .setRegParam(0.3)
+    .setElasticNetParam(0.8);
+
+// Fit the model
+LogisticRegressionModel lrModel = lr.fit(training);
+
+// Print the coefficients and intercept for multinomial logistic regression
+System.out.println("Coefficients: \n"
+                   + lrModel.coefficientMatrix() + " \nIntercept: " + lrModel.interceptVector());
+LogisticRegressionTrainingSummary trainingSummary = lrModel.summary();
+
+// Obtain the loss per iteration.
+double[] objectiveHistory = trainingSummary.objectiveHistory();
+for (double lossPerIteration : objectiveHistory) {
+    System.out.println(lossPerIteration);
+}
+
+// for multiclass, we can inspect metrics on a per-label basis
+System.out.println("False positive rate by label:");
+int i = 0;
+double[] fprLabel = trainingSummary.falsePositiveRateByLabel();
+for (double fpr : fprLabel) {
+    System.out.println("label " + i + ": " + fpr);
+    i++;
+}
+
+System.out.println("True positive rate by label:");
+i = 0;
+double[] tprLabel = trainingSummary.truePositiveRateByLabel();
+for (double tpr : tprLabel) {
+    System.out.println("label " + i + ": " + tpr);
+    i++;
+}
+
+System.out.println("Precision by label:");
+i = 0;
+double[] precLabel = trainingSummary.precisionByLabel();
+for (double prec : precLabel) {
+    System.out.println("label " + i + ": " + prec);
+    i++;
+}
+
+System.out.println("Recall by label:");
+i = 0;
+double[] recLabel = trainingSummary.recallByLabel();
+for (double rec : recLabel) {
+    System.out.println("label " + i + ": " + rec);
+    i++;
+}
+
+System.out.println("F-measure by label:");
+i = 0;
+double[] fLabel = trainingSummary.fMeasureByLabel();
+for (double f : fLabel) {
+    System.out.println("label " + i + ": " + f);
+    i++;
+}
+
+double accuracy = trainingSummary.accuracy();
+double falsePositiveRate = trainingSummary.weightedFalsePositiveRate();
+double truePositiveRate = trainingSummary.weightedTruePositiveRate();
+double fMeasure = trainingSummary.weightedFMeasure();
+double precision = trainingSummary.weightedPrecision();
+double recall = trainingSummary.weightedRecall();
+System.out.println("Accuracy: " + accuracy);
+System.out.println("FPR: " + falsePositiveRate);
+System.out.println("TPR: " + truePositiveRate);
+System.out.println("F-measure: " + fMeasure);
+System.out.println("Precision: " + precision);
+System.out.println("Recall: " + recall);
+~~~
+
+### 1.5.2 回归
+
+### 1.5.3 线性方法
+
+我们实现了流行的线性方法，例如逻辑回归和具有 L1 或 L2 正则化的线性最小二乘法。有关实现和调优的详细信息，请参阅基于 RDD 的 API 的线性方法指南；这些信息仍然具有相关性。
+
+我们还纳入了一个用于弹性网络的 DataFrame API，即L1 和 L2 正则化的混合（Zou 等人提出的《通过弹性网络的正则化和变量选择》）。在数学上，它被定义为 L1 和 L2 正则化项的凸组合：
+
+$$
+\alpha(\lambda||w||_1) + (1+\alpha)(\frac{\lambda}{2}||w||^2_2), \qquad \alpha\in[0,1],\lambda\ge 0
+$$
+通过适当设置 α，弹性网络同时包含 L1 和 L2 正则化作为特殊情况。例如，如果在弹性网络参数 α 设置为 1 的情况下训练线性回归模型，则它等效于 Lasso 模型。另一方面，如果 α 设置为 0，则训练模型将简化为岭回归模型。我们使用弹性网络正则化为线性回归和逻辑回归实现了流水线 API。
+
+## 1.6 聚类
+
+## 1.7 协同过滤
+
+## 1.8 频繁模式挖掘
+
+## 1.9 ML 调优：模型选择和超参数调优
+
+本节介绍如何使用 MLlib 的工具来调整 ML 算法和流水线。 内置的交叉验证和其他工具使用户可以优化算法和流水线中的超参数。
+
+### 1.9.1 模型选择（或超参数调优）
+
