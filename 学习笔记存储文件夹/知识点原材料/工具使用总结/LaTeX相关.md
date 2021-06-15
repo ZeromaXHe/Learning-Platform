@@ -126,34 +126,38 @@ https://blog.csdn.net/young951023/article/details/79601664
 
 ## 关系符号
 
-| 名称     | 语法                                      | 效果                                      |
-| -------- | :---------------------------------------- | ----------------------------------------- |
-| 相似     | `\Delta ABC\sim\Delta XYZ`                | $\Delta ABC\sim\Delta XYZ$                |
-| 约等于   | `\sqrt{3}\approx1.732050808\ldots`        | $\sqrt{3}\approx1.732050808\ldots$        |
-|          | \simeq                                    | $\simeq$                                  |
-| 全等     | \cong                                     | $\cong$                                   |
-|          | \dot=                                     | $\dot=$                                   |
-|          | `\ggg`                                    | $\ggg$                                    |
-| 远大于   | `\gg`                                     | $\gg$                                     |
-| 大于     | `>`                                       | $>$                                       |
-| 大于等于 | `\ge`                                     | $\ge$                                     |
-|          | `\geqq`                                   | $\geqq$                                   |
-| 等于     | `=`                                       | $=$                                       |
-|          | `\gtrless`                                | $\gtrless$                                |
-| 小于等于 | `\leq`                                    | $\leq$                                    |
-|          | `\leqq`                                   | $\leqq$                                   |
-| 小于     | `<`                                       | $<$                                       |
-| 远小于   | `\ll`                                     | $\ll$                                     |
-|          | `\lll`                                    | $\lll$                                    |
-| 恒等于   | `(x-y)^2\equiv(-x+y)^2\equiv x^2-2xy+y^2` | $(x-y)^2\equiv(-x+y)^2\equiv x^2-2xy+y^2$ |
-|          | x\not\equiv N                             | $x\not\equiv N$                           |
-|          | x\ne A                                    | $x\ne A$                                  |
-|          | x\neq C                                   | $x\neq C$                                 |
-|          | t\propto v                                | $t\propto v$                              |
-|          | \pm                                       | $\pm$                                     |
-|          | \mp                                       | $\mp$                                     |
-| 因为     | `\because`                                | $\because$                                |
-| 所以     | `\therefore`                              | $\therefore$                              |
+| 名称         | 语法                                      | 效果                                      |
+| ------------ | :---------------------------------------- | ----------------------------------------- |
+| 相似         | `\Delta ABC\sim\Delta XYZ`                | $\Delta ABC\sim\Delta XYZ$                |
+| 约等于       | `\sqrt{3}\approx1.732050808\ldots`        | $\sqrt{3}\approx1.732050808\ldots$        |
+|              | \simeq                                    | $\simeq$                                  |
+| 全等         | \cong                                     | $\cong$                                   |
+|              | \dot=                                     | $\dot=$                                   |
+| 偏序小于     | \prec                                     | $\prec$                                   |
+| 偏序小于等于 | \preceq                                   | $\preceq$                                 |
+| 偏序大于     | \succ                                     | $\succ$                                   |
+| 偏序大于等于 | \succeq                                   | $\succeq$                                 |
+|              | `\ggg`                                    | $\ggg$                                    |
+| 远大于       | `\gg`                                     | $\gg$                                     |
+| 大于         | `>`                                       | $>$                                       |
+| 大于等于     | `\ge`                                     | $\ge$                                     |
+|              | `\geqq`                                   | $\geqq$                                   |
+| 等于         | `=`                                       | $=$                                       |
+|              | `\gtrless`                                | $\gtrless$                                |
+| 小于等于     | `\leq`                                    | $\leq$                                    |
+|              | `\leqq`                                   | $\leqq$                                   |
+| 小于         | `<`                                       | $<$                                       |
+| 远小于       | `\ll`                                     | $\ll$                                     |
+|              | `\lll`                                    | $\lll$                                    |
+| 恒等于       | `(x-y)^2\equiv(-x+y)^2\equiv x^2-2xy+y^2` | $(x-y)^2\equiv(-x+y)^2\equiv x^2-2xy+y^2$ |
+|              | x\not\equiv N                             | $x\not\equiv N$                           |
+|              | x\ne A                                    | $x\ne A$                                  |
+|              | x\neq C                                   | $x\neq C$                                 |
+|              | t\propto v                                | $t\propto v$                              |
+|              | \pm                                       | $\pm$                                     |
+|              | \mp                                       | $\mp$                                     |
+| 因为         | `\because`                                | $\because$                                |
+| 所以         | `\therefore`                              | $\therefore$                              |
 
 ## 几何符号
 

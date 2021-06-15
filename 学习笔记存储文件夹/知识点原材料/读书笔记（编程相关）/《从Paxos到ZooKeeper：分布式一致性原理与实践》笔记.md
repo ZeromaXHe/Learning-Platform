@@ -928,3 +928,213 @@ ZAB协议的消息广播过程使用的是一个原子广播协议，类似于�
 
 ### 4.2.3 深入ZAB协议
 
+在4.2.2节中，我们已经基本介绍了ZAB协议的大体内容以及在实际运行过程中消息广播和崩溃恢复这两个基本的模式，下面将从系统模型、问题描述、算法描述和运行分析四方面来深入了解ZAB协议。
+
+#### 系统模型
+
+通常在一个由一组进程 $\prod = {P_1,P_2,\dots,P_n}$组成的分布式系统中，其每一个进程都具有各自的存储设备，各进程之间通过相互通信来实现消息的传递。一般的，在这样的一个分布式系统中，每一个进程都随时有可能出现一次或多次的崩溃退出，当然，这些进程会在恢复之后再次加入到进程组$\prod$中去。如果一个进程正常工作，那么我们称该进程处于UP状态；如果一个进程崩溃了，那么我们称其处于DOWN状态。事实上，当集群中存在过半的处于UP状态的进程组成一个进程子集之后，就可以进行正常的消息广播了。我们将这样的一个进程子集Quorum（下文中使用“Q”来表示），并假设这样的Q已经存在，其满足：
+$$
+\Lambda \quad \forall Q, \quad Q\subseteq \prod \\
+\Lambda \quad \forall Q_1和Q_2, \quad Q_1\cap Q_2 \ne \varnothing
+$$
+上述集合关系式表示，存在这样的一个进程子集Q，其必定是进程组$\prod$的子集；同时，存在任意两个进程子集$Q_1$和$Q_2$，其交集必定非空。
+
+我们使用$P_i$和$P_j$来分别表示进程组$\prod$中的两个不同进程，使用$C_{ij}$来表示进程$P_i$和$P_j$之间的网络通信通道，其满足如下两个基本特性。
+
+**完整性（Integrity）**
+
+进程$P_j$如果收到来自进程$P_i$的消息m，那么进程$P_i$一定确实发送了消息m。
+
+**前置性（Prefix）**
+
+如果进程$P_j$收到了消息m，那么存在这样的消息m'：如果消息m'是消息m的前置消息，那么$P_j$务必先接收到消息m'，然后再接收到消息m。我们将存在这种前置性关系的两个消息表示为$m'\prec m$。前置性是整个协议设计中最关键的一点，由于每一个消息都有可能是基于之前的消息来进行的，因此所有的消息都必须按照严格的先后顺序来进行处理。
+
+#### 问题描述
+
+在了解了ZAB协议所针对应用的系统模型后，我们再来看看其所要解决的实际分布式问题。再前文的介绍中，我们已经了解到ZooKeeper是一个高可用的分布式协调服务，在雅虎的很多大型系统上得到应用。这类应用有个共同的特点，即通常都存在大量的客户端进程，并且都依赖ZooKeeper来完成一系列诸如可靠的配置存储和运行时状态记录等分布式协调工作。鉴于这些大型应用对ZooKeeper的依赖，因此ZooKeeper必须具备高吞吐和低延迟的特性，并且能够很好地在高并发情况下完成分布式数据地一致性处理，同时能够优雅地处理运行时故障，并具备快速地从故障中恢复过来的能力。
+
+ZAB协议是整个ZooKeeper框架的核心所在，其规定了任何时候都需要保证只有一个主进程负责进行消息广播，而如果主进程崩溃了，就需要选举出一个新的主进程。主进程的选举机制和消息广播机制是紧密相关的。随着时间的推移，会出现无限多个主线程并构成一个主进程序列：$P_1,P_2,\dots,P_{e-1},P_e$，其中$P_e\in \prod$，e表示主进程序列号，也被称作主进程周期。对于这个主进程序列上的任意两个主进程来说，如果e小于e'，那么我们会发生崩溃然后再次恢复，因此会出现这样的情况：存在这样的$P_e$和$P_{e'}$，它们本质上是同一个进程，只是处于不同的周期中而已。
+
+**主进程周期**
+
+为了保证主进程每次广播出来的事务消息都是一致的，我们必须确保ZAB协议只有在充分完成崩溃恢复阶段之后，新的主进程才可以开始生成新的事物消息广播。为了实现这个目的，我们假设各个进程都实现了类似于ready(e)这样的一个函数调用，在运行过程中，ZAB协议能够非常明确地告知上层系统（指主进程和其他副本进程）是否可以开始进行事务消息的广播，同时，在调用ready(e)函数之后，ZAB还需要为当前主进程设置一个实例值。实例值用于唯一标识当前主进程的周期，在进行消息广播的时候，主进程使用该实例值来设置事务标识中的epoch字段——当然，ZAB需要保证实例值在不同的主进程周期中是全局唯一的。如果一个主进程周期e早于另一个主进程周期e'，那么将其表示为$e\prec e'$。
+
+**事务**
+
+我们假设各个进程都存在一个类似于transaction(v, z)这样的函数调用，来实现主进程对状态变更的广播。主进程每次对transaction(v, z)函数的调用都包含了两个字段：事务内容v和事务标识z，而每一个事务标识z=<e, c>也包含两个组成部分，前者是主进程周期e，后者是当前主进程周期内的事务计数c。我们使用epoch(z)来表示一个事务标识中的主进程周期epoch，使用counter(z)来表示事务标识中的事务计数。
+
+针对每一个新的事务，主进程都会首先将事务计数c递增。在实际运行过程中，如果一个事务标识z优先于另一个事务标识z'，那么就有两种情况：一种情况是主进程周期不同，即epoch(z) < epoch(z')；另一种情况则是主进程周期一致，但是事务计数不同，即epoch(z) = epoch(z') 且 counter(z) < counter(z')，无论哪种情况，均使用 $z \prec z'$来表示。
+
+#### 算法描述
+
+下面我们将从算法描述角度来深入讲解ZAB协议的内部原理。整个ZAB协议主要包括消息广播和崩溃恢复两个过程，进一步可以细分为三个阶段，分别是发现（Discovery）、同步（Synchronization）和广播（Broadcast）阶段。组成ZAB协议的每一个分布式进程，会循环地执行这三个阶段，我们将这样一个循环称为一个主进程周期。
+
+为了更好地对ZAB协议各阶段的算法流程进行描述，我们首先定义一些专有标识和术语，如表4-1所示。
+
+| 术语名           | 说明                                                         |
+| ---------------- | ------------------------------------------------------------ |
+| $F_{\cdot p}$    | Follower f 处理过的最后一个事务Proposal                      |
+| $F_{\cdot zxid}$ | Follower f 处理过的历史事务Proposal中最后一个事务Proposal的事务标识ZXID |
+| $h_f$            | 每一个Follower f通常都已经处理（接受）了不少事务Proposal，并且会有一个针对已经处理过的事务的集合，将其表示为$h_f$，表示Follower f 已经处理过的事务序列 |
+| $I_e$            | 初始化历史记录，在某一个主进程周期epoch e中，当准Leader完成阶段一之后，此时它的$h_f$就被标记为$I_e$。关于ZAB协议的阶段一过程，将在下文中做详细讲解。 |
+
+下面我们就从发现、同步和广播这三个阶段展开来讲解ZAB协议的内部原理。
+
+**阶段一：发现**
+
+阶段一主要就是Leader选举过程，用于在多个分布式进程中选举出主进程，准Leader L和 Follower F的工作流程分别如下。
+
+*步骤F.1.1*
+
+Follower F 将自己最后接受的事务Proposal的epoch值$CEPOCH(F_{\cdot p})$ 发送给准Leader L。
+
+*步骤L.1.1*
+
+当接受到来自过半Follower的 $CEPOCH(F_{\cdot p})$ 消息后，准Leader L会生成 NEWEPOCH(e') 消息给这些过半的Follower。
+
+关于这个epoch值e'，准Leader L会从所有接收到的 $CEPOCH(F_{\cdot p})$ 消息中选取出最大的 epoch 值，然后对其进行加1操作，即为$e'$。
+
+*步骤F.1.2*
+
+当Follower接收到来自准Leader L的 NEWEPOCH(e') 消息后，如果其检测到当前的 $CEPOCH(F_{\cdot p})$ 值小于e'，那么就会将 $CEPOCH(F_{\cdot p})$ 赋值为 e'，同时向这个准Leader L 反馈 Ack 消息。在这个反馈消息（$ACK-E(F_{\cdot p}, h_f)$）中，包含了当前该Follower的epoch $CEPOCH(F_{\cdot p})$，以及该Follower的历史事务Proposal集合：$h_f$。
+
+
+
+当Leader L接收到来自过半Follow的确认消息Ack之后，Leader L就会从这过半服务器中选取出一个Follower F，并使用其作为初始化事务集合 $I_{e'}$。
+
+关于这个Follower F的选取，对于Quorum中其他任意一个Follower F'，F需要满足以下两个条件中的一个：
+$$
+CEPOCH(F'_{\cdot p}) \lt CEPOCH(F_{\cdot p}) \\
+(CEPOCH(F'_{\cdot p}) = CEPOCH(F_{\cdot p})) \& (F'_{\cdot zxid} \prec F_{\cdot zxid} 或 F'_{\cdot zxid} = F_{\cdot zxid})
+$$
+至此，ZAB协议完成阶段一的工作流程。
+
+**阶段二：同步**
+
+在完成发现流程之后，就进入了同步阶段。在这一阶段中，Leader L 和 Follower F的工作流程分别如下。
+
+*步骤L.2.1*
+
+Leader L 会将 e' 和 le' 以 NEWLEADER(e', $I_{e'}$)消息的形式发送给所有Quorum中的Follower。
+
+*步骤F.2.1*
+
+当Follower接收到来自Leader L 的 NEWLEADER(e', $I_{e'}$) 消息后，如果 Follower 发现 $CEPOCH(F_{\cdot p}) \ne e'$，那么直接进入下一轮循环，因为此时Follower发现自己还在上一轮，或者更上轮，无法参与本轮的同步。
+
+如果 CEPOCH($F_{\cdot p}$) = e'，那么Follower就会执行事务应用操作。具体的，对于每一个事务Proposal：$<v, z>\in I_{e'}$，Follower都会接受 <e', <v, z>>。最后，Follower会反馈给Leader，表面自己已经接受并处理了所有$I_{e'}$中的事务Proposal。
+
+*步骤L.2.2*
+
+当Leader接收到来自过半Follower针对NEWLEADER(e', $I_{e'}$)的反馈消息后，就会向所有的Follower发送Commit消息。至此Leader完成阶段二。
+
+*步骤F.2.2*
+
+当Follower收到来自Leader的Commit消息后，就会依此处理并提交所有在$I_{e'}$ 中未处理的事务。至此Follower完成阶段二。
+
+**阶段三：广播**
+
+完成同步阶段之后，ZAB协议就可以正式开始接受客户端新的事务请求，并进行消息广播流程。
+
+*步骤L.3.1*
+
+Leader L 接收到客户端新的事物请求后，会生成对应的事务Proposal，并根据ZXID的顺序向所有Follower发送提案<e', <v, z>>，其中 epoch(z) = e'。
+
+*步骤F.3.1*
+
+Follower根据消息接收的先后次序来处理这些来自Leader的事务Proposal，并将他们追加到$h_f$中去，之后再反馈给Leader。
+
+*步骤L.3.2*
+
+当Leader接收到来自过半Follower针对事务Proposal <e', <v, z>>的 Ack 消息后，就会发送Commit <e', <v, z>> 消息给所有的Follower，要求它们进行事务的提交。
+
+*步骤F.3.2*
+
+当Follower F接收到来自Leader 的 Commit <e', <v, z>> 消息后，就会开始提交事务 Proposal <e', <v, z>>。 需要注意的是，此时该Follower F 必定已经提交了事务 Proposal <v', z'>，其中$<v', z'>\in h_f, z'\prec z$。
+
+以上就是整个ZAB协议的三个核心工作流程，如图4-5所示是在整个过程中各进程之间的消息收发情况，各消息说明依此如下：
+
+CEPOCH：Follower进程向准Leader发送自己处理过的最后一个事务Proposal的epoch值。
+
+NEWEPOCH：准Leader进程根据接收的各进程的epoch，来生成新一轮周期的epoch值。
+
+ACK-E：Follower进程反馈准Leader进程发来的NEWEPOCH消息。
+
+NEWLEADER：准Leader进程确立自己的领导地位，并发送NEWLEADER消息给各进程。
+
+ACK-LD：Follower进程反馈Leader进程发来的NEWLEADER消息。
+
+COMMIT-LD：要求Follower进程提交相应的历史事务Proposal。
+
+PROPOSE：Leader进程生成一个针对客户端请求的Proposal。
+
+ACK：Follower进程反馈Leader进程发来的PROPOSAL消息。
+
+COMMIT：Leader发送COMMIT消息，要求所有进程提交事务PROPOSE。
+
+在正常运行过程中，ZAB协议会一直运行于阶段三反复地进行消息广播流程。如果出现Leader崩溃或其他原因导致Leader缺失，那么此时ZAB协议会再次进入阶段一，重新选举新的Leader。
+
+~~~mermaid
+sequenceDiagram
+	participant Follower1
+	participant Leader
+	participant Follower2
+	alt 发现
+        Follower1 ->> Leader: CEPOCH
+        Follower2 ->> Leader: CEPOCH
+        Leader -->> Follower1: NEWEPOCH
+        Leader -->> Follower2: NEWEPOCH
+		Follower2 ->> Leader: ACK-E
+		Follower1 ->> Leader: ACK-E
+	end
+	
+	alt 同步
+		Leader -->> Follower2: NEWLEADER
+        Leader -->> Follower1: NEWLEADER
+        Follower1 ->> Leader: ACK-LD
+		Follower2 ->> Leader: ACK-LD
+		Leader -->> Follower1: COMMIT-LD
+        Leader -->> Follower2: COMMIT-LD
+	end
+	
+	alt 广播
+		Leader -->> Follower1: PROPOSE
+        Leader -->> Follower2: PROPOSE
+        Follower1 ->> Leader: ACK
+        Leader -->> Follower1: COMMIT
+		Follower2 ->> Leader: ACK
+        Leader -->> Follower2: COMMIT
+	end
+~~~
+
+#### 运行分析
+
+在ZAB协议的设计中，每一个进程都有可能处于以下三种状态之一。
+
+- **LOOKING**：Leader选举阶段
+- **FOLLOWING**：Follower服务器和Leader保持同步状态
+- **LEADING**：Leader服务器作为主进程领导状态
+
+组成ZAB协议的所有进程启动的时候，其初始化状态都是LOOKING状态，此时进程组中不存在Leader。所有处于这种状态的进程，都会试图去选举出一个新的Leader。随后，如果进程发现已经选举出新的Leader了，那么它就会马上切换到FOLLOWING状态，并开始和Leader保持同步。这里，我们将处于FOLLOWING状态的进程称为Follower，将处于LEADING状态的进程称为Leader。考虑到Leader进程随时会挂掉，当检测出Leader已经崩溃或者是放弃了领导地位时，其余的Follower进程就会转换到LOOKING状态，并开始进行新一轮的Leader选举。因此在ZAB协议运行过程中，每个进程都会在LEADING、FOLLOWING和LOOKING状态之间不断地转换。
+
+Leader的选举过程发送在前面两个阶段。图4-5展示了在一次Leader选举过程中，各进程之间的消息发送与接收情况。需要注意的是，只有在完成了阶段二，即完成各进程之间的数据同步之后，准Leader进程才能真正成为新的主进程周期中的Leader。具体的，我们将一个可用的Leader定义如下：
+
+> 如果一个准Leader $L_e$ 接收到来自过半的Follower进程针对$L_e$的NEWLEADER(e, $I_e$)反馈消息，那么$L_e$就成为了周期 e 的Leader。
+
+完成Leader选举以及数据同步之后，ZAB协议就进入了原子广播阶段。在这一阶段中，Leader会以队列的形式为每一个与自己保持同步的Follower创建一个操作队列。同一时刻，一个Follower只能和一个Leader保持同步，Leader进程与所有的Follower之间都通过心跳检测机制来感知彼此的情况。如果Leader能够在超时时间内正常收到心跳检测，那么Follower就会一直与该Leader保持连接。而如果在指定的超时时间内Leader无法从过半的Follower进程那里接收到心跳检测，或者是TCP连接本身断开了，那么Leader就会终止对当前周期的领导，并转换到LOOKING状态，所有的Follower也会选择放弃这个Leader，同时转换到LOOKING状态。之后，所有进程就会开始新一轮的Leader选举，并在选举产生新的Leader之后开始新一轮的主进程周期。
+
+### 4.2.4 ZAB和Paxos算法的联系与区别
+
+ZAB协议并不是Paxos算法的一个典型实现，在讲解ZAB和Paxos之间的区别之前，我们首先来看下两者的联系。
+
+- 两者都存在一个类似于Leader进程的角色，由其负责协调多个Follower进程的运行。
+- Leader进程都会等待超过半数的Follower做出正确的反馈后，才会将一个提案进行提交。
+- 在ZAB协议中，每个Proposal中都包含了一个epoch值，用来代表当前的Leader周期，在Paxos算法中，同样存在这样的一个标识，只是名字变成了Ballot。
+
+在Paxos算法中，一个新选举产生的主进程会进行两个阶段的工作。第一阶段被称为读阶段，在这个阶段中，这个新的主进程会通过和所有其他进程进行通信的方式来收集上一个主进程提出的提案，并将它们提交。第二阶段被称为写阶段，在这个阶段，当前主进程开始提出它自己的提案。在Paxos算法设计的基础上，ZAB协议额外添加了一个同步阶段。在同步阶段之前，ZAB协议也存在一个和Paxos算法中的读阶段非常类似的过程，称为发现（Discovery）阶段。在同步阶段中，新的Leader会确保存在过半的Follower已经提交了之前Leader周期中的所有事务Proposal。这一同步阶段的引入，能够有效地保证Leader在新的周期中提出事务Proposal之前，所有的进程都已经完成了对之前所有事务Proposal的提交。一旦完成同步阶段之后，那么ZAB就会执行和Paxos算法类似的写阶段。
+
+总的来讲，ZAB协议和Paxos算法的本质区别在于，两者的设计目标不太一样。ZAB协议主要用于构建一个高可用的分布式数据主备系统，例如ZooKeeper，而Paxos算法则是用于构建一个分布式的一致性状态机系统。
+
+# 第5章 使用ZooKeeper
+
+# 第6章 ZooKeeper的典型应用场景
+
