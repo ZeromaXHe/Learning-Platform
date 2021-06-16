@@ -1,0 +1,418 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+
+	<Properties>
+		<Property  name="LOG_HOME">D:/logs/log4j2Test</Property >
+		<!-- <Property  name="LOG_HOME">G:\Alex_tool\apache-tomcat-8.0.39\logs</Property > -->
+   </Properties>
+	<appenders>
+		<Console name="Console" target="SYSTEM_OUT">
+			<PatternLayout
+				pattern="%date{yyyy-MM-dd HH:mm:ss.SSS}|%msg%n" />
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1"
+					modulate="true" />
+				<SizeBasedTriggeringPolicy size="500 MB" />  
+			</Policies>
+			<DefaultRolloverStrategy>
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+					<IfLastModified age="2s" />
+				</Delete>
+			</DefaultRolloverStrategy>
+		</Console>
+		<!-- ad request business 请求日志 -->
+		<RollingRandomAccessFile name="business"
+			fileName="${LOG_HOME}/ADR_ALPHA_BUSINESS_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_BUSINESS_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
+			<PatternLayout
+				pattern="%date{yyyy-MM-dd HH:mm:ss.SSS}|%msg%n" />
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1"
+					modulate="true" />
+				<!-- <SizeBasedTriggeringPolicy size="500 MB" />   -->
+			</Policies>
+			<DefaultRolloverStrategy>
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+					<IfLastModified age="3s" />
+				</Delete>
+			</DefaultRolloverStrategy>
+		</RollingRandomAccessFile>
+		<RollingRandomAccessFile name="dis"
+			fileName="${LOG_HOME}/ADR_ALPHA_DIS_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_DIS_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
+			<PatternLayout
+				pattern="%date{yyyy-MM-dd HH:mm:ss.SSS}|%msg%n" />
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1"
+					modulate="true" />
+				<!-- <SizeBasedTriggeringPolicy size="500 MB" />   -->
+			</Policies>
+			<DefaultRolloverStrategy>
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+					<IfLastModified age="4s" />
+				</Delete>
+			</DefaultRolloverStrategy>
+		</RollingRandomAccessFile>
+		<RollingRandomAccessFile name="proxy_dis"
+			fileName="${LOG_HOME}/ADR_ALPHA_PROXY_DIS_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_PROXY_DIS_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
+			<PatternLayout
+				pattern="%date{yyyy-MM-dd HH:mm:ss.SSS}|%msg%n" />
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1"
+					modulate="true" />
+				<!-- <SizeBasedTriggeringPolicy size="500 MB" />   -->
+			</Policies>
+			<DefaultRolloverStrategy>
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+					<IfLastModified age="5s" />
+				</Delete>
+			</DefaultRolloverStrategy>
+		</RollingRandomAccessFile>
+		<RollingRandomAccessFile name="filter"
+			fileName="${LOG_HOME}/ADR_ALPHA_FILT_SERVER_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_FILT_SERVER_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
+			<PatternLayout
+				pattern="%date{yyyy-MM-dd HH:mm:ss.SSS}|%msg%n" />
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1"
+					modulate="true" />
+				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
+			</Policies>
+			<DefaultRolloverStrategy>
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+					<IfLastModified age="6s" />
+				</Delete>
+			</DefaultRolloverStrategy>
+		</RollingRandomAccessFile>
+		<RollingRandomAccessFile name="prob"
+			fileName="${LOG_HOME}/ADR_ALPHA_PROB_SERVER_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_PROB_SERVER_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
+			<PatternLayout
+				pattern="%date{yyyy-MM-dd HH:mm:ss.SSS}|%msg%n" />
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1"
+					modulate="true" />
+				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
+			</Policies>
+			<DefaultRolloverStrategy>
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+					<IfLastModified age="7s" />
+				</Delete>
+			</DefaultRolloverStrategy>
+		</RollingRandomAccessFile>
+		<RollingRandomAccessFile name="task_nonad"
+			fileName="${LOG_HOME}/ADR_ALPHA_TASK_NONAD_SERVER_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_TASK_NONAD_SERVER_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
+			<PatternLayout
+				pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n" />
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1"
+					modulate="true" />
+				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
+			</Policies>
+			<DefaultRolloverStrategy>
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+					<IfLastModified age="8s" />
+				</Delete>
+			</DefaultRolloverStrategy>
+		</RollingRandomAccessFile>
+		<RollingRandomAccessFile name="task_ad_id"
+			fileName="${LOG_HOME}/ADR_ALPHA_TASK_AD_ID_SERVER_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_TASK_AD_ID_SERVER_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
+			<PatternLayout
+				pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n" />
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1"
+					modulate="true" />
+				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
+			</Policies>
+			<DefaultRolloverStrategy>
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+					<IfLastModified age="9s" />
+				</Delete>
+			</DefaultRolloverStrategy>
+		</RollingRandomAccessFile>
+		<RollingRandomAccessFile name="task_binding"
+			fileName="${LOG_HOME}/ADR_ALPHA_TASK_BINDING_SERVER_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_TASK_BINDING_SERVER_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
+			<PatternLayout
+				pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n"/>
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1"
+					modulate="true" />
+				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
+			</Policies>
+			<DefaultRolloverStrategy>
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+					<IfLastModified age="10s" />
+				</Delete>
+			</DefaultRolloverStrategy>
+		</RollingRandomAccessFile>
+		<RollingRandomAccessFile name="task_tags"
+			fileName="${LOG_HOME}/ADR_ALPHA_TASK_TAGS_SERVER_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_TASK_TAGS_SERVER_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
+			<PatternLayout
+				pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n" />
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1"
+					modulate="true" />
+				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
+			</Policies>
+			<DefaultRolloverStrategy>
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+					<IfLastModified age="11s" />
+				</Delete>
+			</DefaultRolloverStrategy>
+		</RollingRandomAccessFile>
+		<RollingRandomAccessFile name="task_ad_content"
+			fileName="${LOG_HOME}/ADR_ALPHA_TASK_AD_CONTENTS_SERVER_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_TASK_AD_CONTENTS_SERVER_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
+			<PatternLayout
+				pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n" />
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1"
+					modulate="true" />
+				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
+			</Policies>
+			<DefaultRolloverStrategy>
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+					<IfLastModified age="12s" />
+				</Delete>
+			</DefaultRolloverStrategy>
+		</RollingRandomAccessFile>
+		<!--statistic logs third side need -->
+		<RollingRandomAccessFile name="img_replace"
+			fileName="${LOG_HOME}/rtb_img_replace.log" filePattern="${LOG_HOME}/rtb_img_replace.%d{yyyy-MM-dd-HH-mm-ss}.log">
+			<PatternLayout
+					pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n" />
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1"
+					modulate="true" />
+				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
+			</Policies>
+			<DefaultRolloverStrategy>
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+					<IfLastModified age="13s" />
+				</Delete>
+			</DefaultRolloverStrategy>
+		</RollingRandomAccessFile>
+		<RollingRandomAccessFile name="adr_self_request"
+			fileName="${LOG_HOME}/AdRecommend_self_request.log" filePattern="${LOG_HOME}/AdRecommend_self_request_%d{yyyy-MM-dd-HH-mm-ss}.log">
+			<PatternLayout
+					pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n" />
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1"
+					modulate="true" />
+				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
+			</Policies>
+			<DefaultRolloverStrategy>
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+					<IfLastModified age="14s" />
+				</Delete>
+			</DefaultRolloverStrategy>
+		</RollingRandomAccessFile>
+		<RollingRandomAccessFile name="lbs"
+			fileName="${LOG_HOME}/ADR_ALPHA_LBS_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_LBS_DAILY_%d{yyyy-MM-dd-HH-mm-ss}.log">
+			<PatternLayout
+					pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n" />
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1"
+					modulate="true" />
+				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
+			</Policies>
+			<DefaultRolloverStrategy>
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+					<IfLastModified age="15s" />
+				</Delete>
+			</DefaultRolloverStrategy>
+		</RollingRandomAccessFile>
+				<RollingRandomAccessFile name="orient"
+			fileName="${LOG_HOME}/ADR_ALPHA_ORIENT_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_ORIENT_DAILY_%d{yyyy-MM-dd-HH-mm-ss}.log">
+			<PatternLayout
+					pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n" />
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1"
+					modulate="true" />
+				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
+			</Policies>
+			<DefaultRolloverStrategy>
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+					<IfLastModified age="16s" />
+				</Delete>
+			</DefaultRolloverStrategy>
+		</RollingRandomAccessFile>
+		<!-- dsp request log -->
+				<RollingRandomAccessFile name="rtb_parallel_select"
+			fileName="${LOG_HOME}/rtb_parallel_select.log" filePattern="${LOG_HOME}/rtb_parallel_select_%d{yyyy-MM-dd-HH-mm-ss}.log">
+			<PatternLayout
+					pattern="%date{yyyy-MM-dd HH:mm:ss} %msg%n" />
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1"
+					modulate="true" />
+				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
+			</Policies>
+			<DefaultRolloverStrategy>
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+					<IfLastModified age="17s" />
+				</Delete>
+			</DefaultRolloverStrategy>
+		</RollingRandomAccessFile>
+		<RollingRandomAccessFile name="rtb_adflow"
+			fileName="${LOG_HOME}/rtb_adflow.log" filePattern="${LOG_HOME}/rtb_adflow_%d{yyyy-MM-dd-HH-mm-ss}.log">
+			<PatternLayout
+					pattern="%date{yyyy-MM-dd HH:mm:ss} %msg%n" />
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1"
+					modulate="true" />
+				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
+			</Policies>
+			<DefaultRolloverStrategy>
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+					<IfLastModified age="18s" />
+				</Delete>
+			</DefaultRolloverStrategy>
+		</RollingRandomAccessFile>
+		<RollingRandomAccessFile name="rtb_parallel_adflow"
+			fileName="${LOG_HOME}/rtb_parallel_adflow.log" filePattern="${LOG_HOME}/rtb_parallel_adflow_%d{yyyy-MM-dd-HH-mm-ss}.log">
+			<PatternLayout
+					pattern="%date{yyyy-MM-dd HH:mm:ss} %msg%n" />
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1"
+					modulate="true" />
+				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
+			</Policies>
+			<DefaultRolloverStrategy>
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+					<IfLastModified age="19s" />
+				</Delete>
+			</DefaultRolloverStrategy>
+		</RollingRandomAccessFile>
+		<RollingRandomAccessFile name="user_tags"
+			fileName="${LOG_HOME}/AdRecommend_user_tag.log" filePattern="${LOG_HOME}/AdRecommend_user_tag_%d{yyyy-MM-dd-HH-mm-ss}.log">
+			<PatternLayout
+					pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n" />
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1"
+					modulate="true" />
+				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
+			</Policies>
+			<DefaultRolloverStrategy>
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+					<IfLastModified age="20s" />
+				</Delete>
+			</DefaultRolloverStrategy>
+		</RollingRandomAccessFile>
+		<RollingRandomAccessFile name="prob_tracking"
+			fileName="${LOG_HOME}/ADR_PROB_TRACKING.log" filePattern="${LOG_HOME}/ADR_PROB_TRACKING_%d{yyyy-MM-dd-HH-mm-ss}.log">
+			<PatternLayout
+					pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n" />
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1"
+					modulate="true" />
+				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
+			</Policies>
+			<DefaultRolloverStrategy>
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+					<IfLastModified age="21s" />
+				</Delete>
+			</DefaultRolloverStrategy>
+		</RollingRandomAccessFile>
+		<RollingRandomAccessFile name="statistic"
+								 fileName="${LOG_HOME}/ADR_ALPHA_STATISTIC.log" filePattern="${LOG_HOME}/ADR_ALPHA_STATISTIC_%d{yyyy-MM-dd-HH-mm-ss}.log">
+			<PatternLayout
+					pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n" />
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1"
+										   modulate="true" />
+				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
+			</Policies>
+			<DefaultRolloverStrategy>
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+					<IfLastModified age="22s" />
+				</Delete>
+			</DefaultRolloverStrategy>
+		</RollingRandomAccessFile>
+	</appenders>
+	<loggers>
+        <logger name="org.spring" level="error" additivity="false">  
+            
+            <AppenderRef ref="business" />  
+        </logger>  
+        <logger name="org.springframework" level="error" additivity="false">  
+            
+            <AppenderRef ref="business" />  
+        </logger>  
+        <logger name="org.apache.zookeeper" level="error" additivity="false">  
+             
+            <AppenderRef ref="business" />  
+        </logger>  
+        <logger name="org.apache.thrift" level="error" additivity="false">  
+            
+            <AppenderRef ref="business" />  
+        </logger>  
+
+		<logger name="com.ocean" level="info" additivity="false" > 
+			 <AppenderRef ref="business" />  
+		</logger> 
+		<Logger name="business" level="info" additivity="false">
+			<AppenderRef ref="business" />
+		</Logger>
+		<Logger name="dis" level="info" additivity="false">
+			<AppenderRef ref="dis" />
+		</Logger>
+		<Logger name="proxy_dis" level="info" additivity="false">
+			<AppenderRef ref="proxy_dis" />
+		</Logger>
+		
+		<Logger name="filter" level="info" additivity="false">
+			<AppenderRef ref="filter" />
+		</Logger>
+		<Logger name="prob" level="info" additivity="false">
+			<AppenderRef ref="prob" />
+		</Logger>
+		<Logger name="task_ad_id" level="info" additivity="false">
+			<AppenderRef ref="task_ad_id" />
+		</Logger>
+		<Logger name="task_binding" level="info" additivity="false">
+			<AppenderRef ref="task_binding" />
+		</Logger>
+
+		<Logger name="task_tags" level="info" additivity="false">
+			<AppenderRef ref="task_tags" />
+		</Logger>
+		<Logger name="task_ad_content" level="info" additivity="false">
+			<AppenderRef ref="task_ad_content" />
+		</Logger>
+		<Logger name="task_nonad" level="info" additivity="false">
+			<AppenderRef ref="task_nonad" />
+		</Logger>
+
+		<Logger name="img_replace" level="info" additivity="false">
+			<AppenderRef ref="img_replace" />
+		</Logger>
+		<Logger name="adr_self_request" level="info" additivity="false">
+			<AppenderRef ref="adr_self_request" />
+		</Logger>
+		<Logger name="lbs" level="info" additivity="false">
+			<AppenderRef ref="lbs" />
+		</Logger>
+		<Logger name="orient" level="info" additivity="false">
+			<AppenderRef ref="orient" />
+		</Logger>
+		<Logger name="rtb_parallel_select" level="info" additivity="false">
+			<AppenderRef ref="rtb_parallel_select" />
+		</Logger>
+		<Logger name="rtb_adflow" level="info" additivity="false">
+			<AppenderRef ref="rtb_adflow" />
+		</Logger>
+		<Logger name="rtb_parallel_adflow" level="info" additivity="false">
+			<AppenderRef ref="rtb_parallel_adflow" />
+		</Logger>
+		<Logger name="user_tags" level="info" additivity="false">
+			<AppenderRef ref="user_tags" />
+		</Logger>
+		<Logger name="prob_tracking" level="info" additivity="false">
+			<AppenderRef ref="prob_tracking" />
+		</Logger>
+		<Logger name="statistic" level="info" additivity="false">
+			<AppenderRef ref="statistic" />
+		</Logger>
+		
+		<Root level="info">
+		    <appender-ref ref="business" />
+			<!-- <appender-ref ref="Console" /> -->
+			
+		</Root>
+	</loggers>
+</Configuration>
