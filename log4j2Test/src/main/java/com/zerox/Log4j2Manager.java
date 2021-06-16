@@ -32,12 +32,13 @@ public class Log4j2Manager {
     private static final Logger STATISTIC_LOGGER = LogManager.getLogger("statistic");
 
     public static void main(String[] args) {
-        for (int i = 0; i < 5 * 30; i++) {
+        for (int i = 0; i < 2 * 30; i++) {
             try {
-                Thread.sleep(200);
+                Thread.sleep(500);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
+            System.out.println("test~ "+i);
             ADIDLOGGER.info("test~");
             BINDINGLOGGER.info("test~");
             TAGSLOGGER.info("test~");
