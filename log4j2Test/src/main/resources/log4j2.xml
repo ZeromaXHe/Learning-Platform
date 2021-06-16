@@ -22,7 +22,7 @@
 		</Console>
 		<!-- ad request business 请求日志 -->
 		<RollingRandomAccessFile name="business"
-			fileName="${LOG_HOME}/business/ADR_ALPHA_BUSINESS_DAILY.log" filePattern="${LOG_HOME}/business/ADR_ALPHA_BUSINESS_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
+			fileName="${LOG_HOME}/ADR_ALPHA_BUSINESS_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_BUSINESS_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
 			<PatternLayout
 				pattern="%date{yyyy-MM-dd HH:mm:ss.SSS}|%msg%n" />
 			<Policies>
@@ -31,13 +31,15 @@
 				<!-- <SizeBasedTriggeringPolicy size="500 MB" />   -->
 			</Policies>
 			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}/business" maxDepth="1">
-					<IfLastModified age="3s" />
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+                    <IfFileName glob="ADR_ALPHA_BUSINESS_DAILY*.log">
+					    <IfLastModified age="3s" />
+                    </IfFileName>
 				</Delete>
 			</DefaultRolloverStrategy>
 		</RollingRandomAccessFile>
 		<RollingRandomAccessFile name="dis"
-			fileName="${LOG_HOME}/dis/ADR_ALPHA_DIS_DAILY.log" filePattern="${LOG_HOME}/dis/ADR_ALPHA_DIS_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
+			fileName="${LOG_HOME}/ADR_ALPHA_DIS_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_DIS_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
 			<PatternLayout
 				pattern="%date{yyyy-MM-dd HH:mm:ss.SSS}|%msg%n" />
 			<Policies>
@@ -46,13 +48,15 @@
 				<!-- <SizeBasedTriggeringPolicy size="500 MB" />   -->
 			</Policies>
 			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}/dis" maxDepth="1">
-					<IfLastModified age="4s" />
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+                    <IfFileName glob="ADR_ALPHA_DIS_DAILY*.log">
+                        <IfLastModified age="4s" />
+                    </IfFileName>
 				</Delete>
 			</DefaultRolloverStrategy>
 		</RollingRandomAccessFile>
 		<RollingRandomAccessFile name="proxy_dis"
-			fileName="${LOG_HOME}/proxydis/ADR_ALPHA_PROXY_DIS_DAILY.log" filePattern="${LOG_HOME}/proxydis/ADR_ALPHA_PROXY_DIS_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
+			fileName="${LOG_HOME}/ADR_ALPHA_PROXY_DIS_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_PROXY_DIS_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
 			<PatternLayout
 				pattern="%date{yyyy-MM-dd HH:mm:ss.SSS}|%msg%n" />
 			<Policies>
@@ -61,13 +65,15 @@
 				<!-- <SizeBasedTriggeringPolicy size="500 MB" />   -->
 			</Policies>
 			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}/proxydis" maxDepth="1">
-					<IfLastModified age="5s" />
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+                    <IfFileName glob="ADR_ALPHA_PROXY_DIS_DAILY*.log">
+					    <IfLastModified age="5s" />
+                    </IfFileName>
 				</Delete>
 			</DefaultRolloverStrategy>
 		</RollingRandomAccessFile>
 		<RollingRandomAccessFile name="filter"
-			fileName="${LOG_HOME}/filter/ADR_ALPHA_FILT_SERVER_DAILY.log" filePattern="${LOG_HOME}/filter/ADR_ALPHA_FILT_SERVER_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
+			fileName="${LOG_HOME}/ADR_ALPHA_FILT_SERVER_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_FILT_SERVER_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
 			<PatternLayout
 				pattern="%date{yyyy-MM-dd HH:mm:ss.SSS}|%msg%n" />
 			<Policies>
@@ -76,13 +82,15 @@
 				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
 			</Policies>
 			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}/filter" maxDepth="1">
-					<IfLastModified age="6s" />
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+                    <IfFileName glob="ADR_ALPHA_FILT_SERVER_DAILY*.log">
+					    <IfLastModified age="6s" />
+                    </IfFileName>
 				</Delete>
 			</DefaultRolloverStrategy>
 		</RollingRandomAccessFile>
 		<RollingRandomAccessFile name="prob"
-			fileName="${LOG_HOME}/prob/ADR_ALPHA_PROB_SERVER_DAILY.log" filePattern="${LOG_HOME}/prob/ADR_ALPHA_PROB_SERVER_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
+			fileName="${LOG_HOME}/ADR_ALPHA_PROB_SERVER_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_PROB_SERVER_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
 			<PatternLayout
 				pattern="%date{yyyy-MM-dd HH:mm:ss.SSS}|%msg%n" />
 			<Policies>
@@ -91,13 +99,15 @@
 				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
 			</Policies>
 			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}/prob" maxDepth="1">
-					<IfLastModified age="7s" />
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+                    <IfFileName glob="ADR_ALPHA_PROB_SERVER_DAILY*.log">
+					    <IfLastModified age="7s" />
+                    </IfFileName>
 				</Delete>
 			</DefaultRolloverStrategy>
 		</RollingRandomAccessFile>
 		<RollingRandomAccessFile name="task_nonad"
-			fileName="${LOG_HOME}/task_nonad/ADR_ALPHA_TASK_NONAD_SERVER_DAILY.log" filePattern="${LOG_HOME}/task_nonad/ADR_ALPHA_TASK_NONAD_SERVER_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
+			fileName="${LOG_HOME}/ADR_ALPHA_TASK_NONAD_SERVER_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_TASK_NONAD_SERVER_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
 			<PatternLayout
 				pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n" />
 			<Policies>
@@ -106,13 +116,15 @@
 				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
 			</Policies>
 			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}/task_nonad" maxDepth="1">
-					<IfLastModified age="8s" />
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+                    <IfFileName glob="ADR_ALPHA_TASK_NONAD_SERVER_DAILY*.log">
+					    <IfLastModified age="8s" />
+                    </IfFileName>
 				</Delete>
 			</DefaultRolloverStrategy>
 		</RollingRandomAccessFile>
 		<RollingRandomAccessFile name="task_ad_id"
-			fileName="${LOG_HOME}/task_ad_id/ADR_ALPHA_TASK_AD_ID_SERVER_DAILY.log" filePattern="${LOG_HOME}/task_ad_id/ADR_ALPHA_TASK_AD_ID_SERVER_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
+			fileName="${LOG_HOME}/ADR_ALPHA_TASK_AD_ID_SERVER_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_TASK_AD_ID_SERVER_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
 			<PatternLayout
 				pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n" />
 			<Policies>
@@ -121,13 +133,15 @@
 				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
 			</Policies>
 			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}/task_ad_id" maxDepth="1">
-					<IfLastModified age="9s" />
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+                    <IfFileName glob="ADR_ALPHA_TASK_AD_ID_SERVER_DAILY*.log">
+					    <IfLastModified age="9s" />
+                    </IfFileName>
 				</Delete>
 			</DefaultRolloverStrategy>
 		</RollingRandomAccessFile>
 		<RollingRandomAccessFile name="task_binding"
-			fileName="${LOG_HOME}/task_binding/ADR_ALPHA_TASK_BINDING_SERVER_DAILY.log" filePattern="${LOG_HOME}/task_binding/ADR_ALPHA_TASK_BINDING_SERVER_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
+			fileName="${LOG_HOME}/ADR_ALPHA_TASK_BINDING_SERVER_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_TASK_BINDING_SERVER_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
 			<PatternLayout
 				pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n"/>
 			<Policies>
@@ -136,13 +150,15 @@
 				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
 			</Policies>
 			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}/task_binding" maxDepth="1">
-					<IfLastModified age="10s" />
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+                    <IfFileName glob="ADR_ALPHA_TASK_BINDING_SERVER_DAILY*.log">
+					    <IfLastModified age="10s" />
+                    </IfFileName>
 				</Delete>
 			</DefaultRolloverStrategy>
 		</RollingRandomAccessFile>
 		<RollingRandomAccessFile name="task_tags"
-			fileName="${LOG_HOME}/task_tags/ADR_ALPHA_TASK_TAGS_SERVER_DAILY.log" filePattern="${LOG_HOME}/task_tags/ADR_ALPHA_TASK_TAGS_SERVER_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
+			fileName="${LOG_HOME}/ADR_ALPHA_TASK_TAGS_SERVER_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_TASK_TAGS_SERVER_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
 			<PatternLayout
 				pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n" />
 			<Policies>
@@ -151,13 +167,15 @@
 				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
 			</Policies>
 			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}/task_tags" maxDepth="1">
-					<IfLastModified age="11s" />
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+                    <IfFileName glob="ADR_ALPHA_TASK_TAGS_SERVER_DAILY*.log">
+					    <IfLastModified age="11s" />
+                    </IfFileName>
 				</Delete>
 			</DefaultRolloverStrategy>
 		</RollingRandomAccessFile>
 		<RollingRandomAccessFile name="task_ad_content"
-			fileName="${LOG_HOME}/task_ad_content/ADR_ALPHA_TASK_AD_CONTENTS_SERVER_DAILY.log" filePattern="${LOG_HOME}/task_ad_content/ADR_ALPHA_TASK_AD_CONTENTS_SERVER_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
+			fileName="${LOG_HOME}/ADR_ALPHA_TASK_AD_CONTENTS_SERVER_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_TASK_AD_CONTENTS_SERVER_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
 			<PatternLayout
 				pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n" />
 			<Policies>
@@ -166,14 +184,16 @@
 				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
 			</Policies>
 			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}/task_ad_content" maxDepth="1">
-					<IfLastModified age="2s" />
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+                    <IfFileName glob="ADR_ALPHA_TASK_AD_CONTENTS_SERVER_DAILY*.log">
+					    <IfLastModified age="2s" />
+                    </IfFileName>
 				</Delete>
 			</DefaultRolloverStrategy>
 		</RollingRandomAccessFile>
 		<!--statistic logs third side need -->
 		<RollingRandomAccessFile name="img_replace"
-			fileName="${LOG_HOME}/img_replace/rtb_img_replace.log" filePattern="${LOG_HOME}/img_replace/rtb_img_replace.%d{yyyy-MM-dd-HH-mm-ss}.log">
+			fileName="${LOG_HOME}/rtb_img_replace.log" filePattern="${LOG_HOME}/rtb_img_replace.%d{yyyy-MM-dd-HH-mm-ss}.log">
 			<PatternLayout
 					pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n" />
 			<Policies>
@@ -182,13 +202,15 @@
 				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
 			</Policies>
 			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}/img_replace" maxDepth="1">
-					<IfLastModified age="3s" />
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+                    <IfFileName glob="rtb_img_replace*.log">
+					    <IfLastModified age="3s" />
+                    </IfFileName>
 				</Delete>
 			</DefaultRolloverStrategy>
 		</RollingRandomAccessFile>
 		<RollingRandomAccessFile name="adr_self_request"
-			fileName="${LOG_HOME}/adr_self_request/AdRecommend_self_request.log" filePattern="${LOG_HOME}/adr_self_request/AdRecommend_self_request_%d{yyyy-MM-dd-HH-mm-ss}.log">
+			fileName="${LOG_HOME}/AdRecommend_self_request.log" filePattern="${LOG_HOME}/AdRecommend_self_request_%d{yyyy-MM-dd-HH-mm-ss}.log">
 			<PatternLayout
 					pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n" />
 			<Policies>
@@ -197,13 +219,15 @@
 				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
 			</Policies>
 			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}/adr_self_request" maxDepth="1">
-					<IfLastModified age="4s" />
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+                    <IfFileName glob="AdRecommend_self_request*.log">
+					    <IfLastModified age="4s" />
+                    </IfFileName>
 				</Delete>
 			</DefaultRolloverStrategy>
 		</RollingRandomAccessFile>
 		<RollingRandomAccessFile name="lbs"
-			fileName="${LOG_HOME}/lbs/ADR_ALPHA_LBS_DAILY.log" filePattern="${LOG_HOME}/lbs/ADR_ALPHA_LBS_DAILY_%d{yyyy-MM-dd-HH-mm-ss}.log">
+			fileName="${LOG_HOME}/ADR_ALPHA_LBS_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_LBS_DAILY_%d{yyyy-MM-dd-HH-mm-ss}.log">
 			<PatternLayout
 					pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n" />
 			<Policies>
@@ -212,13 +236,15 @@
 				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
 			</Policies>
 			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}/lbs" maxDepth="1">
-					<IfLastModified age="5s" />
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+                    <IfFileName glob="ADR_ALPHA_LBS_DAILY*.log">
+					    <IfLastModified age="5s" />
+                    </IfFileName>
 				</Delete>
 			</DefaultRolloverStrategy>
 		</RollingRandomAccessFile>
 				<RollingRandomAccessFile name="orient"
-			fileName="${LOG_HOME}/orient/ADR_ALPHA_ORIENT_DAILY.log" filePattern="${LOG_HOME}/orient/ADR_ALPHA_ORIENT_DAILY_%d{yyyy-MM-dd-HH-mm-ss}.log">
+			fileName="${LOG_HOME}/ADR_ALPHA_ORIENT_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_ORIENT_DAILY_%d{yyyy-MM-dd-HH-mm-ss}.log">
 			<PatternLayout
 					pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n" />
 			<Policies>
@@ -227,14 +253,16 @@
 				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
 			</Policies>
 			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}/orient" maxDepth="1">
-					<IfLastModified age="6s" />
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+                    <IfFileName glob="ADR_ALPHA_ORIENT_DAILY*.log">
+					    <IfLastModified age="6s" />
+                    </IfFileName>
 				</Delete>
 			</DefaultRolloverStrategy>
 		</RollingRandomAccessFile>
 		<!-- dsp request log -->
 				<RollingRandomAccessFile name="rtb_parallel_select"
-			fileName="${LOG_HOME}/rtb_parallel_select/rtb_parallel_select.log" filePattern="${LOG_HOME}/rtb_parallel_select/rtb_parallel_select_%d{yyyy-MM-dd-HH-mm-ss}.log">
+			fileName="${LOG_HOME}/rtb_parallel_select.log" filePattern="${LOG_HOME}/rtb_parallel_select_%d{yyyy-MM-dd-HH-mm-ss}.log">
 			<PatternLayout
 					pattern="%date{yyyy-MM-dd HH:mm:ss} %msg%n" />
 			<Policies>
@@ -243,13 +271,15 @@
 				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
 			</Policies>
 			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}/rtb_parallel_select" maxDepth="1">
-					<IfLastModified age="7s" />
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+                    <IfFileName glob="rtb_parallel_select*.log">
+					    <IfLastModified age="7s" />
+                    </IfFileName>
 				</Delete>
 			</DefaultRolloverStrategy>
 		</RollingRandomAccessFile>
 		<RollingRandomAccessFile name="rtb_adflow"
-			fileName="${LOG_HOME}/rtb_adflow/rtb_adflow.log" filePattern="${LOG_HOME}/rtb_adflow/rtb_adflow_%d{yyyy-MM-dd-HH-mm-ss}.log">
+			fileName="${LOG_HOME}/rtb_adflow.log" filePattern="${LOG_HOME}/rtb_adflow_%d{yyyy-MM-dd-HH-mm-ss}.log">
 			<PatternLayout
 					pattern="%date{yyyy-MM-dd HH:mm:ss} %msg%n" />
 			<Policies>
@@ -258,13 +288,15 @@
 				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
 			</Policies>
 			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}/rtb_adflow" maxDepth="1">
-					<IfLastModified age="8s" />
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+                    <IfFileName glob="rtb_adflow*.log">
+					    <IfLastModified age="8s" />
+                    </IfFileName>
 				</Delete>
 			</DefaultRolloverStrategy>
 		</RollingRandomAccessFile>
 		<RollingRandomAccessFile name="rtb_parallel_adflow"
-			fileName="${LOG_HOME}/rtb_parallel_adflow/rtb_parallel_adflow.log" filePattern="${LOG_HOME}/rtb_parallel_adflow/rtb_parallel_adflow_%d{yyyy-MM-dd-HH-mm-ss}.log">
+			fileName="${LOG_HOME}/rtb_parallel_adflow.log" filePattern="${LOG_HOME}/rtb_parallel_adflow_%d{yyyy-MM-dd-HH-mm-ss}.log">
 			<PatternLayout
 					pattern="%date{yyyy-MM-dd HH:mm:ss} %msg%n" />
 			<Policies>
@@ -273,13 +305,15 @@
 				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
 			</Policies>
 			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}/rtb_parallel_adflow" maxDepth="1">
-					<IfLastModified age="9s" />
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+                    <IfFileName glob="rtb_parallel_adflow*.log">
+					    <IfLastModified age="9s" />
+                    </IfFileName>
 				</Delete>
 			</DefaultRolloverStrategy>
 		</RollingRandomAccessFile>
 		<RollingRandomAccessFile name="user_tags"
-			fileName="${LOG_HOME}/user_tags/AdRecommend_user_tag.log" filePattern="${LOG_HOME}/user_tags/AdRecommend_user_tag_%d{yyyy-MM-dd-HH-mm-ss}.log">
+			fileName="${LOG_HOME}/AdRecommend_user_tag.log" filePattern="${LOG_HOME}/AdRecommend_user_tag_%d{yyyy-MM-dd-HH-mm-ss}.log">
 			<PatternLayout
 					pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n" />
 			<Policies>
@@ -288,13 +322,15 @@
 				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
 			</Policies>
 			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}/user_tags" maxDepth="1">
-					<IfLastModified age="10s" />
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+                    <IfFileName glob="AdRecommend_user_tag*.log">
+					    <IfLastModified age="10s" />
+                    </IfFileName>
 				</Delete>
 			</DefaultRolloverStrategy>
 		</RollingRandomAccessFile>
 		<RollingRandomAccessFile name="prob_tracking"
-			fileName="${LOG_HOME}/prob_tracking/ADR_PROB_TRACKING.log" filePattern="${LOG_HOME}/prob_tracking/ADR_PROB_TRACKING_%d{yyyy-MM-dd-HH-mm-ss}.log">
+			fileName="${LOG_HOME}/ADR_PROB_TRACKING.log" filePattern="${LOG_HOME}/ADR_PROB_TRACKING_%d{yyyy-MM-dd-HH-mm-ss}.log">
 			<PatternLayout
 					pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n" />
 			<Policies>
@@ -303,13 +339,15 @@
 				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
 			</Policies>
 			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}/prob_tracking" maxDepth="1">
-					<IfLastModified age="11s" />
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+                    <IfFileName glob="ADR_PROB_TRACKING*.log">
+					    <IfLastModified age="11s" />
+                    </IfFileName>
 				</Delete>
 			</DefaultRolloverStrategy>
 		</RollingRandomAccessFile>
 		<RollingRandomAccessFile name="statistic"
-								 fileName="${LOG_HOME}/statistic/ADR_ALPHA_STATISTIC.log" filePattern="${LOG_HOME}/statistic/ADR_ALPHA_STATISTIC_%d{yyyy-MM-dd-HH-mm-ss}.log">
+								 fileName="${LOG_HOME}/ADR_ALPHA_STATISTIC.log" filePattern="${LOG_HOME}/ADR_ALPHA_STATISTIC_%d{yyyy-MM-dd-HH-mm-ss}.log">
 			<PatternLayout
 					pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n" />
 			<Policies>
@@ -318,8 +356,10 @@
 				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
 			</Policies>
 			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}/statistic" maxDepth="1">
-					<IfLastModified age="2s" />
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+                    <IfFileName glob="ADR_ALPHA_STATISTIC*.log">
+					    <IfLastModified age="2s" />
+                    </IfFileName>
 				</Delete>
 			</DefaultRolloverStrategy>
 		</RollingRandomAccessFile>
