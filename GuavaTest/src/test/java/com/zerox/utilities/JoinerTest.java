@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 /**
  * @Author: ZeromaXHe
  * @Time: 2021/6/19 18:36
- * @Description: 学习汪文君Google Guava 第01讲
+ * @Description: 学习 汪文君Google Guava 第01讲
  * @Modified By: ZeromaXHe
  */
 public class JoinerTest {
