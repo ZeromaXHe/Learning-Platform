@@ -8,8 +8,10 @@ import javafx.beans.property.ReadOnlyObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.StringProperty;
 import javafx.scene.Scene;
+import javafx.scene.layout.Background;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
+import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
 
@@ -58,6 +60,9 @@ public class App {
     }
 
     private void initApp() {
+        scene.setFill(Color.WHITE);
+        root.setBackground(Background.EMPTY);
+
         stage.addEventHandler(WindowEvent.WINDOW_CLOSE_REQUEST, event -> {
             if (onExit != null && !onExit.handle()) {
                 event.consume();
@@ -157,7 +162,10 @@ public class App {
     }
 
     public void unRegView(String name) {
-        viewMap.remove(name);
+        View view = viewMap.remove(name);
+        if (view != null && view == getCurrentView()) {
+            currentView.set(null);
+        }
     }
 
     public View getCurrentView() {

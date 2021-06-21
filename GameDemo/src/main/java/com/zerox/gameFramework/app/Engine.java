@@ -9,7 +9,9 @@ import javafx.animation.AnimationTimer;
  * https://www.bilibili.com/video/BV1Pb411C76Q/
  * @Modified By: ZeromaXHe
  */
-public class Engine extends AnimationTimer {
+public class Engine {
+    private final Timer timer;
+
     private double nowNanos;
     private double lastNanos;
     private double deltaNanos;
@@ -28,6 +30,7 @@ public class Engine extends AnimationTimer {
     }
 
     public Engine(double fps) {
+        timer = new Timer();
         setFps(fps);
     }
 
@@ -76,47 +79,57 @@ public class Engine extends AnimationTimer {
         this.npf = 1E9 / fps;
     }
 
-    @Override
-    public void start() {
-        this.reset();
-        super.start();
-
-        if (onStart != null) {
-            onStart.handle();
-        }
+    void start() {
+        timer.start();
     }
 
-    @Override
-    public void handle(long now) {
-        nowNanos = now;
-        if (lastNanos > 0) {
-            deltaNanos += nowNanos - lastNanos;
-        }
-        lastNanos = nowNanos;
+    void stop() {
+        timer.stop();
+    }
 
-        if (deltaNanos >= npf) {
-            if (onUpdate != null) {
-                onUpdate.handle(deltaNanos);
+    private final class Timer extends AnimationTimer {
+        @Override
+        public void start() {
+            this.reset();
+            super.start();
+
+            if (onStart != null) {
+                onStart.handle();
+            }
+        }
+
+        @Override
+        public void handle(long now) {
+            nowNanos = now;
+            if (lastNanos > 0) {
+                deltaNanos += nowNanos - lastNanos;
+            }
+            lastNanos = nowNanos;
+
+            if (deltaNanos >= npf) {
+                if (onUpdate != null) {
+                    onUpdate.handle(deltaNanos);
+                }
+
+                deltaNanos -= npf;
+            }
+        }
+
+        @Override
+        public void stop() {
+            if (onStop != null) {
+                onStop.handle();
             }
 
-            deltaNanos -= npf;
-        }
-    }
-
-    @Override
-    public void stop() {
-        if (onStop != null) {
-            onStop.handle();
+            super.stop();
+            this.reset();
         }
 
-        super.stop();
-        this.reset();
-    }
-
-    public void reset() {
-        nowNanos = 0;
-        lastNanos = 0;
-        deltaNanos = 0;
+        public void reset() {
+            nowNanos = 0;
+            lastNanos = 0;
+            deltaNanos = 0;
+        }
     }
 
     interface OnStart {

@@ -2,6 +2,7 @@ package com.zerox.gameFramework.app;
 
 import javafx.collections.ObservableList;
 import javafx.scene.Node;
+import javafx.scene.layout.Background;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 
@@ -16,6 +17,7 @@ public abstract class View {
 
     public View() {
         pane = new StackPane();
+        pane.setBackground(Background.EMPTY);
     }
 
     public Pane getPane() {
