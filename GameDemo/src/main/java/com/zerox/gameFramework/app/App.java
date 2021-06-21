@@ -29,6 +29,8 @@ public class App {
     private final HashMap<String, View> viewMap;
     private final ObjectProperty<View> currentView;
 
+    private final Engine engine;
+
     OnLaunch onLaunch;
     OnFinish onFinish;
     OnExit onExit;
@@ -43,12 +45,16 @@ public class App {
         viewMap = new HashMap<>();
         currentView = new SimpleObjectProperty<>();
 
+        engine = new Engine();
+
         initFramework();
         initApp();
+        initEngine();
     }
 
     private void initFramework() {
         Framework.app = this;
+        Framework.engine = engine;
     }
 
     private void initApp() {
@@ -66,6 +72,34 @@ public class App {
             if (newVal != null) {
                 root.getChildren().add(newVal.getPane());
                 newVal.onEnter();
+            }
+        });
+    }
+
+    private void initEngine() {
+        engine.onStart = () -> {
+            for (View view : viewMap.values()) {
+                view.onStart();
+            }
+        };
+        engine.onUpdate = time -> {
+            View view = getCurrentView();
+
+            if (view != null) {
+                view.onUpdate(time);
+            }
+        };
+        engine.onStop = () -> {
+            for (View view : viewMap.values()) {
+                view.onStop();
+            }
+        };
+
+        stage.focusedProperty().addListener((o, ov, nv) -> {
+            if (nv) {
+                engine.start();
+            } else {
+                engine.stop();
             }
         });
     }

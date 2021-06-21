@@ -30,4 +30,19 @@ public class HomeView extends View {
 
         getChildren().add(box);
     }
+
+    @Override
+    public void onStart() {
+        System.out.println("Start");
+    }
+
+    @Override
+    public void onUpdate(double time) {
+        System.out.println(time);
+    }
+
+    @Override
+    public void onStop() {
+        System.out.println("Stop");
+    }
 }

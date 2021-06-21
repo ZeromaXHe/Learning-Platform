@@ -1,6 +1,7 @@
 package com.zerox.gameFramework;
 
 import com.zerox.gameFramework.app.App;
+import com.zerox.gameFramework.app.Engine;
 
 /**
  * @Author: ZeromaXHe
@@ -10,5 +11,6 @@ import com.zerox.gameFramework.app.App;
  */
 public class Framework {
     public static App app;
+    public static Engine engine;
 
 }

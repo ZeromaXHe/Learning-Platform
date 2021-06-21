@@ -32,6 +32,18 @@ public abstract class View {
         // do something in subclass
     }
 
+    public void onStart() {
+        // do something in subclass
+    }
+
+    public void onUpdate(double time) {
+        // do something in subclass
+    }
+
+    public void onStop() {
+        // do something in subclass
+    }
+
     public void onLeave() {
         // do something in subclass
     }
