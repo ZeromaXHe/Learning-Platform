@@ -1,6 +1,7 @@
 package com.zerox.gameFramework.app;
 
 import com.zerox.gameFramework.Framework;
+import com.zerox.gameFramework.input.KeyInput;
 import javafx.application.Platform;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.ObjectProperty;
@@ -33,6 +34,8 @@ public class App {
 
     private final Engine engine;
 
+    private final KeyInput keyInput;
+
     OnLaunch onLaunch;
     OnFinish onFinish;
     OnExit onExit;
@@ -49,6 +52,8 @@ public class App {
 
         engine = new Engine();
 
+        keyInput = new KeyInput();
+
         initFramework();
         initApp();
         initEngine();
@@ -57,6 +62,7 @@ public class App {
     private void initFramework() {
         Framework.app = this;
         Framework.engine = engine;
+        Framework.keyInput = keyInput;
     }
 
     private void initApp() {
@@ -86,6 +92,7 @@ public class App {
             for (View view : viewMap.values()) {
                 view.onStart();
             }
+            keyInput.install(stage);
         };
         engine.onUpdate = time -> {
             View view = getCurrentView();
@@ -93,11 +100,14 @@ public class App {
             if (view != null) {
                 view.onUpdate(time);
             }
+
+            keyInput.refresh();
         };
         engine.onStop = () -> {
             for (View view : viewMap.values()) {
                 view.onStop();
             }
+            keyInput.uninstall(stage);
         };
 
         stage.focusedProperty().addListener((o, ov, nv) -> {

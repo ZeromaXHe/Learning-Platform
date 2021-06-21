@@ -2,6 +2,8 @@ package gameFramework.view;
 
 import com.zerox.gameFramework.Framework;
 import com.zerox.gameFramework.app.View;
+import com.zerox.gameFramework.input.Key;
+import com.zerox.gameFramework.input.KeyInput;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.layout.VBox;
@@ -38,7 +40,20 @@ public class HomeView extends View {
 
     @Override
     public void onUpdate(double time) {
-        System.out.println(time);
+        KeyInput keyInput = Framework.keyInput;
+        if (keyInput.isPressed(Key.A)) {
+            System.out.println("Pressed A");
+        }
+        if (keyInput.isReleased(Key.A)) {
+            System.out.println("Released A");
+        }
+        if (keyInput.isHeld(Key.B)) {
+            System.out.println("Held B");
+        }
+
+        if (keyInput.isTyped(Key.C)) {
+            System.out.println("Typed C:" + keyInput.getTypeCount(Key.C));
+        }
     }
 
     @Override
