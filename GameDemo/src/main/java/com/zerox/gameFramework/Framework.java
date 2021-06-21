@@ -3,6 +3,7 @@ package com.zerox.gameFramework;
 import com.zerox.gameFramework.app.App;
 import com.zerox.gameFramework.app.Engine;
 import com.zerox.gameFramework.input.KeyInput;
+import com.zerox.gameFramework.input.MouseInput;
 
 /**
  * @Author: ZeromaXHe
@@ -14,4 +15,5 @@ public class Framework {
     public static App app;
     public static Engine engine;
     public static KeyInput keyInput;
+    public static MouseInput mouseInput;
 }

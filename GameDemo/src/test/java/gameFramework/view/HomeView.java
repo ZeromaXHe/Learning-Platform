@@ -4,6 +4,8 @@ import com.zerox.gameFramework.Framework;
 import com.zerox.gameFramework.app.View;
 import com.zerox.gameFramework.input.Key;
 import com.zerox.gameFramework.input.KeyInput;
+import com.zerox.gameFramework.input.Mouse;
+import com.zerox.gameFramework.input.MouseInput;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.layout.VBox;
@@ -50,9 +52,31 @@ public class HomeView extends View {
         if (keyInput.isHeld(Key.B)) {
             System.out.println("Held B");
         }
-
         if (keyInput.isTyped(Key.C)) {
             System.out.println("Typed C:" + keyInput.getTypeCount(Key.C));
+        }
+
+        MouseInput mouseInput = Framework.mouseInput;
+        System.out.println("Point: " + mouseInput.getPointX() + "," + mouseInput.getPointY());
+        if (mouseInput.isPressed(Mouse.LEFT)) {
+            System.out.println("Pressed LEFT");
+        }
+        if (mouseInput.isReleased(Mouse.LEFT)) {
+            System.out.println("Released LEFT");
+        }
+        if (mouseInput.isHeld(Mouse.RIGHT)) {
+            System.out.println("Held RIGHT");
+        }
+        if (mouseInput.isDragged(Mouse.LEFT)) {
+            System.out.println("Dragged LEFT: "
+                    + mouseInput.getDragX(Mouse.LEFT) + ","
+                    + mouseInput.getDragY(Mouse.LEFT));
+        }
+        if (mouseInput.isClicked(Mouse.MIDDLE)) {
+            System.out.println("Clicked MIDDLE: " + mouseInput.getClickCount(Mouse.MIDDLE));
+        }
+        if (mouseInput.isScrolled()) {
+            System.out.println("Scrolled: " + mouseInput.getScrollValue());
         }
     }
 
