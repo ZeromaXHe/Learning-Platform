@@ -100,3 +100,389 @@ Unit指的是函数没有有效的返回值。Scala的Unit类型比较类似于J
 如果想要离开解释器，输入`:quit`或者`:q`
 
 ## 2.4 第四步 编写Scala脚本
+
+Scala里数组steps的第一个元素是steps(0)，而不是像Java那样的steps[0]。现在，把以下内容写到新文件helloarg.scala中测试一下：
+
+~~~scala
+// 向第一个参数打问好
+println("Hello, " + args(0) + "!")
+~~~
+
+然后运行：
+
+~~~shell
+$ scala helloarg.scala planet
+~~~
+
+这条命令里，命令行参数“planet”被传递给脚本，并通过访问args(0)获得。因此，你会看到：
+
+~~~
+Hello, planet!
+~~~
+
+## 2.5 第五步 用while做循环；用if做判断
+
+~~~scala
+var i = 0
+while (i < args.length) {
+    println(args(i))
+    i += 1
+}
+~~~
+
+~~~scala
+var i = 0
+while (i < args.length) {
+	if (i != 0)
+		print(" ")
+	print(args(i))
+	i += 1
+}
+println()
+~~~
+
+注意Scala和Java一样，必须把while或if的布尔表达式放在括号里。
+
+## 2.6 第六步 用foreach和for做枚举
+
+~~~scala
+args.foreach(arg => println(arg))
+~~~
+
+~~~scala
+args.foreach((arg: String) => println(arg))
+~~~
+
+~~~scala
+args.foreach(println)
+~~~
+
+~~~scala
+for (arg <- args)
+	println(arg)
+~~~
+
+# 第3章 Scala入门再探
+
+## 3.1 第七步 使用类型参数化数组（Array）
+
+Scala里使用new实例化对象（或者叫类实例）。实例化过程中，可以用值和类型使对象参数化（parameterize）。参数化的意思是指在创建实例的同时完成对它的“设置”。使用值参数化实例可以通过把值传递给构造器的圆括号来实现。
+
+~~~scala
+val big = new java.math.BigInteger("12345")
+~~~
+
+使用类型参数化实例可以通过把一个或更多类型指定到基础类型后的方括号里来实现。
+
+~~~scala
+val greetStrings = new Array[String](3)
+
+greetStrings(0) = "Hello"
+greetStrings(1) = ", "
+greetStrings(2) = "world!\n"
+
+for(i <- 0 to 2)
+	print(greetStrings(i))
+~~~
+
+这个for表达式的第一行代码说明了Scala的另一个基本规则：方法若只有一个参数，调用的时候就可以省略点及括号。本例中的to实际上是仅带一个Int参数的方法。代码`0 to 2`被转换成方法调用`(0).to(2)`（这个to方法实际上返回的不是数组而是包含了值0，1和2的，可以让for表达式遍历的序列。序列和其他集合类将在第17章描述）。请注意这个语法只有在明确指定方法调用的接收者时才有效。例如不可以写成“`println 10`”，但是可以写成“`Console println 10`”。
+
+从技术层面上来说，Scala没有操作符重载，因为它根本没有传统意义上的操作符。取而代之的是，诸如`+`,`-`，`*`和`/`这样的字符，可以用来做方法名。因此，当我们在第一步往Scala解释器里输入`1 + 2`的时候，实际是在Int对象1上调用名为+的方法，并把2当作参数传给它。当然`1 + 2`更为传统的语法格式可以写成`(1).+(2)`。
+
+这里要说明的另一问题是为什么在Scala里要用括号访问数组。与Java相比，Scala鲜有特例。与Scala其他的类一样，数组也只是类的实例。用括号传递给变量一个或多个值参数时，Scala会把它转换成对apply方法的调用。于是`greetStrings(i)`转换成`greetStrings.apply(i)`。所以Scala里访问数组的元素也只不过是跟其他的一样的方法调用。这个原则不是只对于数组：任何对于对象的值参数应用将都被转换为对apply方法的调用。当然前提是这个类型实际定义过apply方法。所以这不是特例，而是通用法则。
+
+与之相似的是，当对带有括号并包括一到若干参数的变量赋值时，编译器将使用对象的update方法对括号里的参数（索引值）和等号右边的对象执行调用。例如
+
+~~~scala
+greetStrings(0) = "Hello"
+~~~
+
+将被转化为：
+
+~~~scala
+greetStrings.update(0, "Hello")
+~~~
+
+因此，下列Scala代码与清单3.1语义一致：
+
+~~~scala
+val greetStrings = new Array[String](3)
+
+greetStrings.update(0, "Hello")
+greetStrings.update(1, ", ")
+greetStrings.update(2, "world!\n")
+
+for(i <- 0 to 2)
+	print(greetStrings.apply(i))
+~~~
+
+仅用一行代码就创建了长度为3的新数组，并用字符串"zero"，"one"和"two"实现初始化。编译器根据传递的值类型（字符串）推断数组的类型是Array[String]
+
+~~~scala
+val numNames = Array("zero", "one", "two")
+~~~
+
+清单3.2实际就是调用了创造并返回新数组的apply工厂方法。apply方法可以有不定个数的参数，定义在Array的伴生对象（companion object）。第4.3节里会学到更多关于伴生对象的知识。对于Java程序员来说，可以把它理解为调用Array类的静态方法apply。完整的写法是：
+
+~~~scala
+val numNames2 = Array.apply("zero", "one", "two")
+~~~
+
+## 3.2 第八步 使用列表（List）
+
+方法没有副作用是函数式风格编程的重要理念，计算并返回值应该是方法唯一的目的。这样做的好处之一是方法之间耦合度降低，因此更加可靠和易于重用；好处之二（在静态类型语言里）是方法的参数和返回值都经过类型检查器的检查，因此可以比较容易地根据类型错误推断其中隐含的逻辑错误。而这种函数式编程思想在面向对象编程中的应用也就意味着对象的不可改变性。
+
+正如我们之前所见的，Scala数组是可变的同类对象序列，例如，Array[String]的所有对象都是String。而且尽管数组在实例化之后长度固定，但它的元素值却是可变的。所以说数组是可变的。
+
+至于不可变的同类对象序列，Scala的列表类（List）才是。和数组一样，LIst[String]仅包含String。但Scala的scala.List不同于Java的java.util.List，一旦创建了就不可改变。实际上，Scala的列表是为了实现函数式风格的编程而设计的。创建的方法如清单3.3所示：
+
+~~~scala
+val oneTwoThree = List(1, 2, 3)
+~~~
+
+列表类定义了“`:::`”方法实现叠加功能。用法如下：
+
+~~~scala
+val oneTwo = List(1, 2)
+val threeFour = List(3, 4)
+val oneTwoThreeFour = oneTwo ::: threeFour
+println("" + oneTwo + " and " + threeFour + " were not mutated.")
+println("Thus," + oneTwoThreeFour + " is a new List.")
+~~~
+
+列表类最常用的操作符或许是‘`::`’，发音为“cons”。它可以把新元素组合到现有列表的最前端，然后返回作为执行结果的新列表。执行代码：
+
+~~~scala
+val twoThree = List(2, 3)
+val oneTwoThree = 1 :: twoThree
+println(onwTwoThree)
+~~~
+
+将得到
+
+~~~
+List(1, 2, 3)
+~~~
+
+> **注意**
+>
+> 表达式“`1 :: twoThree`”中，`::`是右操作数twoThree的方法。你或许会质疑是否`::`方法的关联性有错误，不过请记住这只是个简单的规则：如果方法使用操作符来标注，如 `a * b`，那么左操作数是方法的调用者，可以改写成`a.*(b)`——除非——方法名以冒号结尾。这种情况下，方法被右操作数调用。因此，`1 :: twoThree`里，`::`方法的调用者是twoThree，1是方法的传入参数，因此可以改写成：`twoThree.::(1)`。
+
+因为Nil是空列表的简写，所以可以使用cons操作符把所有元素都串起来，并以Nil作结尾来定义新列表。例如可以用以下的方法产生与上文同样的输出，“List(1, 2, 3)”
+
+~~~scala
+val oneTwoThree = 1 :: 2 :: 3 :: Nil
+println(oneTwoThree)
+~~~
+
+Scala的List类定义了很多有用的方法，其中的部分列举在表3.1中。完整说明请参见第16章。
+
+| 方法名                                                       | 方法作用                                                     |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| List() 或 Nil                                                | 空List                                                       |
+| List("Cool", "tools", "rule")                                | 创建带有三个值"Cool", "tools" 和 "rule"的新List[String]      |
+| val thrill = "Will" :: "fill" :: "until" :: Nil              | 创建带有三个值"Will", "fill" 和 "until"的新List[String]      |
+| List("a", "b") ::: List("c", "d")                            | 叠加两个列表（返回带"a", "b", "c", "d"的新List[String]）     |
+| thrill(2)                                                    | 返回在thrill列表上索引为2（基于0）的元素（"until"）          |
+| thrill.count(s => s.length == 4)                             | 计算长度为4的String元素个数（2）                             |
+| thrill.drop(2)                                               | 返回去掉前两个元素的thrill列表（List("until")）              |
+| thrill.dropRight(2)                                          | 返回去掉后两个元素的thrill列表(List("Will"))                 |
+| thrill.exists(s => s == "until")                             | 判断是否有值为“until”的字符串元素在thrill里（true）          |
+| thrill.filter(s => s.length == 4)                            | 返回长度为4的元素依次组成的新列表（List("Will", "fill")）    |
+| thrill.forall(s => s.endsWith("l"))                          | 判断是否thrill列表里所有元素都以"l"结尾（true）              |
+| thrill.foreach(s => print(s))                                | 对thrill列表每个字符串执行print语句（"Willfilluntil"）       |
+| thrill.foreach(print)                                        | 与前相同，不过更简洁（同上）                                 |
+| thrill.head                                                  | 返回thrill列表的第一个元素（"Will"）                         |
+| thrill.init                                                  | 返回thrill列表除最后一个以外其他元素组成的列表（List("Will", "fill")） |
+| thrill.isEmpty                                               | 返回thrill列表是否为空(false)                                |
+| thrill.last                                                  | 返回thrill列表的最后一个元素（"until"）                      |
+| thrill.length                                                | 返回thrill列表的元素数量（3）                                |
+| thrill.map(s => s + "y")                                     | 返回由thrill列表里每个String元素都加了"y"构成的列表（List("Willy", "filly", "untily")） |
+| thrill.mkString(", ")                                        | 返回用列表的元素组成的字符串（"Will, fill, until"）          |
+| thrill.remove(s => s.length == 4)                            | 返回去除了thrill列表中长度为4的元素后的元素依此组成了新列表（List("until")） |
+| thrill.reverse                                               | 返回由thrill列表的元素逆序组成的新列表（List("until", "fill", "Will")） |
+| thrill.sort((s, t) => s.charAt(0).toLowerCase < t.charAt(0).toLowerCase) | 返回thrill列表元素按照第一个字符的字母排序之后依此组成的新列表（List("fill", "until", "Will")） |
+| thrill.tail                                                  | 返回thrill列表中除第一个元素之外依此组成的新列表（List("fill", "until")） |
+
+> **为什么列表不支持添加（append）操作？**
+>
+> List类没有提供append操作，因为随着列表变长，append的耗时将呈线性增长，而使用::做前缀则仅耗用固定的时间。如果你想通过添加元素来构造列表，你的选择是先把它们前缀进去，完成之后再调用reverse；或使用ListBuffer，一种提供append操作的可变列表，完成之后调用toList。ListBuffer将在22.2节中描述。
+
+## 3.3 第九步 使用元组（Tuple）
+
+元组也是很有用的容器对象。与列表一样，元组也是不可变的；但与列表不同，元组可以包含不同类型的元素。例如列表只能写成List[Int]或List[String]，但元组可以同时拥有Int和String。元组适用场景很多，比方说，如果需要在方法里返回多个对象。Java里的做法是创建JavaBean以包含多个返回值，Scala里可以仅返回元组。而且做起来也很简单：只要把元组实例化需要的对象放在括号里，并用逗号分隔即可。元组实例化之后，可以用点号、下划线和基于1的索引访问其中的元素。如清单3.4所示：
+
+~~~scala
+val pair = (99, "Luftballons")
+println(pair._1)
+println(pair._2)
+~~~
+
+Scala推断元组的类型为Tuple2[Int, String]，并赋给值pair。这段代码执行的结果为：
+
+~~~
+99
+Luftballons
+~~~
+
+元组的实际类型取决于它含有的元素数量和这些元素的类型。因此，(99, "Luftballons")的类型是Tuple2[Int, String]。('u', 'r', 'the', 1, 4, "me")是Tuple6[Char, Char, String, Int, Int, String]。
+
+> **访问元组的元素**
+>
+> 你或许想知道为什么不能用访问列表的方法来访问元组，如pair(0)。那是因为列表的apply方法始终返回同样的类型，但元组里的类型不尽相同。`_1`的结果类型可能与`_2`不一致，诸如此类，因此两者的访问方法也不一样。另外，这些`_N`的索引是基于1的，而不是基于0的，这是因为对于拥有静态类型元组的其他语言，如Haskell和ML，从1开始是传统的设定。
+
+## 3.4 第十步 使用集（set）和映射（map）
+
+Scala致力于充分利用函数式和指令式风格两方面的好处，因此它的集合（collection）库区分为可变类型和不可变类型。例如，array具有可变性，而list保持不变。对于set和map来说，Scala同样有可变的和不可变的，不过并非各提供两种类型，而是通过类继承的差别把可变性差异蕴含其中。
+
+例如，Scala的API包含了set的基本特质（trait），特质这个概念接近于Java的接口（interface）（第12章有更多说明）。Scala还提供了两个子特质，分别为可变set和不可变set。如图3.2所示，这三个特质都共享同样的简化名，set。然而它们的全称不一样，每个特质都在不同的包里。Scala的API里具体的set类，如图3.2的HashSet类，各有一个扩展了可变的和另一个扩展不可变的Set特质。（Java里面称为“实现”了接口，而在Scala里面称为“扩展”或“混入（mix in）”了特质。）因此，使用HashSet的时候，可以根据需要选择可变的或不可变的类型。set的基本构造方法如清单3.5所示
+
+~~~mermaid
+graph BT
+	scala.collection.immutable_HashSet --> scala.collection.immutable_Set_trait
+	scala.collection.mutable_HashSet --> scala.collection.mutable_Set_trait
+	scala.collection.immutable_Set_trait -->	scala.collection_Set_trait
+	scala.collection.mutable_Set_trait -->	scala.collection_Set_trait
+~~~
+
+~~~scala
+var jetSet = Set("Boeing", "Airbus")
+jetSet += "Lear"
+println(jetSet.contains("Cessna"))
+~~~
+
+第一行定义了名为jetSet的新变量，并初始化包含两个字符串"Boeing"和"Airbus"的不可变集。如代码所示，scala中创建set的方法与创建list和array的类似：通过调用Set伴生对象的apply工厂方法。在上面的例子里，对scala.collection.immutable.Set的伴生对象调用了apply方法，返回了默认的不可变Set的实例。Scala编译器推断其类型为不可变Set[String]。
+
+要加入新变量，可以对jesSet调用+，并传入新元素。可变的和不可变的集都提供了+方法，但结果不同。可变集把元素加入自身，而不可变集则创建并返回包含了添加元素的新集。清单3.5中使用的是不可变集，因此+调用将产生一个全新集。所以只有可变集提供的才是真正的+=方法，不可变集不是。例子中的第二行，“jetSet += "Lear"”，实质上是下面写法的简写：
+
+~~~scala
+jetSet = jetSet + "Lear"
+~~~
+
+如果要定义可变Set，就需要加入引用（import），如清单3.6所示：
+
+~~~scala
+import scala.collection.mutable.Set
+
+val movieSet = Set("Hitch", "Poltergeist")
+movieSet += "Shrek"
+println(movieSet)
+~~~
+
+第一行里引用了可变Set。所以，编译器知道第三行的Set是指scala.collection.mutable.Set。只有可变集提供的才是真正的+=方法。这行代码还可以写成movieSet.+=("Shrek")。
+
+尽管对于大多数情况来说，使用可变或不可变的Set工厂方法构造对象就已经足够了，但偶尔也难免需要指定set的具体类型。幸运的是，构造的语法相同：只要引用所指定的类，并使用伴生对象的工厂方法即可。例如，要使用不可变的HashSet，可以这么做：
+
+~~~scala
+import scala.collection.immutable.HashSet
+
+val hashSet = HashSet("Tomatoes", "Chilles")
+println(hashSet + "Coriander")
+~~~
+
+另一种Scala里常用的集合类是Map。和set一样，Scala采用了类继承机制提供了可变的和不可变的两种版本的Map，参见图3.3。map的类继承机制看上去和set的很像。scala.collection包里面有一个基础Map特质和两个子特质Map：可变的Map在scala.collection.mutable里，不可变的在scala.collection.immutable里。
+
+~~~mermaid
+graph BT
+	scala.collection.immutable_HashMap --> scala.collection.immutable_Map_trait
+	scala.collection.mutable_HashMap --> scala.collection.mutable_Map_trait
+	scala.collection.immutable_Map_trait -->	scala.collection_Map_trait
+	scala.collection.mutable_Map_trait -->	scala.collection_Map_trait
+~~~
+
+~~~scala
+import scala.collection.mutable.Map
+
+val treasureMap = Map[Int, String]()
+treasureMap += (1 -> "Go to island.")
+treasureMap += (2 -> "Find big X on ground")
+treasureMap += (3 -> "Dig.")
+println(treasureMap(2))
+~~~
+
+Scala编译器把二元操作符表达式`1 -> "Go to island."`转换为`(1).->("Go to island.")`。Scala的任何对象都能调用->方法，并返回包含键值对的二元组（任何对象都能调用->的机制被称为隐式转换，将在第21章里涉及）。然后这个二元组被交给treasureMap对象的+=方法。代码最终输出打印treasureMap中与键2对应的值。执行以上这段代码可以得到：
+
+~~~
+Find big X on ground
+~~~
+
+对于不可变map来说，不必引用任何类，因为不可变map是默认的，清单3.8展示了这个例子：
+
+~~~scala
+val romanNumeral = Map(
+	1 -> "I", 2 -> "II", 3 -> "III", 4 -> "IV", 5 -> "V"
+)
+println(romanNumeral(4))
+~~~
+
+由于没有引用，因此代码第一行里使用了默认的Map：scala.collection.immutable.Map定义对象。并把五个键值元组传给工厂方法，得到返回包含这些键值对的不可变Map。执行以上代码，得到打印输出“IV”。
+
+## 3.5 第十一步 学习识别函数式风格
+
+我们的首要工作是识别这两种风格在代码上的差异。大致可以说，如果代码包含了任何var变量，那它可能就是指令式的风格。如果代码根本没有var——就是说仅仅包含val——那它或许是函数式的风格。因此向函数式风格转变的方式之一，就是尝试不用任何var编程。
+
+下面是改编于第2章的while循环例子，它使用了var，因此属于指令式风格：
+
+~~~scala
+def printArgs(args: Array[String]): Unit = {
+    var i = 0
+    while (i < args.length) {
+        println(args(i))
+        i += 1
+    }
+}
+~~~
+
+你可以通过去掉var的办法把这个代码变得更函数式风格，例如，像这样：
+
+~~~scala
+def printArgs(args: Array[String]): Unit = {
+    for (arg <- args)
+    	println(arg)
+}
+~~~
+
+或这样：
+
+~~~scala
+def printArgs(args: Array[String]): Unit = {
+    args.foreach(println)
+}
+~~~
+
+这个例子说明了减少使用var的一个好处。重构后（更函数式）的代码比原来（更指令式）的代码更简洁、明白，也更少有机会犯错。Scala鼓励函数式风格的原因，实际上也就是因为函数式风格可以帮助你写出更易读懂，同样也是更不易犯错的代码。
+
+当然，这段代码仍有修改的余地。重构后的printArgs方法并不是纯函数式的，因为它有副作用——本例中的副作用就是打印到标准输出流。识别函数是否有副作用的地方就在于其结果类型是否为Unit。而函数风格的方式应该是定义对需打印的arg进行格式化的方法，不过仅返回格式化之后的字符串，如清单3.9所示：
+
+~~~scala
+def formatArgs(args: Array[String]) = args.mkString("\n")
+~~~
+
+现在才是真正函数式风格的了：完全没有副作用或var的mkString方法，能在任何可枚举的集合类型（包括数组，列表，集和映射）上调用，返回由每个数组元素调用toString，并把传入字符串做分隔符组成的字符串。当然，这个函数并不像printArgs方法那样能够实际完成打印输出，但可以简单地把它的结果传递给println来实现：
+
+~~~scala
+println(formatArgs(args))
+~~~
+
+每个有用的程序都会有某种形式的副作用，否则就不可能向程序之外提供什么有价值的东西。我们提倡无副作用的方法是为了鼓励你尽量设计出没有副作用代码的程序。这种方式的好处之一是可以有助于你的程序更容易测试。
+
+说了这么多，不过还是请牢记：不管是var还是副作用都不是天生邪恶的。Scala不是只能使用函数式编程的纯函数式语言。它是这两种风格的混合式语言。甚至有时你会发现指令式风格能更有效地解决手中的问题，那就使用指令式风格，别犹豫。不过，为了帮助你学习如何不使用var编程，第7章中我们会演示若干把含有var的代码转换为val的特例。
+
+> **Scala程序员的平衡感**
+>
+> 崇尚val，不可变对象和没有副作用的方法。
+>
+> 首先想到它们。只有在特定需要和并加以权衡之后才选择var，可变对象和有副作用的方法。
+
+## 3.6 第十二步 从文件里读取文本行
+
+~~~scala
+import scala.io.Source
+if (args.length > 0) {
+    for (line <- Source.fromFile(args(0)).getLines)
+    	print(line.length + " " + line)
+}
+else
+	Console.err.println("Please enter filename")
+~~~
+
