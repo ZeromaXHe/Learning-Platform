@@ -36,12 +36,22 @@ public class LimitMinuteLogTask {
 
     @Scheduled(cron = "5 0/1 * * * ?")
     public void task() {
-        int minuteOfDay = getCurrentMinuteOfDay() - 1;
-        minuteOfDay = minuteOfDay < 0 ? (1440 + minuteOfDay) : minuteOfDay;
+        try {
+            int minuteOfDay = getCurrentMinuteOfDay() - 1;
+            minuteOfDay = minuteOfDay < 0 ? (1440 + minuteOfDay) : minuteOfDay;
+
+            logMinuteLimit(minuteOfDay);
+        } catch (Throwable e) {
+            // ScheduledThreadPool
+            PROB_LOGGER.error("LimitMinuteLogTask throw Throwable:", e);
+        }
+    }
+
+    private void logMinuteLimit(int minuteOfDay) {
         LOGGER.info("LimitMinuteLogTask mininute {} start...", minuteOfDay);
         long start = System.currentTimeMillis();
+        ConcurrentHashMap<String, TimestampLog> identityStrToLogMap = MINUTE_TO_LIMIT_LOG_MAP.get(minuteOfDay);
         try {
-            ConcurrentHashMap<String, TimestampLog> identityStrToLogMap = MINUTE_TO_LIMIT_LOG_MAP.get(minuteOfDay);
             if (identityStrToLogMap != null && !identityStrToLogMap.isEmpty()) {
                 identityStrToLogMap.values().stream()
                         // Spring的StringUtils.isEmpty是过时的，
@@ -52,13 +62,17 @@ public class LimitMinuteLogTask {
                 ConcurrentHashMap<String, TimestampLog> remove = MINUTE_TO_LIMIT_LOG_MAP.remove(minuteOfDay);
                 LOGGER.info("LimitMinuteLogTask mininute {} finished... inputted log count: {}, timecost: {}",
                         minuteOfDay, remove.size(), System.currentTimeMillis() - start);
-                remove.clear();
             } else {
                 LOGGER.info("LimitMinuteLogTask mininute {} finished... inputted log count: {}, timecost: {}",
                         minuteOfDay, 0, System.currentTimeMillis() - start);
             }
         } catch (Throwable e) {
             PROB_LOGGER.error("LimitMinuteLogTask mininute {} throw Throwable:", minuteOfDay, e);
+        } finally {
+            // 保证之前的分钟的日志被清空，防止影响到下一天同一分钟的日志
+            if (identityStrToLogMap != null && !identityStrToLogMap.isEmpty()) {
+                MINUTE_TO_LIMIT_LOG_MAP.remove(minuteOfDay);
+            }
         }
     }
 
