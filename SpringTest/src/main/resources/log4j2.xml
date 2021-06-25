@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+
+	<Properties>
+		<Property  name="LOG_HOME">D:/logs/SpringTest</Property >
+		<!-- <Property  name="LOG_HOME">G:\Alex_tool\apache-tomcat-8.0.39\logs</Property > -->
+   </Properties>
+	<appenders>
+		<Console name="Console" target="SYSTEM_OUT">
+			<PatternLayout
+				pattern="%date{yyyy-MM-dd HH:mm:ss.SSS}|%msg%n" />
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1"
+					modulate="true" />
+				<SizeBasedTriggeringPolicy size="500 MB" />  
+			</Policies>
+			<DefaultRolloverStrategy>
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+					<IfLastModified age="1H" />
+				</Delete>
+			</DefaultRolloverStrategy>
+		</Console>
+		<!-- business 请求日志 -->
+		<RollingRandomAccessFile name="business"
+			fileName="${LOG_HOME}/BUSINESS_DAILY.log" filePattern="${LOG_HOME}/BUSINESS_DAILY.%d{yyyy-MM-dd-HH}.log">
+			<PatternLayout
+				pattern="%date{yyyy-MM-dd HH:mm:ss.SSS}|%msg%n" />
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1"
+					modulate="true" />
+				<!-- <SizeBasedTriggeringPolicy size="500 MB" />   -->
+			</Policies>
+			<DefaultRolloverStrategy>
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+					<IfFileName glob="BUSINESS_DAILY*.log">
+						<IfLastModified age="1H" />
+					</IfFileName>
+				</Delete>
+			</DefaultRolloverStrategy>
+		</RollingRandomAccessFile>
+		
+		<RollingRandomAccessFile name="prob"
+			fileName="${LOG_HOME}/PROB_DAILY.log" filePattern="${LOG_HOME}/PROB_DAILY.%d{yyyy-MM-dd-HH}.log">
+			<PatternLayout
+				pattern="%date{yyyy-MM-dd HH:mm:ss.SSS}|%msg%n" />
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1"
+					modulate="true" />
+				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
+			</Policies>
+			<DefaultRolloverStrategy>
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+					<IfFileName glob="PROB_DAILY*.log">
+						<IfLastModified age="1H" />
+					</IfFileName>>
+				</Delete>
+			</DefaultRolloverStrategy>
+		</RollingRandomAccessFile>
+
+		<RollingRandomAccessFile name="minute_limit"
+								 fileName="${LOG_HOME}/LIMIT_MINUTE.log" filePattern="${LOG_HOME}/LIMIT_MINUTE_%d{yyyy-MM-dd-HH}.log">
+			<PatternLayout
+					pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n" />
+			<Policies>
+				<TimeBasedTriggeringPolicy interval="1"
+										   modulate="true" />
+				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
+			</Policies>
+			<DefaultRolloverStrategy>
+				<Delete basePath="${LOG_HOME}" maxDepth="1">
+					<IfFileName glob="LIMIT_MINUTE*.log">
+						<IfLastModified age="1H" />
+					</IfFileName>
+				</Delete>
+			</DefaultRolloverStrategy>
+		</RollingRandomAccessFile>
+	</appenders>
+	<loggers>
+        <logger name="org.spring" level="error" additivity="false">  
+            
+            <AppenderRef ref="business" />  
+        </logger>  
+        <logger name="org.springframework" level="error" additivity="false">  
+            
+            <AppenderRef ref="business" />  
+        </logger>
+		<Logger name="business" level="info" additivity="false">
+			<AppenderRef ref="business" />
+		</Logger>
+		<Logger name="prob" level="info" additivity="false">
+			<AppenderRef ref="prob" />
+		</Logger>
+		<Logger name="report" level="info" additivity="false">
+			<AppenderRef ref="report" />
+		</Logger>
+        <Logger name="minute_limit" level="info" additivity="false">
+            <AppenderRef ref="minute_limit" />
+        </Logger>
+		<Root level="info">
+		    <appender-ref ref="business" />
+			<!-- <appender-ref ref="Console" /> -->
+			
+		</Root>
+	</loggers>
+</Configuration>
