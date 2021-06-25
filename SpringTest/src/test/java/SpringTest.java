@@ -6,6 +6,8 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
 import java.text.MessageFormat;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
@@ -31,14 +33,25 @@ public class SpringTest {
     private LimitMinuteLogTask limitMinuteLogTask;
 
     @Test
+    public void localDateTest(){
+        // MessageFormat.format 里的格式为：21-6-25 下午3:16
+        System.out.println(MessageFormat.format("{0}", new Date()));
+        System.out.println(new Date());
+        System.out.println(LocalDateTime.now());
+        System.out.println(LocalDateTime.now().format(DateTimeFormatter.ofPattern("YYYY-MM-dd HH:mm:ss")));
+    }
+
+    @Test
     public void limitMinuteLogTest() {
         IntStream.rangeClosed(1, 4).forEach(i -> {
             String start = MessageFormat.format("{0}|[{1}]start... minuteOfDay: {2}",
-                    new Date(), i, LimitMinuteLogTask.getCurrentMinuteOfDay());
+                    LocalDateTime.now().format(DateTimeFormatter.ofPattern("YYYY-MM-dd HH:mm:ss")),
+                    i, LimitMinuteLogTask.getCurrentMinuteOfDay());
             System.out.println(start);
             IntStream.rangeClosed(1, 100).forEach(this::asyncLog);
             String end = MessageFormat.format("{0}|[{1}]end... minuteOfDay: {2}",
-                    new Date(), i, LimitMinuteLogTask.getCurrentMinuteOfDay());
+                    LocalDateTime.now().format(DateTimeFormatter.ofPattern("YYYY-MM-dd HH:mm:ss")),
+                    i, LimitMinuteLogTask.getCurrentMinuteOfDay());
             System.out.println(end);
             try {
                 TimeUnit.MINUTES.sleep(1);
