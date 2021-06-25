@@ -476,6 +476,8 @@ println(formatArgs(args))
 
 ## 3.6 第十二步 从文件里读取文本行
 
+清单3.10为第一个版本的实现：
+
 ~~~scala
 import scala.io.Source
 if (args.length > 0) {
@@ -485,4 +487,242 @@ if (args.length > 0) {
 else
 	Console.err.println("Please enter filename")
 ~~~
+
+全部的脚本在清单3.11中：
+
+~~~scala
+import scala.io.Source
+
+def widthOfLength(s: String) = s.length.toString.length
+
+if (args.length > 0) {
+    val lines = Source.fromFile(args(0)).getLines.toList
+    
+    val longestLine = lines.reduceLeft(
+    	(a, b) => if (a.length > b.length) a else b
+    )
+    val maxWidth = widthOfLength(longestLine)
+    
+    for (line <- lines) {
+        val numSpaces = maxWidth widthOfLength(line)
+        val padding = " " * numSpaces
+        print(padding + line.length + " { " + line)
+    }
+}
+else
+	Console.err.println("Please enter filename")
+~~~
+
+# 第4章 类和对象
+
+## 4.1 类、字段和方法
+
+类定义可以放置字段和方法，这些被笼统地称为**成员**（member）。字段，不管是用val还是用var定义的，都是指向对象的变量。方法，用def定义，包含了可执行的代码。字段保留了对象的状态或数据，而方法使用这些数据执行对象的运算工作。
+
+> **注意**
+>
+> 在Scala里把成员公开的方法是不显式地指定任何访问修饰符。换句话说，在Java里要写上“public”的地方，在Scala里只要什么都不要写就成。public是Scala的默认访问级别。
+
+传递给方法的任何参数都可以在方法内部使用。Scala里方法参数的一个重要特征是它们都是val，不是var。如果你想在方法里给参数重新赋值，结果是编译失败：
+
+~~~scala
+def add(b: Byte): Unit = {
+    b = 1 // 编译不过，因为b是val
+    sum += b
+}
+~~~
+
+如果没有发现任何显式的返回语句，Scala方法将返回方法中最后一次计算得到的值。
+
+方法的推荐风格是尽量避免使用返回语句，尤其是多条返回语句。代之以把每个方法当作是创建返回值的表达式。这种逻辑鼓励你分层简化方法，把较大的方法分解为多个更小的方法。另一方面，内容决定形式，如果确实需要，Scala也能够很容易地编写具有多个显式的return的方法。
+
+假如某个方法仅计算单个结果表达式，则可以去掉花括号。如果结果表达式很短，甚至可以把它放在def的同一行里。这样改动之后，类ChecksumAccumulator看上去像这样：
+
+~~~scala
+class checksumAccumulator {
+    private var sum = 0
+    def add(b: Byte): Unit = sum += b
+    def checksum(): Int = ~(sum & 0xFF) + 1
+}
+~~~
+
+对于像ChecksumAccumulator的add方法那样的结果类型为Unit的方法来说，执行的目的就是为了它的副作用。通常我们定义副作用为能够改变方法之外的某处状态或执行I/O活动的方法。比方说，在add这个例子里，副作用就是sum被重新赋值了。它的另一种表达方式是去掉结果类型和等号，把方法体放在花括号里。在这种形势下，方法看上去很像过程（procedure），一种仅为了副作用而执行的方法。清单4.1的add方法可以改写如下：
+
+~~~scala
+// 文件ChecksumAccumulator.scala
+class checksumAccumulator {
+    private var sum = 0
+    def add(b: Byte) { sum += b }
+    def checksum(): Int = ~(sum &0xFF) + 1
+}
+~~~
+
+比较容易出错的地方是如果去掉方法体前面的等号，那么方法的结果类型就必定是Unit。这种说法不论方法体里面包含什么都成立，因为Scala编译器可以把任何类型转换为Unit。例如，如果方法的最后结果是String，但结果类型被声明为Unit，那么String将被转变为Unit并丢弃原值：
+
+~~~scala
+scala> def f(): Unit = "this String gets lost"
+f: ()Unit
+~~~
+
+例子里，函数f声明了结果类型Unit，因此String被转变为Unit。Scala编译器会把定义的像过程的方法，就是说，带有花括号但没有等号的，本质上当作Unit结果类型的方法。例如：
+
+~~~scala
+scala> def g() { "this String gets lost too" }
+g: ()Unit
+~~~
+
+因此，对于本想返回非Unit值的方法却忘记加等号时，错误就出现了。所以为了得到想要的结果，等号是必不可少的：
+
+~~~scala
+scala> def h() = { "this String gets returned!" }
+h: ()java.lang.String
+
+scala> h
+res0: java.lang.String = this String gets returned!
+~~~
+
+## 4.2 分号推断
+
+Scala程序里，语句末尾的分号通常是可选的。愿意可以加，若一行里仅有一个语句也可以不加。不过，如果一行包含多条语句时，分号则是必须的：
+
+~~~scala
+val s = "hello"; println(s)
+~~~
+
+输入跨越多行的语句时，多数情况无须特别处理，Scala将在正确的位置分隔语句。例如，下面的代码被当成跨四行的一条语句：
+
+~~~scala
+if (x < 2)
+	println("too small")
+else
+	println("ok")
+~~~
+
+然而，偶尔Scala也许并不如你所愿，把句子分拆成两部分：
+
+~~~scala
+x
++ y
+~~~
+
+这会被当做两个语句x和+y。如果希望把它作为一个语句x+y，可以把它放在括号里：
+
+~~~scala
+(x
++ y)
+~~~
+
+或者也可以把 + 放在行末。也正源于此，串接类似于+这样的中缀操作符的时候，Scala通常的风格是把操作符放在行尾而不是行头：
+
+~~~scala
+x +
+y +
+z
+~~~
+
+> **分号推断的规则**
+>
+> 分割语句的具体规则既出人意料地简单又非常有效。那就是，除非以下情况的一种成立，否则行尾被认为是一个分号：
+>
+> 1. 疑问行由一个不能合法作为语句结尾的字结束，如句点或中缀操作符。
+> 2. 下一行开始于不能作为语句开始的词。
+> 3. 行结束于括号(...)或方框[...]内部，因为这些符号不可能容纳多个语句。
+
+## 4.3 Singleton对象
+
+第1章提到过，Scala比Java更为面向对象的特点之一是Scala不能定义静态成员，而是代之以定义单例对象（singleton object）。除了用object关键字替换了class关键字外，单例对象的定义看上去与类定义一致。参见清单4.2：
+
+~~~scala
+// 文件ChecksumAccumulator.scala
+import scala.collection.mutable.Map
+
+object ChecksumAccumulator {
+    private val cache = Map[String, Int]()
+    
+    def calculate(s: String): Int = 
+    	if (cache.contains(s))
+    		cache(s)
+    	else {
+            val acc = new ChecksumAccumulator
+            for (c <- s)
+            	acc.add(c.toByte)
+            val cs = acc.checksum()
+            cache += (s -> cs)
+            cs
+        }
+}
+~~~
+
+表中的单例对象叫做ChecksumAccumulator，与前一个例子里的类同名。当单例对象与某个类共享同一个名称时，它就被称为是这个类的伴生对象（companion object）。类和它的伴生对象必须定义在一个源文件里。类被称为是这个单例对象的伴生类（companion class）。类和它的伴生对象可以相互访问其私有成员。
+
+对于Java程序员来说，可以把单例对象当作是Java中可能会用到的静态方法工具类。也可以用类似的语法做方法调用：单例对象名，点，方法名。
+
+然而单例对象不只是静态方法的工具类。它同样是头等的对象。因此单例对象的名字可以被看作是贴在对象上的“名签”
+
+定义单例对象并没有定义类型（在Scala的抽象层次上说）。如果只有ChecksumAccumulator对象的定义，就不能建立ChecksumAccumulator类型的变量。或者可以认为，ChecksumAccumulator类型是由单例对象的伴生类定义的。然而，单例对象扩展了父类并可以混入特质。因此，可以使用类型调用单例对象的方法，或者用类型的实例变量指代单例对象，并把它传递给需要类型参数的方法。我们将在第12章展示一些继承自类和特质的单例对象的例子。
+
+类和单例对象间的差别是，单例对象不带参数，而类可以。因为单例对象不是用new关键字实例化的，所以没机会传递给它实例化参数。每个单例对象都被实现为虚构类（synthetic class）的实例，并指向静态的变量，因此它们与Java静态类有着相同的初始化语义。特别要指出的是，单例对象在第一次被访问的时候才会被初始化。
+
+不与伴生类共享名称的单例对象被称为独立对象（standalone object）。它可以用在很多地方，例如作为相关功能方法的工具类，或者定义Scala应用的入口点。下面会说明这种用法。
+
+## 4.4 Scala程序
+
+想要编写能够独立运行的Scala程序，就必须创建有main方法（仅带一个参数Array[String]，且结果类型为Unit）的单例对象。任何拥有合适签名的main方法的单例对象都可以用来作为程序的入口点。示例参见清单4.3：
+
+~~~scala
+// 文件 Summer.scala
+import ChecksumAccumulator.calculate
+
+object Summer {
+    def main(args: Array[String]) {
+        for (arg <- args)
+        	println(arg + ": " + calculate(arg))
+    }
+}
+~~~
+
+文件中的第一个语句是对定义在前面ChecksumAccumulator对象中calculate方法的引用。它允许你在后面的文件里使用方法的简化名。（对于Java程序员来说，可以认为这种引用类似于Java 5引入的静态引用特性。然而Scala里的不同点在于，任何成员引用可以来自于任何对象，而不只是单例对象。）
+
+> **注意**
+>
+> Scala的每个源文件都隐含了对包java.lang、包scala，以及单例对象Predef的成员引用。包Scala中的Predef对象包含了许多有用的方法。例如，Scala源文件中写下println语句，实际调用的是Predef的println（Predef.println转而调用Console.println，完成真正的工作）。写下assert，实际是在调用Predef.assert。
+
+要执行Summer应用程序，需要把以上的代码写入文件Summer.scala中。因为Summer使用了ChecksumAccumulator，所以还要把ChecksumAccumulator的代码，包括清单4.1的类和清单4.2里它的伴生对象，放在文件ChecksumAccumulator.scala中。
+
+Scala和Java之间有一点不同，Java需要你把公共类放在以这个类命名的源文件中——如类SpeedRacer要放在SpeedRacer.java里——Scala对于源文件的命名没有硬性规定。然而通常情况下如果不是脚本，推荐的风格是像在Java里那样按照所包含的类名来命名文件，这样程序员就可以比较容易地根据文件名找到类。本例中我们对文件ChecksumAccumulator.scala和Summer.scala使用这一原则命名。
+
+ChecksumAccumulator.scala和Summer.scala都不是脚本，因为它们都以定义结尾。反过来说，脚本必须以结果表达式结束。你需要用Scala编译器真正地编译这些文件，然后执行输出的类文件。方式之一是使用Scala的基本编译器，scalac。输入：
+
+~~~shell
+$ scalac ChecksumAccumulator.scala Summer.scala
+~~~
+
+开始编译源文件，不过在编译完成之前或许会稍微停顿一下。这是因为每次编译器启动时，都要花一些时间扫描jar文件内容，并在开始编译你提交的源文件之前完成更多其他的初始化工作。因此，Scala的发布包里还包括了一个叫做fsc（快速Scala编译器，fast Scala compiler）的Scala编译器后台服务（daemon）。使用方法如下：
+
+~~~shell
+$ fsc ChecksumAccumulator.scala Summer.scala
+~~~
+
+第一次执行fsc时，会创建一个绑定在你计算机端口上的本地服务器后台进程。然后它就会把文件列表通过端口发送给后台进程，由后台进程完成编译。下一次执行fsc时，检测到后台进程已经在运行了，于是fsc将只把文件列表发给后台进程，它会立刻开始编译文件。使用fsc，只须在首次运行的时候等待Java运行时环境的启动。如果想停止fsc后台进程，可以执行fsc -shutdown。
+
+## 4.5 Application特质
+
+Scala提供了特质scala.Application，可以减少一些输入工作。参见清单4.4：
+
+~~~scala
+import ChecksumAccumulator.calculate
+
+object FallWinterSpringSummer extends Application {
+    for (season <- List("fall", "winter", "spring"))
+    	println(season + ": " + calculate(season))
+}
+~~~
+
+使用方法是，首先在单例对象名后面写上“extends Application”。然后代之以main方法，你可以把想要执行的代码直接放在单例对象的花括号之间。如此而已。之后可以正常的编译和运行。
+
+能这么做，是因为特质Application声明了带有合适签名的main方法，并被你写的单例对象继承，使它可以像Scala程序那样。花括号之间的代码被收集进了单例对象的主构造器（primary constructor），并在类被初始化时执行。如果你暂时不能明白所有这些指的什么也不用着急。之后的章节会解释，目前只要知道有这种做法即可。
+
+继承自Application比编写完整的main方法要方便，不过它也有缺点。首先，如果想访问命令行参数的话就不能用它，因为args数组不可访问。第二，因为某些JVM线程模型里的局限，如对于多线程的程序需要自行编写main方法；最后，某些JVM的实现没有优化被Application特质执行的对象的初始化代码。因此只有当程序相当简单并且是单线程的情况下才可以继承Application特质。
+
+# 第5章 基本类型和操作
 
