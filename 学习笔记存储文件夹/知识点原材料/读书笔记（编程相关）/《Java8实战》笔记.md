@@ -2331,3 +2331,59 @@ public int readDuration(Properties props, String name) {
 > ~~~
 
 # 第11章 CompletableFuture：组合式异步编程
+
+# 附录B 类库的更新
+
+## B.2 并发
+
+Java 8中引入了多个与并发相关的更新。首当其冲的当然是并行流，我们在第7章详细讨论过。另外一个就是第11章中介绍的CompletableFuture类。
+
+除此之外，还有一些值得注意的更新。比如，Arrays类现在支持并发操作了。我们会在B.3节讨论这些内容。
+
+这一节，我们想要围绕java.util.concurrent.atomic包的更新展开讨论。这个包的主要功能是处理原子变量（atomic variable）。除此之外，我们还会讨论ConcurrentHashMap类的更新，它现在又新增了几个方法。
+
+### B.2.1 原子操作
+
+java.util.concurrent.atomic包提供了多个对数字类型进行操作的类，比如AtomicInteger和AtomicLong，它们支持对单一变量的原子操作。这些类在Java 8中新增了更多的方法支持。
+
+- getAndUpdate——以原子方式用给定的方法更新当前值，并返回变更之前的值。
+- updateAndGet——以原子方式用给定的方法更新当前值，并返回变更之后的值。 
+- getAndAccumulate——以原子方式用给定的方法对当前及给定的值进行更新，并返回变更之前的值。
+- accumulateAndGet——以原子方式用给定的方法对当前及给定的值进行更新，并返回变更之后的值。
+
+下面的例子向我们展示了如何以原子方式比较一个现存的原子整型值和一个给定的观测值（比如10），并将变量设定为二者中较小的一个。
+
+~~~java
+int min = atomicInteger.accumulateAndGet(10, Integer::min); 
+~~~
+
+#### Adder和Accumulator
+
+多线程的环境中，如果多个线程需要频繁地进行更新操作，且很少有读取的动作（比如，在统计计算的上下文中），Java API文档中推荐大家使用新的类LongAdder、LongAccumulator、Double-Adder以及DoubleAccumulator，尽量避免使用它们对应的原子类型。这些新的类在设计之初就考虑了动态增长的需求，可以有效地减少线程间的竞争。
+
+LongAddr和DoubleAdder类都支持加法操作，而LongAccumulator和DoubleAccumulator可以使用给定的方法整合多个值。比如，可以像下面这样使用LongAdder计算多个值的总和。
+
+~~~java
+// 使用默认构造器，初始的sum被置为0
+LongAdder adder = new LongAdder();
+// 在多个不同的线程中进行加法运算
+adder.add(10); 
+// ...
+// 到某个时刻得出sum的值
+long sum = adder.sum();
+~~~
+
+或者，你也可以像下面这样使用LongAccumulator实现同样的功能。
+
+~~~java
+// 在几个不同的线程中累计计算值
+LongAccumulator acc = new LongAccumulator(Long::sum, 0); 
+acc.accumulate(10); 
+// ...
+// 在某个时刻得出结果
+long result = acc.get();
+~~~
+
+### B.2.2 ConcurrentHashMap
+
+# 附录C 如何以并发方式在同一个流上执行多种操作
