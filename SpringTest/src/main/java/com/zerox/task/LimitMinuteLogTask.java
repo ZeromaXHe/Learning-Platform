@@ -18,12 +18,15 @@ public class LimitMinuteLogTask {
     private final Logger PROB_LOGGER = LogManager.getLogger("prob");
     private final Logger MINUTE_LIMIT_LOGGER = LogManager.getLogger("minute_limit");
 
-    private static final ConcurrentHashMap<Integer, ConcurrentHashMap<String, LockedTimestampLog>>
+    private static final ConcurrentHashMap<Integer, ConcurrentHashMap<String, TimestampLog>>
             MINUTE_TO_LIMIT_LOG_MAP = new ConcurrentHashMap<>();
 
-    static class LockedTimestampLog {
+    static class TimestampLog {
         long timestamp;
         String logStr;
+    }
+
+    static class LockedTimestampLog extends TimestampLog {
         Lock lock;
 
         LockedTimestampLog() {
@@ -38,15 +41,15 @@ public class LimitMinuteLogTask {
         LOGGER.info("LimitMinuteLogTask mininute {} start...", minuteOfDay);
         long start = System.currentTimeMillis();
         try {
-            ConcurrentHashMap<String, LockedTimestampLog> identityStrToLogMap = MINUTE_TO_LIMIT_LOG_MAP.get(minuteOfDay);
+            ConcurrentHashMap<String, TimestampLog> identityStrToLogMap = MINUTE_TO_LIMIT_LOG_MAP.get(minuteOfDay);
             if (identityStrToLogMap != null && !identityStrToLogMap.isEmpty()) {
                 identityStrToLogMap.values().stream()
                         // Spring的StringUtils.isEmpty是过时的，
                         // 注释中推荐使用 #hasLength(String) 或者 #hasText(String) 或者 ObjectUtils#isEmpty(Object)
-                        .filter(lockedTimestampLog -> StringUtils.hasLength(lockedTimestampLog.logStr))
-                        .map(lockedTimestampLog -> lockedTimestampLog.logStr)
+                        .filter(timestampLog -> StringUtils.hasLength(timestampLog.logStr))
+                        .map(timestampLog -> timestampLog.logStr)
                         .forEach(MINUTE_LIMIT_LOGGER::info);
-                ConcurrentHashMap<String, LockedTimestampLog> remove = MINUTE_TO_LIMIT_LOG_MAP.remove(minuteOfDay);
+                ConcurrentHashMap<String, TimestampLog> remove = MINUTE_TO_LIMIT_LOG_MAP.remove(minuteOfDay);
                 LOGGER.info("LimitMinuteLogTask mininute {} finished... inputted log count: {}, timecost: {}",
                         minuteOfDay, remove.size(), System.currentTimeMillis() - start);
                 remove.clear();
@@ -62,10 +65,28 @@ public class LimitMinuteLogTask {
     @Async
     public void addLogToMinuteToLimitLogMap(int minuteOfDay, String identityStr, long timestamp, String logStr) {
         MINUTE_TO_LIMIT_LOG_MAP.putIfAbsent(minuteOfDay, new ConcurrentHashMap<>());
-        ConcurrentHashMap<String, LockedTimestampLog> idtStrToTimestampLogMap = MINUTE_TO_LIMIT_LOG_MAP.get(minuteOfDay);
+        ConcurrentHashMap<String, TimestampLog> idtStrToTimestampLogMap = MINUTE_TO_LIMIT_LOG_MAP.get(minuteOfDay);
+        idtStrToTimestampLogMap.putIfAbsent(identityStr, new TimestampLog());
+
+        TimestampLog timestampLog = idtStrToTimestampLogMap.get(identityStr);
+        if (timestampLog.timestamp <= timestamp) {
+            synchronized (idtStrToTimestampLogMap.get(identityStr)) {
+                if (timestampLog.timestamp <= timestamp) {
+                    // 初始化 timestampLog.timestamp == 0 的情况包含其中
+                    timestampLog.logStr = logStr;
+                    timestampLog.timestamp = timestamp;
+                }
+            }
+        }
+    }
+
+    @Async
+    public void addLogToMinuteToLimitLogMap_LockVersion(int minuteOfDay, String identityStr, long timestamp, String logStr) {
+        MINUTE_TO_LIMIT_LOG_MAP.putIfAbsent(minuteOfDay, new ConcurrentHashMap<>());
+        ConcurrentHashMap<String, TimestampLog> idtStrToTimestampLogMap = MINUTE_TO_LIMIT_LOG_MAP.get(minuteOfDay);
         idtStrToTimestampLogMap.putIfAbsent(identityStr, new LockedTimestampLog());
 
-        LockedTimestampLog lockedTimestampLog = idtStrToTimestampLogMap.get(identityStr);
+        LockedTimestampLog lockedTimestampLog = (LockedTimestampLog) idtStrToTimestampLogMap.get(identityStr);
         if (lockedTimestampLog.timestamp <= timestamp) {
             lockedTimestampLog.lock.lock();
             try {
