@@ -15,6 +15,7 @@
 	<context:annotation-config />
 <!--	spring扫描以及管理-->
 	<context:component-scan base-package="com.zerox.task" />
+	<context:component-scan base-package="com.zerox.service" />
 	<!-- 开启定时器开关，自动扫描程序中带注解的定时器 -->
 	<!-- 开启异步，并引入线程池 -->
 	<task:annotation-driven executor="threadPool" />

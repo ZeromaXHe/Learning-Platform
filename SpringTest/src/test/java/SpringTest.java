@@ -1,3 +1,4 @@
+import com.zerox.service.LimitMinuteLogService;
 import com.zerox.task.LimitMinuteLogTask;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -31,6 +32,8 @@ public class SpringTest {
 
     @Autowired
     private LimitMinuteLogTask limitMinuteLogTask;
+    @Autowired
+    private LimitMinuteLogService limitMinuteLogService;
 
     @Test
     public void localDateTest() {
@@ -45,8 +48,41 @@ public class SpringTest {
         return LocalDateTime.now().format(DateTimeFormatter.ofPattern("YYYY-MM-dd HH:mm:ss"));
     }
 
+    /**
+     * 基于双缓冲实现的分钟级日志整合
+     */
     @Test
-    public void limitMinuteLogTest() {
+    public void limitMinuteLogServiceTest() {
+        IntStream.rangeClosed(1, 4).forEach(i -> {
+            String start = MessageFormat.format("{0}|[{1}]start... minuteOfDay: {2}",
+                    getYMdHmsTimeString(), i, LimitMinuteLogService.getCurrentMinuteOfDay());
+            System.out.println(start);
+            IntStream.rangeClosed(1, 100).forEach(this::serviceLog);
+            String end = MessageFormat.format("{0}|[{1}]end... minuteOfDay: {2}",
+                    getYMdHmsTimeString(), i, LimitMinuteLogService.getCurrentMinuteOfDay());
+            System.out.println(end);
+            try {
+                TimeUnit.MINUTES.sleep(1);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
+    private void serviceLog(int total) {
+        String identityStr = "limitMinuteLogServiceTest";
+        String logStr = MessageFormat.format("limitMinuteLogServiceTest|{0}|{1}|100",
+                LimitMinuteLogService.getCurrentMinuteOfDay(), total);
+        System.out.println(getYMdHmsTimeString() + "|" + logStr);
+        limitMinuteLogService.logLimitMinute(LimitMinuteLogService.getCurrentMinuteOfDay(), identityStr,
+                System.currentTimeMillis(), logStr);
+    }
+
+    /**
+     * 基于异步和定时任务实现的分钟级日志整合
+     */
+    @Test
+    public void limitMinuteLogTaskTest() {
         IntStream.rangeClosed(1, 4).forEach(i -> {
             String start = MessageFormat.format("{0}|[{1}]start... minuteOfDay: {2}",
                     getYMdHmsTimeString(), i, LimitMinuteLogTask.getCurrentMinuteOfDay());
@@ -65,7 +101,8 @@ public class SpringTest {
 
     private void asyncLog(int total) {
         String identityStr = "limitMinuteTest";
-        String logStr = MessageFormat.format("limitMinuteTest|{0}|100", total);
+        String logStr = MessageFormat.format("limitMinuteTest|{0}|{1}|100",
+                LimitMinuteLogTask.getCurrentMinuteOfDay(), total);
         System.out.println(getYMdHmsTimeString() + "|" + logStr);
         limitMinuteLogTask.addLogToMinuteToLimitLogMap(LimitMinuteLogTask.getCurrentMinuteOfDay(), identityStr,
                 System.currentTimeMillis(), logStr);
