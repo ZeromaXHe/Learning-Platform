@@ -1732,3 +1732,337 @@ ZooKeeper中的版本概念和传统意义上的软件版本有很大的区别�
 
 ### 7.1.4 Watcher——数据变更的通知
 
+在6.1.1节中，我们已经提到，ZooKeeper提供了分布式数据的分布/订阅功能。一个典型的发布/订阅模型系统定义了一种一对多的订阅关系，能够让多个订阅者同时监听某一个主题对象，当这个主题对象自身状态变化时，会通知所有订阅者，使它们能够做出相应的处理。在ZooKeeper中，引入了Watcher机制来实现这种分布式的通知功能。ZooKeeper允许客户端向服务器注册一个Watcher监听，当服务端的一些指定事件出发了这个Watcher，那么就会向指定客户端发送一个事件通知来实现分布式的通知功能。
+
+ZooKeeper的Watcher机制主要包括客户端线程、客户端WatchManager和ZooKeeper服务器三部分。在具体工作流程上，简单地讲，客户端在向ZooKeeper服务器注册Watcher的同时，会将Watcher对象存储在客户端的WatchManager中。当ZooKeeper服务端触发Watcher事件后，会向客户端发送通知、客户端线程从WatchManager中取出对应的Watcher对象来执行回调逻辑。
+
+#### Watcher接口
+
+在ZooKeeper中，接口类Watcher用于表示一个标准的事件处理器，其定义了事件通知相关的逻辑，包含KeeperState和EventType两个枚举类，分别代表了通知状态和事件类型，同时定义了事件的回调方法：process（WatchedEvent event）
+
+**Watcher事件**
+
+同一个事件在不同的通知状态中代表的含义有所不同，表7-3列举了常见的通知状态和事件类型。
+
+| KeeperState              | EventType                | 触发条件                                                     | 说明                                                         |
+| ------------------------ | ------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| SyncConnected（3）       | None（-1）               | 客户端与服务器成功建立会话                                   | 此时客户端和服务器处于连接状态                               |
+|                          | NodeCreated（1）         | Watcher监听的对应数据节点被创建                              |                                                              |
+|                          | NodeDeleted（2）         | Watcher监听的对应数据节点被删除                              |                                                              |
+|                          | NodeDataChanged（3）     | Watcher监听的对应数据节点的数据内容发生变更                  |                                                              |
+|                          | NodeChildrenChanged（4） | Watcher监听的对应数据节点的子节点列表发生变更                |                                                              |
+| Disconnected（0）        | None（-1）               | 客户端与ZooKeeper服务器断开连接                              | 此时客户端和服务器出于断开状态                               |
+| Expired（-112）          | None（-1）               | 会话超时                                                     | 此时客户端会话失效，通常同时也会收到SessionExpiredException异常 |
+| AuthFailed（4）          | None（-1）               | 通常有两种情况：<br />- 使用错误的scheme进行权限检查<br />- SASL权限检查失败 | 通常同时也会收到AuthFailedException异常                      |
+| ~~Unknown~~（-1）        |                          |                                                              | 从3.1.0版本开始已废弃                                        |
+| ~~NoSyncConnected~~（1） |                          |                                                              |                                                              |
+
+#### 回调方法process()
+
+process方法是Watcher接口中的一个回调方法，当ZooKeeper向客户端发送一个Watcher事件通知时，客户端就会对相应的process方法进行回调，从而实现对事件的处理。process方法的定义如下：
+
+~~~java
+abstract public void process(WatchedEvent event)
+~~~
+
+这个回调方法的定义非常简单，我们重点看下方法的参数定义：WatchedEvent。WatchedEvent包含了每一个事件的三个基本属性：通知状态（keeperState）、事件类型（eventType）和节点路径（path），其数据结构如图7-5所示。ZooKeeper使用WatchedEvent对象来封装服务端事件并传递给Watcher，从而方便回调方法process对服务端事件进行处理。
+
+~~~mermaid
+classDiagram
+	class WatchedEvent {
+		- keeperState: KeeperState
+		- eventType: EventType
+		- path: String
+		+ getWrapper(): WatcherEvent
+	}
+~~~
+
+提到WatchedEvent，不得不讲下WatcherEvent实体。笼统地讲，两者表示的是同一个事物，都是对一个服务端事件的封装。不同的是，WatchedEvent是一个逻辑事件，用于服务器和客户端程序执行过程中所需的逻辑对象，而WatcherEvent因为实现了序列化接口，因此可以用于网络传输，其数据结构如图7-6所示。
+
+~~~mermaid
+classDiagram
+	class WatcherEvent {
+		- type: int
+		- state: int
+		- path: String
+		+ serialize(OutputArchive, String): void 
+		+ deserialize(InputArchive, String): void 
+	}
+~~~
+
+服务端在生成WatchedEvent事件之后，会调用getWrapper方法将自己包装成一个可序列化的WatcherEvent事件，以便通过网络传输到客户端。客户端在接收到服务端的这个事件对象后，首先会将WatcherEvent事件还原成一个WatchedEvent事件，并传递给process方法处理，回调方法process根据入参就能够解析出完整的服务器事件了。
+
+需要注意的一点是，无论是WatchedEvent还是WatcherEvent，其对ZooKeeper服务端事件的封装都是极其简单的。
+
+客户端无法直接从该事件中获取到对应数据节点的原始数据内容以及变更后的新数据内容，而是需要客户端再次主动去重新获取数据——这也是ZooKeeper Watcher机制的一个非常重要的特性。
+
+#### 工作机制
+
+ZooKeeper的Watcher机制，总的来说可以概括为以下三个过程：客户端注册Watcher、服务端处理Watcher和客户端回调Watcher。
+
+**客户端注册Watcher**
+
+**服务端处理Watcher**
+
+无论是dataWatches还是childWatches管理器，Watcher的触发逻辑都是一致的，基本步骤如下。
+
+1. 封装WatcherEvent
+   首先将通知状态（KeeperState）、事件类型（EventType）以及节点路径（Path）封装成一个WatchedEvent对象。
+2. 查询Watcher。
+   根据数据节点的节点路径从watchTable中取出对应的Watcher。如果没有找到Watcher，说明没有任何客户端在该数据节点上注册过Watcher，直接退出。而如果找到了这个Watcher，会将其提取出来，同时会直接从watchTable和watch2Paths中将其删除——从这里我们也可以看出，Watcher在服务端是一次性的，即触发一次就失效了。
+3. 调用process方法来触发Watcher。
+   在process方法中，主要逻辑如下。
+   - 在请求头中标记“-l”，表面当前是一个通知。
+   - 将WatchedEvent包装成WatcherEvent，以便进行网络传输序列化。
+   - 向客户端发送该通知。
+
+**客户端回调Watcher**
+
+#### Watcher特性总结
+
+通过上面内容的讲解，我们不难发现ZooKeeper的Watcher具有以下几个特性。
+
+**一次性**
+
+从上面的介绍中可以看到，无论是服务端还是客户端，一旦一个Watcher被触发，ZooKeeper都会将其从相应的存储中移除。因此，开发人员在Watcher的使用上要记住的一点是需要反复注册。这样的设计有效地减轻了服务端的压力。试想，如果注册一个Watcher之后一直有效，那么针对那些更新非常频繁的节点，服务端会不断地向客户端发送事件通知，这无论对于网络还是服务端性能的影响都非常大。
+
+**客户端串行执行**
+
+客户端Watcher回调的过程是一个串行同步的过程，这为我们保证了顺序，同时，需要开发人员注意的一点是，千万不要因为一个Watcher的处理逻辑影响了整个客户端的Watcher回调。
+
+**轻量**
+
+WatchedEvent是ZooKeeper整个Watcher通知机制的最小通知单元，这个数据结构中只包含三部分内容：通知状态、事件类型和节点路径。也就是说，Watcher通知非常简单，只会告诉客户端发生了事件，而不会说明事件的具体内容。
+
+另外，客户端向服务端注册Watcher的时候，并不会把客户端真实的Watcher对象传递到服务端，仅仅只是在客户端请求中使用boolean类型属性进行了标记，同时服务端也仅仅只是保存了当前连接的ServerCnxn对象。
+
+如此轻量的Watcher机制设计，在网络开销和服务端内存开销上都是非常廉价的。
+
+### 7.1.5 ACL——保障数据的安全
+
+ZooKeeper提供了一套完善的ACL（Access Control List）权限控制机制来保障数据的安全。
+
+提到权限控制，我们首先来看看大家都熟悉的，在Unix/Linux文件系统中使用的，也是目前应用最广泛的权限控制方式——UGO（User、Group和Others）权限控制机制。简单地讲，UGO就是针对一个文件或目录，对创建者（User）、创建者所在的组（Group）和其他用户（Other）分别配置不同的权限。从这里可以看出，UGO其实是一种粗粒度的文件系统权限控制模式，利用UGO只能对三类用户进行权限控制，即文件的创建者、创建者所在的组以及其他所有用户，很显然，UGO无法解决下面这个场景：
+
+>用户U1创建了文件F1，希望U1所在的用户组G1拥有对F1读写和执行的权限，另一个用户组G2拥有读权限，而另一个用户U3则没有任何权限。
+
+接下来我们来看另一种典型的权限控制方式：ACL。ACL，即访问控制列表，是一种相对来说比较新颖且更细粒度的权限管理方式，可以针对任意用户和组进行细粒度的权限控制。目前绝大部分Unix系统都已经支持了ACL方式的权限控制，Linux也从2.6版本的内核开始支持这个特性。
+
+#### ACL介绍
+
+ZooKeeper的ACL权限控制和Unix/Linux操作系统中的ACL有一些区别，读者可以从三个方面来理解ACL机制，分别是：权限模式（Scheme）、授权对象（ID）和权限（Permission），通常使用“`scheme:id:permission`”来标识一个有效的ACL信息。
+
+**权限模式：Scheme**
+
+权限模式用来确定权限验证过程中使用的检验策略。在ZooKeeper中，开发人员使用最多的就是以下四种权限模式。
+
+*IP*
+
+IP模式通过IP地址粒度来进行权限控制。同时，IP模式也支持按照网段的方式进行配置。
+
+*Digest*
+
+Digest是最常用的权限控制模式，也更符合我们对于权限控制的认识，其以类似于“`username:password`”形式的权限标识来进行权限配置，便于区分不同应用来进行权限控制。
+
+当我们通过“`username:password`”形式配置了权限标识后，ZooKeeper会对其先后进行两次编码处理，分别是SHA-1算法加密和BASE64编码
+
+*World*
+
+World是一种最开放的权限控制模式，从其名字中可以看出，事实上这种权限控制方式几乎没有任何作用，数据节点的访问权限对所有用户开放，即所有用户都可以在不进行任何权限校验的情况下操作ZooKeeper上的数据。另外，World模式也可以看作是一种特殊的Digest模式，它只有一个权限标识，即“world:anyone”。
+
+*Super*
+
+Super模式，顾名思义就是超级用户的意思，也是一种特殊的Digest模式。在Super模式下，超级用户可以对任意ZooKeeper上的数据节点进行任何操作。关于Super模式的用法，本节后面会进行详细的讲解。
+
+**授权对象：ID**
+
+授权对象指的是权限赋予的用户或一个指定实体，例如IP地址或是机器等。在不同的权限模式下，授权对象是不同的，表7-4列出了各个权限模式和授权对象的对应关系。
+
+| 权限模式 | 授权对象                                                  |
+| -------- | --------------------------------------------------------- |
+| IP       | 通常是一个IP地址或是IP段                                  |
+| Digest   | 自定义，通常是“username:BASE64(SHA-1(username:password))” |
+| World    | 只有一个ID：“anyone”                                      |
+| Super    | 与Digest模式一致                                          |
+
+**权限：Permission**
+
+权限就是指那些通过权限检查后可以被允许执行的操作。在ZooKeeper中，所有对数据的操作权限分为以下五大类：
+
+- **CREATE（C）**：数据节点的创建权限，允许授权对象在该数据节点下创建子节点。
+- **DELETE（D）**：子节点的删除权限，允许授权对象删除该数据节点的子节点。
+- **READ（R）**：数据节点的读取权限，允许授权对象访问该数据节点并读取其数据内容或子节点列表等。
+- **WRITE（W）**：数据节点的更新权限，允许授权对象对该数据节点进行更新操作。
+- **ADMIN（A）**：数据节点的管理权限，允许授权对象对该数据节点进行ACL相关的设置操作。
+
+#### 权限扩展体系
+
+在上文中，我们已经讲解了ZooKeeper默认提供的IP、Digest、World和Super这四种权限模式，在绝大部分的场景下，这四种权限模式已经能够很好地实现权限控制地目的。同时，ZooKeeper提供了特殊的权限控制插件体系，允许开发人员通过指定方式对ZooKeeper的权限进行扩展。这些扩展的权限控制方式就像插件一样插入到ZooKeeper的权限体系中去，因此在ZooKeeper的官方文档中，也称该机制为“Pluggable ZooKeeper Authentication”。
+
+**实现自定义权限控制器**
+
+**注册自定义权限控制器**
+
+#### ACL管理
+
+**设置ACL**
+
+**Super模式的用法**
+
+## 7.2 序列化与协议
+
+### 7.2.1 Jute介绍
+
+Jute是ZooKeeper中的序列化组件，最初也是Hadoop中的默认序列化组件，其前身是Hadoop Record IO中的序列化组件，后来由于Apache Avro具有出众的跨语言特性、丰富的数据结构和对MapReduce的天生支持，并且能非常方便地用于RPC调用，从而深深吸引了Hadoop。因此Hadoop从0.21.0版本开始，废弃了Record IO，使用了Avro这个序列化框架，同时Jute也从Hadoop工程中被剥离出来，成为了独立的序列化组件。
+
+## 7.3 客户端
+
+客户端是开发人员使用ZooKeeper最主要的途径，因此我们有必要对ZooKeeper客户端的内部原理进行详细讲解。ZooKeeper的客户端主要由以下几个核心组件组成。
+
+- **ZooKeeper实例**：客户端入口。
+- **ClientWatchManager**：客户端Watcher管理器。
+- **HostProvider**：客户端地址列表管理器。
+- **ClientCnxn**：客户端核心线程，其内部又包含两个线程，即SendThread和EventThread。前者是一个I/O线程，主要负责ZooKeeper客户端和服务端之间的网络I/O通信；后者是一个事件线程，主要负责对服务端事件进行处理。
+
+客户端的整个初始化和启动过程大体可以分为以下3个步骤。
+
+1. 设置默认Watcher。
+2. 设置ZooKeeper服务器地址列表。
+3. 创建ClientCnxn。
+
+如果在ZooKeeper的构造方法中传入一个Watcher对象的话，那么ZooKeeper就会将这个Watcher对象保存在ZKWatchManager的defaultWatcher中，作为整个客户端会话期间的默认Watcher。关于Watcher的更多详细讲解，已经在7.1.4节中做了详细说明。
+
+### 7.3.1 一次会话的创建过程
+
+**初始化阶段**
+
+1. 初始化ZooKeeper对象。
+   通过调用ZooKeeper的构造方法来实例化一个ZooKeeper对象，在初始化过程中，会创建一个客户端的Watcher管理器：ClientWatchManager。
+2. 设置会话默认Watcher。
+   如果在构造方法中传入了一个Watcher对象，那么客户端会将这个对象作为默认Watcher保存在ClientWatchManager中。
+3. 构造ZooKeeper服务器地址列表管理器：HostProvider。
+   对于构造方法中传入的服务器地址，客户端会将其存放在服务器地址列表管理器HostProvider中。
+4. 创建并初始化客户端网络连接器：ClientCnxn。
+   ZooKeeper客户端首先会创建一个网络连接器ClientCnxn，用来管理客户端与服务器的网络交互。另外，客户端在创建ClientCnxn的同时，还会初始化客户端两个核心队列outgoingQueue和pendingQueue，分别作为客户端的请求发送队列和服务端响应的等待队列。
+   在后面的章节中我们也会讲到，ClientCnxn连接器的底层I/O处理器是ClientCnxnSocket，因此在这一步中，客户端还会同时创建ClientCnxnSocket处理器。
+5. 初始化SendThread和EventThread。
+   客户端会创建两个核心网络线程SendThread和EventThread，前者用于管理客户端和服务端之间的所有网络I/O，后者则用于进行客户端的事件处理。同时，客户端还会将ClientCnxnSocket分配给SendThread作为底层网络I/O处理器，并初始化EventThread的待处理事件队列waitingEvents，用于存放所有等待被客户端处理的事件。
+
+**会话创建阶段**
+
+6. 启动SendThread 和 EventThread
+   SendThread首先会判断当前客户端的状态，进行一系列清理性工作，为客户端发送“会话创建”请求做准备。
+7. 获取一个服务器地址。
+   在开始创建TCP连接之前，SendThread首先需要获取一个ZooKeeper服务器的目标地址，这通常是从HostProvider中随机获取出一个地址，然后委托给ClientCnxnSocket去创建与ZooKeeper服务器之间的TCP连接。
+8. 创建TCP连接。
+   获取到一个服务器地址后，ClientCnxnSocket负责和服务器创建一个TCP长连接。
+9. 创造ConnectRequest请求。
+   在TCP连接创建完毕后，可能有的读者会认为，这样是否就说明已经和ZooKeeper服务器完成连接了呢？其实不然，步骤8只是纯粹地从网络TCP层面完成了客户端与服务端之间的Socket连接，但远未完成ZooKeeper客户端的会话创建。
+   SendThread会负责根据当前客户端的实际设置，构造出一个ConnectRequest请求，该请求代表了客户端视图与服务器创建一个会话。同时，ZooKeeper客户端还会进一步将该请求包装成网络I/O层的Packet对象，放入请求发送队列outgoingQueue中去。
+10. 发送请求
+    当客户端请求准备完毕后，就可以开始向服务端发送请求了。ClientCnxnSocket负责从outgoingQueue中取出一个待发送的Packet对象，讲其序列化成ByteBuffer后，向服务端进行发送。
+
+**响应处理阶段**
+
+11. 接收服务端响应。
+    ClientCnxnSocket接收到服务端的响应后，会首先判断当前的客户端状态是否是“已初始化”，如果尚未完成初始化，那么就认为该响应一定是会话创建请求的响应，直接交由readConnectResult方法来处理该响应。
+12. 处理Response。
+    ClientCnxnSocket会对接收到的服务端响应进行反序列化，得到ConnectResponse对象，并从中获取到ZooKeeper服务端分配的会话sessionId。
+13. 连接成功。
+    连接成功后，一方面需要通知SendThread线程，进一步对客户端进行会话参数的设置，包括readTimeout和connectTimeout等，并更新客户端状态：另一方面，需要通知地址管理器HostProvider当前成功连接的服务器地址。
+14. 生成事件：SyncConnected-None。
+    为了能够让上层应用感知到会话的成功创建，SendThread会生成一个事件SyncConnected-None，代表客户端与服务器会话创建成功，并将该事件传递给EventThread线程。
+15. 查询Watcher。
+    EventThread线程收到事件后，会从ClientWatchManager管理器中查询出对应的Watcher，针对SyncConnected-None事件，那么就直接找出步骤2中存储的默认Watcher，然后将其放到EventThread的waitingEvents队列中去。
+16. 处理事件。
+    EventThread不断地从waitingEvents队列中取出待处理的Watcher对象，然后直接调用该对象的process接口方法，以达到触发Watcher的目的。
+
+### 7.3.2 服务器地址列表
+
+在使用ZooKeeper构造方法时，用户传入的ZooKeeper服务器地址列表，即connectString参数，通常是这样一个使用英文状态逗号分隔的多个IP地址和断开的字符串：
+
+~~~
+192.168.0.1:2181,192.168.0.1:2181,192.168.0.1:2181
+~~~
+
+从这个地址串中我们可以看出，ZooKeeper客户端允许我们将服务器的所有地址都配置在一个字符串上，于是一个问题就来了：ZooKeeper客户端在连接服务器的过程中，是如何从这个服务器列表中选择服务器机器的呢？是按序访问，还是随机访问呢？
+
+ZooKeeper客户端内部在接收到这个服务器地址列表后，会将其首先放入一个ConnectStringParser对象中封装起来。ConnectStringParser是一个服务器地址列表的解析器，该类的基本结构如下：
+
+~~~java
+public final class ConnectStringParser {
+    String chrootPath;
+    ArrayList<InetSocketAddress> serverAddress = new ArrayList<InetSocketAddress>();
+}
+~~~
+
+ConnectStringParser解析器将会对传入的connectString做两个主要处理：解析chrootPath；保存服务器地址列表。
+
+#### Chroot：客户端隔离命名空间
+
+在3.2.0及其之后版本的ZooKeeper中，添加了“Chroot”特性，该特性允许每个客户端为自己设置一个命名空间（Namespace）。如果一个ZooKeeper客户端设置了Chroot，那么该客户端对服务器的任何操作，都将会被限制在其自己的命名空间下。
+
+通过设置Chroot，我们能够将一个客户端应用与ZooKeeper服务端的一棵子树相对应，在那些多个应用共用一个ZooKeeper集群的场景下，这对于实现不同应用之间的相互隔离非常有帮助。
+
+客户端可以通过在connectString中添加后缀的方式来设置Chroot，如下所示：
+
+~~~
+192.168.0.1:2181,192.168.0.1:2181,192.168.0.1:2181/apps/X
+~~~
+
+将这样一个connectString传入客户端的ConnectStringParser后就能够解析出Chroot并保存在chrootPath属性中。
+
+#### HostProvider：地址列表管理器
+
+在ConnectStringParser解析器中会对服务器地址做一个简单的处理，并将服务器地址和相应的端口封装成一个InetSocketAddress对象，以ArrayList形式保存在ConnectStringParser.serverAddresses属性中。然后，经过处理的地址列表会被进一步封装到StaticHostProvider类中。
+
+#### StaticHostProvider
+
+接下来我们看看ZooKeeper客户端中对HostProvider的默认实现：StaticHostProvider。
+
+**解析服务器地址**
+
+针对ConnectStringParser.serverAddressed集合中那些没有被解析的服务器地址，StaticHostProvider首先会对这些地址逐个进行解析，然后再放入serverAddresses集合中去。同时，使用Collections工具类的shuffle方法来将这个服务器地址列表进行随机的打散。
+
+**获取可用的服务器地址**
+
+通过调用StaticHostProvider的next()方法，能够从StaticHostProvider中获取一个可用的服务器地址。这个next()方法并非简单地从serverAddresses中依次获取一个服务器地址，而是先将随机打散后的服务器地址列表拼装成一个环形循环队列。注意，这个随机过程是一次性的，也就是说，之后的使用过程中一直是按照这样的顺序来获取服务器地址的。
+
+#### 对HostProvider的几个设想
+
+### 7.3.3 ClientCnxn：网络I/O
+
+ClientCnxn是ZooKeeper客户端的核心工作类，负责维护客户端与服务端之间的网络连接并进行一系列网络通信。
+
+#### Packet
+
+Packet是ClientCnxn内部定义的一个对协议层的封装，作为ZooKeeper中请求与响应的载体。
+
+Packet中包含了最基本的请求头（requestHeader）、响应头（replyHeader）、请求体（request）、响应体（response）、节点路径（clientPath/serverPath）和注册的Watcher（watchRegistration）等信息。
+
+针对Packet中这么多的属性，读者可能会疑惑它们是否都会在客户端和服务端之间进行网络传输？答案是否定的。Packet的createBB()方法负责对Packet对象进行序列化，最终生成可用于底层网络传输的ByteBuffer对象。在这个过程中，只会将requestHeader、request和readOnly三个属性进行序列化，其余属性都保存在客户端的上下文中，不会进行与服务端之间的网络传输。
+
+#### outgoingQueue 和 pendingQueue
+
+ClientCnxn中，有两个比较核心的队列outgoingQueue 和 pendingQueue，分别代表客户端的请求发送队列和服务端响应的等待队列。Outgoing队列是一个请求发送队列，专门用于存储那些需要发送到服务端的Packet集合。Pending队列是为了存储那些已经从客户端发送到服务端的，但是需要等待服务端响应的Packet集合。
+
+#### ClientCnxnSocket：底层Socket通信层
+
+ClientCnxnSocket定义了底层Socket通信的接口。在ZooKeeper 3.4.0以前的版本中，客户端的这个底层通信层并没有被独立出来，而是混合在了ClientCnxn代码中。但后来为了使客户端代码结构更为清晰，同时也是为了便于对底层Socket层进行扩展（例如使用Netty来实现），因此从3.4.0版本开始，抽取出了这个接口类。在ZooKeeper中，其默认的实现是ClientCnxnSocketNIO。该实现类使用Java原生的NIO接口，其核心是doIO逻辑，主要负责对请求的发送和响应接受过程。
+
+**请求发送**
+
+**响应接收**
+
+#### SendThread
+
+SendThread是客户端ClientCnxn内部一个核心的I/O调度线程，用于管理客户端和服务端之间的所有网络I/O操作。在ZooKeeper客户端的实际允许过程中，一方面，SendThread维护了客户端与服务端之间的会话生命周期，其通过在一定的周期频率内向服务端发送一个PING包来实现心跳检测。同时，在会话周期内，如果客户端与服务端之间出现TCP连接断开的情况，那么就会自动且透明化地完成重连操作。
+
+另一方面，SendThread管理了客户端所有的请求发送和响应接收操作，其将上层客户端API操作转换成相应的请求协议并发送到服务器，并完成对同步调用的返回和异步调用的回调。同时，SendThread还负责将来自服务端的事件传递给EventThread去处理。
+
+#### EventThread
+
+EventThread是客户端ClientCnxn内部的另一个核心线程，负责客户端的事件处理，并触发客户端注册的Watcher监听。EventThread中有一个waitingEvents队列，用于临时存放那些需要被触发的Object，包括那些客户端注册的Watcher和异步接口中注册的回调器AsyncCallback。同时，EventThread会不断地从waitingEvents这个队列中取出Object，识别出其具体类型（Watcher或者AsyncCallback），并分别调用process和processResult接口方法来实现对事件的触发和回调。
+
+## 7.4 会话
+
