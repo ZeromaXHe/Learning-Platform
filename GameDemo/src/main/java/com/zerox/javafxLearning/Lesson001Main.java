@@ -12,7 +12,7 @@ import javafx.stage.Stage;
  * @Description:
  * @Modified By: ZeromaXHe
  */
-public class LessonMain extends Application {
+public class Lesson001Main extends Application {
     public static void main(String[] args) {
         // Main = main
         System.out.println("Main = " + Thread.currentThread().getName());
