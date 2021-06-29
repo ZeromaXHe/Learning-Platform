@@ -14,7 +14,6 @@ import javafx.stage.Stage;
 import org.junit.Test;
 
 import java.util.stream.Collectors;
-import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
 
 /**
@@ -35,13 +34,33 @@ public class PerlinNoiseTest extends Application {
 
     @Test
     public void perlin2DTest() {
-        DoubleStream.iterate(0.0, d -> d += 0.1)
-                .limit(100)
-                .forEach(dx -> System.out.println(DoubleStream.iterate(0.0, d -> d += 0.1)
-                        .limit(100)
-                        .map(dy -> PerlinNoiseUtils.perlin2D(dx, dy))
-                        .mapToObj(d -> String.format("%.2f", d))
-                        .collect(Collectors.joining(",\t "))));
+//        DoubleStream.iterate(0.0, d -> d += 0.1)
+//                .limit(100)
+//                .forEach(dx -> System.out.println(DoubleStream.iterate(0.0, d -> d += 0.1)
+//                        .limit(100)
+//                        .map(dy -> PerlinNoiseUtils.perlin2D(dx, dy))
+//                        .mapToObj(d -> String.format("%.2f", d))
+//                        .collect(Collectors.joining(",\t "))));
+        double max = -1, maxX = -1, maxY = -1;
+        double min = 1, minX = -1, minY = -1;
+
+        for (double x = 0.0; x < 40.0; x += 0.1) {
+            for (double y = 0.0; y < 40.0; y += 0.1) {
+                double perlin2D = PerlinNoiseUtils.perlin2D(x, y);
+                if (perlin2D > max) {
+                    max = perlin2D;
+                    maxX = x;
+                    maxY = y;
+                }
+                if (perlin2D < min) {
+                    min = perlin2D;
+                    minX = x;
+                    minY = y;
+                }
+            }
+        }
+        System.out.println("max:" + max + ", maxX:" + maxX + ", maxY:" + maxY);
+        System.out.println("min:" + min + ", minX:" + minX + ", minY:" + minY);
     }
 
     public static void main(String[] args) {
@@ -100,15 +119,42 @@ public class PerlinNoiseTest extends Application {
     private Canvas getPerline2DCanvas() {
         Canvas canvas = new Canvas(400, 400);
         GraphicsContext gc = canvas.getGraphicsContext2D();
-        DoubleStream.iterate(0.0, d -> d += 0.1)
-                .limit(100)
-                .forEach(dx -> DoubleStream.iterate(0.0, d -> d += 0.1)
-                        .limit(100)
-                        .forEach(dy -> {
-                            gc.setFill(doubleToColor(PerlinNoiseUtils.perlin2D(dx, dy)));
-                            gc.fillRect(40 * dx, 40 * dy, 4, 4);
-                        }));
+
+        double maxAbs = getPerlin2DMaxAbs();
+
+        for (double x = 0.0; x < 40.0; x += 0.1) {
+            for (double y = 0.0; y < 40.0; y += 0.1) {
+                gc.setFill(doubleToColor(PerlinNoiseUtils.perlin2D(x, y) / maxAbs));
+                gc.fillRect(10 * x, 10 * y, 1, 1);
+            }
+        }
+        // stream的.limit()中数字太大会导致内存溢出
+//        DoubleStream.iterate(0.0, d -> d += 0.1)
+//                .limit(400)
+//                .forEach(dx -> DoubleStream.iterate(0.0, d -> d += 0.1)
+//                        .limit(400)
+//                        .forEach(dy -> {
+//                            gc.setFill(doubleToColor(PerlinNoiseUtils.perlin2D(dx, dy)));
+//                            gc.fillRect(10 * dx, 10 * dy, 1, 1);
+//                        }));
         return canvas;
+    }
+
+    private double getPerlin2DMaxAbs() {
+        double max = 0;
+        double min = 0;
+        for (double x = 0.0; x < 40.0; x += 0.1) {
+            for (double y = 0.0; y < 40.0; y += 0.1) {
+                double perlin2D = PerlinNoiseUtils.perlin2D(x, y);
+                if (perlin2D > max) {
+                    max = perlin2D;
+                }
+                if (perlin2D < min) {
+                    min = perlin2D;
+                }
+            }
+        }
+        return Math.max(max, -min);
     }
 
     private Color doubleToColor(double d) {
