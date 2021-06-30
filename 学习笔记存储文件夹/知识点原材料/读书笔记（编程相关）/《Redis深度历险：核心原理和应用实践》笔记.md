@@ -426,3 +426,590 @@ end
 
 ## 可重入性
 
+可重入性是指线程在持有锁的情况下再次请求加锁，如果一个锁支持同一个线程的多次加锁，那么这个锁就是可重入的。比如 Java 语言里有个 ReentrantLock 就是可重入锁。Redis 分布式锁如果要支持可重入，需要对客户端的 set 方法进行包装，使用线程的 Threadlocal 变量存储当前持有锁的计数。
+
+~~~python
+# -*- coding: utf-8 
+import redis 
+import threading 
+locks = threading.local() 
+locks.redis = {} 
+def key_for(user_id): 
+    return "account_{}".format(user_id) 
+
+def _lock(client, key): 
+    return bool(client.set(key, True, nx=True, ex=5)) 
+
+def _unlock(client, key): 
+    client.delete(key) 
+
+def lock(client, user_id): 
+    key = key_for(user_id) 
+    if key in locks.redis:
+        locks.redis[key] += 1 
+        return True 
+    ok = _lock(client, key) 
+    if not ok: 
+        return False 
+    locks.redis[key] = 1 
+    return True 
+
+def unlock(client, user_id): 
+    key = key_for(user_id) 
+    if key in locks.redis: 
+        locks.redis[key] -= 1
+        if locks.redis[key] <= 0: 
+            del locks.redis[key] 
+        return True 
+    return False 
+        
+client = redis.StrictRedis() 
+print "lock", lock(client, "codehole") 
+print "lock", lock(client, "codehole") 
+print "unlock", unlock(client, "codehole") 
+print "unlock", unlock(client, "codehole")
+~~~
+
+以上还不是可重入锁的全部，精确一点还需要考虑内存锁计数的过期时间，代码复杂度将会继续升高。老钱不推荐使用可重入锁，它加重了客户端的复杂性，在编写业务方法时注意在逻辑结构上进行调整完全可以不使用可重入锁。下面是 Java 版本的可重入锁。
+
+~~~java
+public class RedisWithReentrantLock { 
+    private ThreadLocal<Map> lockers = new ThreadLocal<>(); 
+    private Jedis jedis; 
+    public RedisWithReentrantLock(Jedis jedis) { 
+        this.jedis = jedis; 
+    } 
+
+    private boolean _lock(String key) { 
+        return jedis.set(key, "", "nx", "ex", 5L) != null; 
+    } 
+
+    private void _unlock(String key) { 
+        jedis.del(key); 
+    } 
+
+    private Map <String, Integer> currentLockers() { 
+        Map <String, Integer> refs = lockers.get(); 
+        if (refs != null) { 
+            return refs; 
+        } 
+        lockers.set(new HashMap<>()); 
+        return lockers.get(); 
+    } 
+
+    public boolean lock(String key) { 
+        Map refs = currentLockers(); 
+        Integer refCnt = refs.get(key); 
+        if (refCnt != null) { 
+            refs.put(key, refCnt + 1);
+            return true; 
+        } 
+
+        boolean ok = this._lock(key); 
+        if (!ok) { 
+            return false; 
+        } 
+        refs.put(key, 1); 
+        return true; 
+    } 
+
+    public boolean unlock(String key) { 
+        Map refs = currentLockers();
+        Integer refCnt = refs.get(key); 
+        if (refCnt == null) { 
+            return false; 
+        } 
+        refCnt -= 1; 
+        if (refCnt > 0) { 
+            refs.put(key, refCnt); 
+        } else { 
+            refs.remove(key);
+            this ._unlock(key); 
+        } 
+        return true; 
+    } 
+
+    public static void main(String[] args) { 
+        Jedis jedis = new Jedis(); 
+        RedisWithReentrantLock redis = new RedisWithReentrantLock(jedis); 
+        System.out.println(redis.lock("codehole")); 
+        System.out.println(redis.lock("codehole")); 
+        System.out.println(redis.unlock("codehole")); 
+        System.out.println(redis.unlock("codehole")); 
+    } 
+}
+~~~
+
+跟 Python 版本区别不大，也是基于 ThreadLocal 和引用计数。
+
+以上还不是分布式锁的全部，在小册的拓展篇《拾遗漏补 —— 再谈分布式锁》，我们还会继续对分布式锁做进一步的深入理解。
+
+# 应用2：缓兵之计——延时队列
+
+我们平时习惯于使用 Rabbitmq 和 Kafka 作为消息队列中间件，来给应用程序之间增加异步消息传递功能。这两个中间件都是专业的消息队列中间件，特性之多超出了大多数人的理解能力。
+
+使用过 Rabbitmq 的同学知道它使用起来有多复杂，发消息之前要创建 Exchange，再创建 Queue，还要将 Queue 和 Exchange 通过某种规则绑定起来，发消息的时候要指定 routing-key，还要控制头部信息。消费者在消费消息之前也要进行上面一系列的繁琐过程。但是绝大多数情况下，虽然我们的消息队列只有一组消费者，但还是需要经历上面这些繁琐的过程。
+
+有了 Redis，它就可以让我们解脱出来，对于那些只有一组消费者的消息队列，使用 Redis 就可以非常轻松的搞定。Redis 的消息队列不是专业的消息队列，它没有非常多的高级特性，没有 ack 保证，如果对消息的可靠性有着极致的追求，那么它就不适合使用。
+
+## 异步消息队列
+
+Redis 的 list(列表) 数据结构常用来作为异步消息队列使用，使用rpush/lpush操作入队列，使用 lpop 和 rpop 来出队列。
+
+~~~shell
+> rpush notify-queue apple banana pear 
+(integer) 3 
+> llen notify-queue 
+(integer) 3 
+> lpop notify-queue 
+"apple"
+> llen notify-queue 
+(integer) 2 
+> lpop notify-queue 
+"banana"
+> llen notify-queue 
+(integer) 1 
+> lpop notify-queue 
+"pear"
+> llen notify-queue 
+(integer) 0 
+> lpop notify-queue 
+(nil)
+~~~
+
+上面是 rpush 和 lpop 结合使用的例子。还可以使用 lpush 和 rpop 结合使用，效果是一样的。这里不再赘述。
+
+## 队列空了怎么办？
+
+客户端是通过队列的 pop 操作来获取消息，然后进行处理。处理完了再接着获取消息，再进行处理。如此循环往复，这便是作为队列消费者的客户端的生命周期。
+
+可是如果队列空了，客户端就会陷入 pop 的死循环，不停地 pop，没有数据，接着再 pop，又没有数据。这就是浪费生命的空轮询。空轮询不但拉高了客户端的 CPU，redis 的 QPS 也会被拉高，如果这样空轮询的客户端有几十来个，Redis 的慢查询可能会显著增多。
+
+通常我们使用 sleep 来解决这个问题，让线程睡一会，睡个 1s 钟就可以了。不但客户端的 CPU 能降下来，Redis 的 QPS 也降下来了。
+
+~~~python
+time.sleep(1) # python 睡 1s
+~~~
+
+~~~java
+Thread.sleep(1000) // java 睡 1s
+~~~
+
+## 队列延迟
+
+用上面睡眠的办法可以解决问题。但是有个小问题，那就是睡眠会导致消息的延迟增大。如果只有 1 个消费者，那么这个延迟就是 1s。如果有多个消费者，这个延迟会有所下降，因为每个消费者的睡觉时间是岔开来的。
+
+有没有什么办法能显著降低延迟呢？你当然可以很快想到：那就把睡觉的时间缩短点。这种方式当然可以，不过有没有更好的解决方案呢？当然也有，那就是 blpop/brpop。
+
+这两个指令的前缀字符 b 代表的是 blocking，也就是阻塞读。
+
+阻塞读在队列没有数据的时候，会立即进入休眠状态，一旦数据到来，则立刻醒过来。消息的延迟几乎为零。用 blpop/brpop 替代前面的 lpop/rpop，就完美解决了上面的问题。...
+
+## 空闲连接自动断开
+
+你以为上面的方案真的很完美么？先别急着开心，其实他还有个问题需要解决。
+
+什么问题？—— **空闲连接**的问题。
+
+如果线程一直阻塞在哪里，Redis 的客户端连接就成了闲置连接，闲置过久，服务器一般会主动断开连接，减少闲置资源占用。这个时候 blpop/brpop 会抛出异常来。
+
+所以编写客户端消费者的时候要小心，注意捕获异常，还要重试。...
+
+## 锁冲突处理
+
+上节课我们讲了分布式锁的问题，但是没有提到客户端在处理请求时加锁没加成功怎么办。一般有 3 种策略来处理加锁失败：
+
+1. 直接抛出异常，通知用户稍后重试； 
+2. sleep 一会再重试； 
+3. 将请求转移至延时队列，过一会再试；
+
+### 直接抛出特定类型的异常
+
+这种方式比较适合由用户直接发起的请求，用户看到错误对话框后，会先阅读对话框的内容，再点击重试，这样就可以起到人工延时的效果。如果考虑到用户体验，可以由前端的代码替代用户自己来进行延时重试控制。它本质上是对当前请求的放弃，由用户决定是否重新发起新的请求。
+
+### sleep
+
+sleep 会阻塞当前的消息处理线程，会导致队列的后续消息处理出现延迟。如果碰撞的比较频繁或者队列里消息比较多，sleep 可能并不合适。如果因为个别死锁的 key 导致加锁不成功，线程会彻底堵死，导致后续消息永远得不到及时处理。
+
+### 延时队列
+
+这种方式比较适合异步消息处理，将当前冲突的请求扔到另一个队列延后处理以避开冲突。
+
+## 延时队列的实现
+
+延时队列可以通过 Redis 的 zset(有序列表) 来实现。我们将消息序列化成一个字符串作为 zset 的 value，这个消息的到期处理时间作为 score，然后用多个线程轮询 zset 获取到期的任务进行处理，多个线程是为了保障可用性，万一挂了一个线程还有其它线程可以继续处理。因为有多个线程，所以需要考虑并发争抢任务，确保任务不能被多次执行。
+
+~~~python
+def delay(msg): 
+    msg.id = str(uuid.uuid4()) # 保证 value 值唯一
+    value = json.dumps(msg) 
+    retry_ts = time.time() + 5 # 5 秒后重试
+    redis.zadd("delay-queue", retry_ts, value) 
+
+def loop(): 
+    while True: 
+        # 最多取 1 条
+        values = redis.zrangebyscore("delay-queue", 0, time.time(), start=0, num=1) 
+        if not values:
+            time.sleep(1) # 延时队列空的，休息 1s
+			continue 
+		value = values[0] # 拿第一条，也只有一条
+		success = redis.zrem("delay-queue", value) # 从消息队列中移除该消息
+		if success: # 因为有多进程并发的可能，最终只会有一个进程可以抢到消息
+			msg = json.loads(value) 
+			handle_msg(msg)
+~~~
+
+Redis 的 zrem 方法是多线程多进程争抢任务的关键，它的返回值决定了当前实例有没有抢到任务，因为 loop 方法可能会被多个线程、多个进程调用，同一个任务可能会被多个进程线程抢到，通过 zrem 来决定唯一的属主。
+
+同时，我们要注意一定要对 handle_msg 进行异常捕获，避免因为个别任务处理问题导致循环异常退出。以下是 Java 版本的延时队列实现，因为要使用到 Json 序列化，所以还需要 fastjson 库的支持。
+
+~~~java
+import java.lang.reflect.Type; 
+import java.util.Set; 
+import java.util.UUID;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.TypeReference; 
+import redis.clients.jedis.Jedis; 
+public class RedisDelayingQueue<T> { 
+    static class TaskItem<T> { 
+        public String id; 
+        public T msg; 
+    } 
+    // fastjson 序列化对象中存在 generic 类型时，需要使用 TypeReference 
+    private Type TaskType = new TypeReference<TaskItem<T>>() { }.getType(); 
+    private Jedis jedis; 
+    private String queueKey; 
+    public RedisDelayingQueue(Jedis jedis, String queueKey) { 
+        this.jedis = jedis; 
+        this.queueKey = queueKey; 
+    } 
+    
+    public void delay(T msg) { 
+        TaskItem task = new TaskItem(); 
+        task.id = UUID.randomUUID().toString(); // 分配唯一的 uuid 
+        task.msg = msg; 
+        String s = JSON.toJSONString(task); // fastjson 序列化
+        jedis.zadd(queueKey, System.currentTimeMillis() + 5000, s); // 塞入延时队列 ,5s 后再试
+    }
+    
+    public void loop() { 
+        while (!Thread.interrupted()) {
+            // 只取一条
+            Set values = jedis.zrangeByScore(queueKey, 0, System.currentTimeMillis(), 0, 1); 
+            if (values.isEmpty()) { 
+                try { 
+                    Thread.sleep(500); // 歇会继续
+                } 
+                catch (InterruptedException e) { 
+                    break;
+                } 
+                continue; 
+            } 
+            String s = values.iterator().next(); 
+            if (jedis.zrem(queueKey, s) > 0) { // 抢到了
+                TaskItem task = JSON.parseObject(s, TaskType); // fastjson 反序列化
+                this.handleMsg(task.msg); 
+            } 
+        } 
+    } 
+    
+    public void handleMsg(T msg) { 
+        System.out.println(msg); 
+    } 
+    
+    public static void main(String[] args) { 
+        Jedis jedis = new Jedis(); 
+        RedisDelayingQueue queue = new RedisDelayingQueue<>(jedis, "q-demo"); 
+        Thread producer = new Thread() { 
+            public void run() { 
+                for (int i = 0; i < 10; i++) { 
+                    queue.delay("codehole" + i); 
+                } 
+            } 
+        }; 
+        Thread consumer = new Thread() { 
+            public void run() { 
+                queue.loop(); 
+            } 
+        }; 
+        producer.start(); 
+        consumer.start(); 
+        try { 
+            producer.join(); 
+            Thread.sleep(6000); 
+            consumer.interrupt();
+            consumer.join(); 
+        } 
+        catch (InterruptedException e) { 
+        } 
+    } 
+}
+~~~
+
+## 进一步优化
+
+上面的算法中同一个任务可能会被多个进程取到之后再使用 zrem 进行争抢，那些没抢到的进程都是白取了一次任务，这是浪费。可以考虑使用 lua scripting 来优化一下这个逻辑，将 zrangebyscore 和 zrem 一同挪到服务器端进行原子化操作，这样多个进程之间争抢任务时就不会出现这种浪费了。
+
+# 应用3：节衣缩食——位图
+
+# 原理5：同舟共济——事务
+
+为了确保连续多个操作的原子性，一个成熟的数据库通常都会有事务支持，Redis 也不例外。Redis 的事务使用非常简单，不同于关系数据库，我们无须理解那么多复杂的事务模型，就可以直接使用。不过也正是因为这种简单性，它的事务模型很不严格，这要求我们不能像使用关系数据库的事务一样来使用 Redis。
+
+## Redis 事务的基本使用
+
+每个事务的操作都有 begin、commit 和 rollback，begin 指示事务的开始，commit 指示事务的提交，rollback 指示事务的回滚。它大致的形式如下。
+
+~~~java
+begin();
+try {
+     command1();
+     command2();
+     ....
+     commit();
+} catch(Exception e) {
+     rollback();
+}
+~~~
+
+Redis 在形式上看起来也差不多，分别是 multi/exec/discard。multi 指示事务的开始，exec 指示事务的执行，discard 指示事务的丢弃。
+
+~~~shell
+> multi
+OK
+> incr books
+QUEUED
+> incr books
+QUEUED
+> exec
+(integer) 1
+(integer) 2
+~~~
+
+上面的指令演示了一个完整的事务过程，所有的指令在 exec 之前不执行，而是缓存在服务器的一个事务队列中，服务器一旦收到 exec 指令，才开执行整个事务队列，执行完毕后一次性返回所有指令的运行结果。因为 Redis 的单线程特性，它不用担心自己在执行队列的时候被其它指令打搅，可以保证他们能得到的「原子性」执行。
+
+上图显示了以上事务过程完整的交互效果。QUEUED 是一个简单字符串，同 OK 是一个形式，它表示指令已经被服务器缓存到队列里了。
+
+## 原子性
+
+事务的原子性是指要么事务全部成功，要么全部失败，那么 Redis 事务执行是原子性的么？
+
+下面我们来看一个特别的例子。
+
+~~~shell
+> multi
+OK
+> set books iamastring
+QUEUED
+> incr books
+QUEUED
+> set poorman iamdesperate
+QUEUED
+> exec
+1) OK
+2) (error) ERR value is not an integer or out of range
+3) OK
+> get books
+"iamastring"
+> get poorman
+"iamdesperate
+~~~
+
+上面的例子是事务执行到中间遇到失败了，因为我们不能对一个字符串进行数学运算，事务在遇到指令执行失败后，后面的指令还继续执行，所以 poorman 的值能继续得到设置。
+
+到这里，你应该明白 Redis 的事务根本不能算「原子性」，而仅仅是满足了事务的「隔离性」，隔离性中的串行化——当前执行的事务有着不被其它事务打断的权利。
+
+## discard（丢弃）
+
+Redis 为事务提供了一个 discard 指令，用于丢弃事务缓存队列中的所有指令，在 exec 执行之前。
+
+~~~shell
+> get books
+(nil)
+> multi
+OK
+> incr books
+QUEUED
+> incr books
+QUEUED
+> discard
+OK
+> get books
+(nil)
+~~~
+
+我们可以看到 discard 之后，队列中的所有指令都没执行，就好像 multi 和 discard 中间的所有指令从未发生过一样。
+
+## 优化
+
+上面的 Redis 事务在发送每个指令到事务缓存队列时都要经过一次网络读写，当一个事务内部的指令较多时，需要的网络 IO 时间也会线性增长。所以通常 Redis 的客户端在执行事务时都会结合 pipeline 一起使用，这样可以将多次 IO 操作压缩为单次 IO 操作。比如我们在使用 Python 的 Redis 客户端时执行事务时是要强制使用 pipeline 的。
+
+~~~python
+pipe = redis.pipeline(transaction=true)
+pipe.multi()
+pipe.incr("books")
+pipe.incr("books")
+values = pipe.execute()
+~~~
+
+## Watch
+
+考虑到一个业务场景，Redis 存储了我们的账户余额数据，它是一个整数。现在有两个并发的客户端要对账户余额进行修改操作，这个修改不是一个简单的 incrby 指令，而是要对余额乘以一个倍数。Redis 可没有提供 multiplyby 这样的指令。我们需要先取出余额然后在内存里乘以倍数，再将结果写回 Redis。
+
+这就会出现并发问题，因为有多个客户端会并发进行操作。我们可以通过 Redis 的分布式锁来避免冲突，这是一个很好的解决方案。**分布式锁是一种悲观锁，那是不是可以使用乐观锁的方式来解决冲突呢？**
+
+Redis 提供了这种 watch 的机制，它就是一种乐观锁。有了 watch 我们又多了一种可以用来解决并发修改的方法。 watch 的使用方式如下：
+
+~~~python
+while True:
+     do_watch()
+     commands()
+     multi()
+     send_commands()
+     try:
+         exec()
+         break
+     except WatchError:
+         continue
+~~~
+
+watch 会在事务开始之前盯住 1 个或多个关键变量，当事务执行时，也就是服务器收到了 exec 指令要顺序执行缓存的事务队列时，Redis 会检查关键变量自 watch 之后，是否被修改了 (包括当前事务所在的客户端)。如果关键变量被人动过了，exec 指令就会返回 null 回复告知客户端事务执行失败，这个时候客户端一般会选择重试。
+
+~~~shell
+> watch books
+OK
+> incr books # 被修改了
+(integer) 1
+> multi
+OK
+> incr books
+QUEUED
+> exec # 事务执行失败
+(nil)
+~~~
+
+当服务器给 exec 指令返回一个 null 回复时，客户端知道了事务执行是失败的，通常客户端 (redis-py) 都会抛出一个 WatchError 这种错误，不过也有些语言 (jedis) 不会抛出异常，而是通过在 exec 方法里返回一个 null，这样客户端需要检查一下返回结果是否为 null 来确定事务是否执行失败。
+
+### 注意事项
+
+Redis 禁止在 multi 和 exec 之间执行 watch 指令，而必须在 multi 之前做好盯住关键变量，否则会出错。
+
+接下来我们使用 Python 语言来实现对余额的加倍操作。
+
+~~~python
+# -*- coding: utf-8
+import redis
+
+def key_for(user_id):
+    return "account_{}".format(user_id)
+
+def double_account(client, user_id):
+    key = key_for(user_id)
+    while True:
+        client.watch(key)
+        value = int(client.get(key))
+        value *= 2 # 加倍
+        pipe = client.pipeline(transaction=True)
+        pipe.multi()
+        pipe.set(key, value)
+        try:
+            pipe.execute()
+            break # 总算成功了
+        except redis.WatchError:
+            continue # 事务被打断了，重试
+    return int(client.get(key)) # 重新获取余额
+
+client = redis.StrictRedis()
+user_id = "abc"
+client.setnx(key_for(user_id), 5) # setnx 做初始化
+print double_account(client, user_id)
+~~~
+
+下面我们再使用 Java 语言实现一遍。
+
+~~~java
+import java.util.List;
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.Transaction;
+public class TransactionDemo {
+    public static void main(String[] args) {
+        Jedis jedis = new Jedis();
+        String userId = "abc";
+        String key = keyFor(userId);
+        jedis.setnx(key, String.valueOf(5)); // setnx 做初始化
+        System.out.println(doubleAccount(jedis, userId));
+        jedis.close();
+    }
+
+    public static int doubleAccount(Jedis jedis, String userId) {
+        String key = keyFor(userId);
+        while (true) {
+            jedis.watch(key);
+            int value = Integer.parseInt(jedis.get(key));
+            value *= 2; // 加倍
+            Transaction tx = jedis.multi();
+            tx.set(key, String.valueOf(value));
+            List<Object> res = tx.exec();
+            if (res != null) {
+                break; // 成功了
+            }
+        }
+        return Integer.parseInt(jedis.get(key)); // 重新获取余额
+    }
+
+    public static String keyFor(String userId) {
+        return String.format("account_{}", userId);
+    } 
+}
+~~~
+
+我们常常听说 Python 的代码要比 Java 简短太多，但是从这个例子中我们看到 Java 的代码比 python 的代码也多不了多少，大约只多出 50%。
+
+# 原理6：小道消息——PubSub
+
+# 扩展4：朝生暮死——过期策略
+
+Redis 所有的数据结构都可以设置过期时间，时间一到，就会自动删除。你可以想象 Redis 内部有一个死神，时刻盯着所有设置了过期时间的 key，寿命一到就会立即收割。
+
+你还可以进一步站在死神的角度思考，会不会因为同一时间太多的 key 过期，以至于忙不过来。同时因为 Redis 是单线程的，收割的时间也会占用线程的处理时间，如果收割的太过于繁忙，会不会导致线上读写指令出现卡顿。
+
+这些问题 Antirez 早就想到了，所有在过期这件事上，Redis 非常小心。
+
+## 过期的key集合
+
+redis 会将每个设置了过期时间的 key 放入到一个独立的字典中，以后会定时遍历这个字典来删除到期的 key。除了定时遍历之外，它还会使用惰性策略来删除过期的 key，所谓惰性策略就是在客户端访问这个 key 的时候，redis 对 key 的过期时间进行检查，如果过期了就立即删除。定时删除是集中处理，惰性删除是零散处理。
+
+## 定时扫描策略
+
+Redis 默认会每秒进行十次过期扫描，过期扫描不会遍历过期字典中所有的 key，而是采用了一种简单的贪心策略。
+
+1. 从过期字典中随机 20 个 key；
+2. 删除这 20 个 key 中已经过期的 key；
+3. 如果过期的 key 比率超过 1/4，那就重复步骤 1；
+
+同时，为了保证过期扫描不会出现循环过度，导致线程卡死现象，算法还增加了扫描时间的上限，默认不会超过 25ms。
+
+设想一个大型的 Redis 实例中所有的 key 在同一时间过期了，会出现怎样的结果？
+
+毫无疑问，Redis 会持续扫描过期字典 (循环多次)，直到过期字典中过期的 key 变得稀疏，才会停止 (循环次数明显下降)。这就会导致线上读写请求出现明显的卡顿现象。导致这种卡顿的另外一种原因是内存管理器需要频繁回收内存页，这也会产生一定的 CPU 消耗。
+
+也许你会争辩说“扫描不是有 25ms 的时间上限了么，怎么会导致卡顿呢”？这里打个比方，假如有 101 个客户端同时将请求发过来了，然后前 100 个请求的执行时间都是25ms，那么第 101 个指令需要等待多久才能执行？2500ms，这个就是客户端的卡顿时间，是由服务器不间断的小卡顿积少成多导致的。
+
+所以业务开发人员一定要注意过期时间，如果有大批量的 key 过期，要给过期时间设置一个随机范围，而不能全部在同一时间过期。
+
+~~~python
+# 在目标过期时间上增加一天的随机时间
+redis.expire_at(key, random.randint(86400) + expire_ts)
+~~~
+
+在一些活动系统中，因为活动是一期一会，下一期活动举办时，前面几期的很多数据都可以丢弃了，所以需要给相关的活动数据设置一个过期时间，以减少不必要的 Redis 内存占用。如果不加注意，你可能会将过期时间设置为活动结束时间再增加一个常量的冗余时间，如果参与活动的人数太多，就会导致大量的 key 同时过期。掌阅服务端在开发过程中就曾出现过多次因为大量 key 同时过期导致的卡顿报警现象，通过将过期时间随机化总是能很好地解决了这个问题，希望读者们今后能少犯这样的错误。
+
+## 从库的过期策略
+
+从库不会进行过期扫描，从库对过期的处理是被动的。主库在 key 到期时，会在 AOF 文件里增加一条 del 指令，同步到所有的从库，从库通过执行这条 del 指令来删除过期的 key。
+
+因为指令同步是异步进行的，所以主库过期的 key 的 del 指令没有及时同步到从库的话，会出现主从数据的不一致，主库没有的数据在从库里还存在，比如上一节的集群环境分布式锁的算法漏洞就是因为这个同步延迟产生的。
+
+# 拓展5：优胜劣汰——LRU
+
