@@ -1,6 +1,8 @@
 package com.zerox.strategy.service.impl;
 
-import com.zerox.strategy.entity.GameMap;
+import com.zerox.strategy.entity.MapSquare;
+import com.zerox.strategy.entity.gamemap.CircleGameMap;
+import com.zerox.strategy.entity.gamemap.GameMap;
 import com.zerox.strategy.service.StrategyGameService;
 
 /**
@@ -24,6 +26,11 @@ public class StrategyGameServiceImpl implements StrategyGameService {
 
     @Override
     public void initMap(int x, int y) {
-        gameMap = new GameMap(x, y);
+        gameMap = new CircleGameMap(x, y);
+    }
+
+    @Override
+    public MapSquare[][] getMap() {
+        return gameMap.getMap();
     }
 }
