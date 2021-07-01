@@ -3,6 +3,8 @@ package com.zerox.strategy.service.impl;
 import com.zerox.strategy.entity.MapSquare;
 import com.zerox.strategy.entity.gamemap.CircleGameMap;
 import com.zerox.strategy.entity.gamemap.GameMap;
+import com.zerox.strategy.entity.gamemap.GameMapType;
+import com.zerox.strategy.entity.gamemap.PerlinNoiseGameMap;
 import com.zerox.strategy.service.StrategyGameService;
 
 /**
@@ -25,8 +27,15 @@ public class StrategyGameServiceImpl implements StrategyGameService {
     }
 
     @Override
-    public void initMap(int x, int y) {
-        gameMap = new CircleGameMap(x, y);
+    public void initMap(int x, int y, GameMapType type) {
+        switch (type){
+            case CIRCLE:
+                gameMap = new CircleGameMap(x, y);
+                break;
+            case PERLIN_NOISE:
+                gameMap = new PerlinNoiseGameMap(x, y);
+                break;
+        }
     }
 
     @Override

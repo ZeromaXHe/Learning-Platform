@@ -1,6 +1,7 @@
 package com.zerox.strategy.service;
 
 import com.zerox.strategy.entity.MapSquare;
+import com.zerox.strategy.entity.gamemap.GameMapType;
 
 /**
  * @Author: zhuxi
@@ -9,7 +10,7 @@ import com.zerox.strategy.entity.MapSquare;
  * @Modified By: zhuxi
  */
 public interface StrategyGameService {
-    void initMap(int x, int y);
+    void initMap(int x, int y, GameMapType type);
 
     MapSquare[][] getMap();
 }

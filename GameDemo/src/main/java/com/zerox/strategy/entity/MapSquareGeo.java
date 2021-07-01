@@ -1,5 +1,7 @@
 package com.zerox.strategy.entity;
 
+import com.zerox.strategy.constant.GeoConstant;
+
 /**
  * @Author: zhuxi
  * @Time: 2021/5/31 15:14
@@ -23,11 +25,11 @@ public class MapSquareGeo {
     }
 
     private GeoEnum determineTypeByHeight(int height) {
-        if (height <= 0) {
+        if (height < GeoConstant.PLAIN_MIN_HEIGHT) {
             return GeoEnum.OCEAN;
-        } else if (height <= 1000) {
+        } else if (height < GeoConstant.HILL_MIN_HEIGHT) {
             return GeoEnum.PLAIN;
-        } else if (height <= 4000) {
+        } else if (height < GeoConstant.MOUNTAIN_MIN_HEIGHT) {
             return GeoEnum.HILL;
         } else {
             return GeoEnum.MOUNTAIN;

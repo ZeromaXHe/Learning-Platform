@@ -11,11 +11,11 @@ import strategy.testutils.GameMapTestUtils;
 
 /**
  * @Author: zhuxi
- * @Time: 2021/6/30 10:56
+ * @Time: 2021/7/1 10:59
  * @Description:
  * @Modified By: zhuxi
  */
-public class CircleGameMapTest extends Application {
+public class PerlinNoiseGameMapTest extends Application {
     private StrategyGameController strategyGameController = StrategyGameController.getSingletonInstance();
 
     private static final int MAP_X = 400;
@@ -27,13 +27,13 @@ public class CircleGameMapTest extends Application {
 
     @Override
     public void start(Stage primaryStage) throws Exception {
-        strategyGameController.initMap(MAP_X, MAP_Y, GameMapType.CIRCLE);
+        strategyGameController.initMap(MAP_X, MAP_Y, GameMapType.PERLIN_NOISE);
         Canvas canvas = GameMapTestUtils.getGameMapCanvas(strategyGameController.getMap());
 
         Group root = new Group(canvas);
         Scene scene = new Scene(root, MAP_X, MAP_Y);
 
-        primaryStage.setTitle("circle game map test");
+        primaryStage.setTitle("perlin noise game map test");
         primaryStage.setScene(scene);
         primaryStage.show();
     }

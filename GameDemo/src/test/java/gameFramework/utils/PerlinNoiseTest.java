@@ -1,4 +1,4 @@
-package utils;
+package gameFramework.utils;
 
 import com.zerox.gameFramework.utils.PerlinNoiseUtils;
 import javafx.application.Application;

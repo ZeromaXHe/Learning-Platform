@@ -1,6 +1,7 @@
 package com.zerox.strategy.controller;
 
 import com.zerox.strategy.entity.MapSquare;
+import com.zerox.strategy.entity.gamemap.GameMapType;
 import com.zerox.strategy.service.StrategyGameService;
 import com.zerox.strategy.service.impl.StrategyGameServiceImpl;
 
@@ -19,11 +20,11 @@ public class StrategyGameController {
 
     private StrategyGameService strategyGameService = StrategyGameServiceImpl.getSingletonInstance();
 
-    public void initMap(int x, int y) {
-        strategyGameService.initMap(x, y);
+    public void initMap(int x, int y, GameMapType type) {
+        strategyGameService.initMap(x, y, type);
     }
 
-    public MapSquare[][] getMap(){
+    public MapSquare[][] getMap() {
         return strategyGameService.getMap();
     }
 }
