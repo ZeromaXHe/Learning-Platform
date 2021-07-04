@@ -1,4 +1,4 @@
-package com.zerox.javafxLearning;
+package com.zerox.javafxLearning.lesson001_023;
 
 import javafx.application.Application;
 import javafx.application.Platform;
