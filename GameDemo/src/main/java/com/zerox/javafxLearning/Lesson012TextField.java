@@ -27,7 +27,7 @@ public class Lesson012TextField extends Application {
         Group root = new Group();
         Scene scene = new Scene(root);
         primaryStage.setScene(scene);
-        primaryStage.setTitle("input text");
+        primaryStage.setTitle("input test");
         primaryStage.setWidth(800);
         primaryStage.setHeight(800);
 
