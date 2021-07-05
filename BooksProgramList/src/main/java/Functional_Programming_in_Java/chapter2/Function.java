@@ -1,5 +1,9 @@
 package Functional_Programming_in_Java.chapter2;
 
+import Functional_Programming_in_Java.chapter3.CollectionUtilities;
+
+import java.util.List;
+
 /**
  * @Author: zhuxi
  * @Time: 2021/7/5 9:57
@@ -140,5 +144,74 @@ public interface Function<T, U> {
      */
     static <T, U, V> Function<U, Function<T, V>> reverseArgs(Function<T, Function<U, V>> f) {
         return u -> t -> f.apply(t).apply(u);
+    }
+
+    /**
+     * 4.3 复合大量函数 - 练习4.6 编写一个函数composeAll，接收从T到T的函数列表为参数，并返回复合列表中所有函数的结果。
+     * 4.3 复合大量函数 - 练习4.7 解决了这个问题你就能复合（几乎）数量不限的函数。
+     *
+     * @param list
+     * @param <T>
+     * @return
+     */
+    static <T> Function<T, T> composeAll(List<Function<T, T>> list) {
+        /// 右折叠
+        return CollectionUtilities.foldRight(list, identity(), x -> x::compose);
+        /// 命令式
+//        return x -> {
+//            //你不能直接使用 x，因为它会创建一个闭包，所以它实际上应该是 final。这就是为什么你要创建一个副本。
+//            T y = x;
+//            for(Function<T, T> f : list){
+//                y = f.apply(y);
+//            }
+//            return y;
+//        };
+    }
+
+    /**
+     * 4.3 复合大量函数 - 练习4.7 解决了这个问题你就能复合（几乎）数量不限的函数。
+     * 4.3 复合大量函数 - 练习4.8 代码有两个问题，刚刚修复了一个。你能看到另一个问题并解决它吗？
+     *
+     * @param list
+     * @param <T>
+     * @return
+     */
+    static <T> Function<T, T> composeAllViaFoldLeft(List<Function<T, T>> list) {
+        return x -> CollectionUtilities.foldLeft(CollectionUtilities.reverse(list), x, a -> b -> b.apply(a));
+    }
+
+    /**
+     * 4.3 复合大量函数 - 练习4.7 解决了这个问题你就能复合（几乎）数量不限的函数。
+     *
+     * @param list
+     * @param <T>
+     * @return
+     */
+    static <T> Function<T, T> composeAllViaFoldRight(List<Function<T, T>> list) {
+//        return x -> CollectionUtilities.foldRight(list, x, a -> a::apply);
+        return x -> CollectionUtilities.foldRight(list, x, identity());
+    }
+
+    /**
+     * 4.3 复合大量函数 - 练习4.8 代码有两个问题，刚刚修复了一个。你能看到另一个问题并解决它吗？
+     *
+     * @param list
+     * @param <T>
+     * @return
+     */
+    static <T> Function<T, T> andThenAllViaFoldLeft(List<Function<T, T>> list) {
+        return x -> CollectionUtilities.foldLeft(list, x, a -> b -> b.apply(a));
+    }
+
+    /**
+     * 4.3 复合大量函数 - 练习4.8 代码有两个问题，刚刚修复了一个。你能看到另一个问题并解决它吗？
+     *
+     * @param list
+     * @param <T>
+     * @return
+     */
+    static <T> Function<T, T> andThenAllViaFoldRight(List<Function<T, T>> list) {
+//        return x -> CollectionUtilities.foldRight(CollectionUtilities.reverse(list), x, a -> a::apply);
+        return x -> CollectionUtilities.foldRight(CollectionUtilities.reverse(list), x, identity());
     }
 }

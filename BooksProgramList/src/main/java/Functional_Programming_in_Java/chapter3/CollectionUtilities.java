@@ -1,6 +1,7 @@
 package Functional_Programming_in_Java.chapter3;
 
 import Functional_Programming_in_Java.chapter2.Function;
+import Functional_Programming_in_Java.chapter4.TailCall;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -161,6 +162,7 @@ public class CollectionUtilities {
 
     /**
      * 3.3.5 化简和折叠列表 - 练习3.6 将fold方法归纳为foldLeft，以便它可以应用左折叠于任意类型的元素列表
+     * 4.2.4 让列表的方法变成栈安全的递归 - 练习4.3 创建 foldLeft 方法的栈安全递归版本
      *
      * @param ts
      * @param identity
@@ -170,11 +172,32 @@ public class CollectionUtilities {
      * @return
      */
     public static <T, U> U foldLeft(List<T> ts, U identity, Function<U, Function<T, U>> f) {
-        U result = identity;
-        for (T t : ts) {
-            result = f.apply(result).apply(t);
-        }
-        return result;
+        /// for循环
+//        U result = identity;
+//        for (T t : ts) {
+//            result = f.apply(result).apply(t);
+//        }
+//        return result;
+        /// 简单递归版本是尾递归
+//        return ts.isEmpty() ? identity : foldLeft(tail(ts), f.apply(identity).apply(head(ts)), f);
+        /// 完全递归
+        return foldLeft_(ts, identity, f).eval();
+    }
+
+    /**
+     * 4.2.4 让列表的方法变成栈安全的递归 - 练习4.3 创建 foldLeft 方法的栈安全递归版本
+     *
+     * @param ts
+     * @param identity
+     * @param f
+     * @param <T>
+     * @param <U>
+     * @return
+     */
+    private static <T, U> TailCall<U> foldLeft_(List<T> ts, U identity, Function<U, Function<T, U>> f) {
+        return ts.isEmpty() ?
+                TailCall.ret(identity) :
+                TailCall.sus(() -> foldLeft_(tail(ts), f.apply(identity).apply(head(ts)), f));
     }
 
     /**
@@ -199,6 +222,16 @@ public class CollectionUtilities {
      * 3.3.5 化简和折叠列表 - 练习3.8 编写 foldRight 的递归版本。
      * 注意，一个初始递归的版本并不能在 Java 中工作得天衣无缝，因为它使用栈来累积中间计算。
      * 在第 4 章中 ，你将学习如何创建栈安全的递归（ stack-safe recursion ）。
+     * <p>
+     * 4.2.4 让列表的方法变成栈安全的递归 - 练习4.5（难） 创建 foldRight 方法的栈安全递归版本
+     * 在第 5 章中，你将会通过 foldRight 实现 foldLeft，并通过 foldLeft 实现 foldRight，以此来开发反转列表的流程。
+     * 因为 reverse 是一个O(n)操作。由于需要遍历列表，执行它所需的时间与列表中的元素数量成正比。
+     * 因此 foldRight 的递归实现性能不会太好。反转列表操作，由于遍历了列表两次而使耗时加倍。
+     * 结论就是，当考虑使用foldRight时，你应该在以下操作中任选其一：
+     * - 无视性能
+     * - 修改函数（如果可能的话）以使用 foldLeft
+     * - 仅对小列表使用 foldRight
+     * - 使用命令式实现
      *
      * @param ts
      * @param identity
@@ -208,7 +241,25 @@ public class CollectionUtilities {
      * @return
      */
     public static <T, U> U foldRight(List<T> ts, U identity, Function<T, Function<U, U>> f) {
-        return ts.isEmpty() ? identity : f.apply(head(ts)).apply(foldRight(tail(ts), identity, f));
+        /// 不是尾递归
+//        return ts.isEmpty() ? identity : f.apply(head(ts)).apply(foldRight(tail(ts), identity, f));
+        return foldRight_(identity, reverse(ts), f).eval();
+    }
+
+    /**
+     * 4.2.4 让列表的方法变成栈安全的递归 - 练习4.5（难） 创建 foldRight 方法的栈安全递归版本
+     *
+     * @param acc
+     * @param ts
+     * @param f
+     * @param <T>
+     * @param <U>
+     * @return
+     */
+    private static <T, U> TailCall<U> foldRight_(U acc, List<T> ts, Function<T, Function<U, U>> f) {
+        return ts.isEmpty() ?
+                TailCall.ret(acc) :
+                TailCall.sus(() -> foldRight_(f.apply(head(ts)).apply(acc), tail(ts), f));
     }
 
     /**
@@ -315,6 +366,7 @@ public class CollectionUtilities {
      * @return
      */
     public static List<Integer> range(int start, int end) {
+        /// while 循环
         List<Integer> result = new ArrayList<>();
         int temp = start;
         while (temp < end) {
@@ -322,6 +374,28 @@ public class CollectionUtilities {
             temp = temp + 1;
         }
         return result;
+    }
+
+    /**
+     * 4.2.4 让列表的方法变成栈安全的递归 - 练习4.4 创建 range 递归方法的完全递归版本
+     *
+     * @param acc
+     * @param start
+     * @param end
+     * @return
+     */
+    public static List<Integer> range(List<Integer> acc, Integer start, Integer end) {
+        /// 尾递归
+//        return end <= start ?
+//                acc :
+//                range(append(acc, start), start, end);
+        return range_(list(), start, end).eval();
+    }
+
+    private static TailCall<List<Integer>> range_(List<Integer> acc, Integer start, Integer end) {
+        return end <= start ?
+                TailCall.ret(acc) :
+                TailCall.sus(() -> range_(append(acc, start), start, end));
     }
 
     /**
@@ -363,6 +437,7 @@ public class CollectionUtilities {
      * @return
      */
     public static List<Integer> range_recursive(int start, int end) {
+        // 不是尾递归
         return end <= start ?
                 CollectionUtilities.list() :
                 CollectionUtilities.prepend(start, range_recursive(start + 1, end));
