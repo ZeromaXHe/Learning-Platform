@@ -1456,7 +1456,7 @@ validate 方法不应该依赖于 sendVerificationMail 或 logError 。 它应�
 
 **提示**
 
-首先 ， 你需要一个单一方法的接口，其方法表示一个作用 。 其次，由于 emailChecker 函数返回 一 个 Result ，那么 validate 方法可以返回这个 Result 。在这种情况下 ， 你就不再需要 validate 方法了。第三 ，你需要将一个作用“绑定”到 Result 上。但是因为结果可能是成功或是失败，因此最好绑定两个作用并让 Result 类选择应用哪一个。  
+首先，你需要一个单一方法的接口，其方法表示一个作用。其次，由于 emailChecker 函数返回 一 个 Result ，那么 validate 方法可以返回这个 Result 。在这种情况下 ， 你就不再需要 validate 方法了。第三 ，你需要将一个作用“绑定”到 Result 上。但是因为结果可能是成功或是失败，因此最好绑定两个作用并让 Result 类选择应用哪一个。  
 
 **答案 3.1**
 
@@ -1503,7 +1503,7 @@ public interface Result<T> {
     public class Failure<T> implements Result<T> {
         private final String errorMessage;
         
-        private Success(String s) {
+        private Failure(String s) {
             this.errorMessage = s;
         }
         
@@ -1529,17 +1529,17 @@ public class EmailValidation {
         } else if (s.length() == 0) {
             return new Result.Failure("email must not be empty");
         } else if (emailPattern.matcher(s).matches()) {
-            return new Result.Success();
+            return new Result.Success(s);
         } else {
             return new Result.Failure("email " + s + " is invalid.");
         }
     };
     
 	public static void main(String... args) {
-        validate("this.is@my.email").bind(success, failure);
-		validate(null).bind(success, failure);
-        validate("").bind(success, failure);
-        validate("john.doe@acme.com").bind(success, failure);
+        emailChecker.apply("this.is@my.email").bind(success, failure);
+		emailChecker.apply(null).bind(success, failure);
+        emailChecker.apply("").bind(success, failure);
+        emailChecker.apply("john.doe@acme.com").bind(success, failure);
     }
     
     static Effect<String> success = s -> System.out.println("Mail sent to "+ s);
@@ -1631,7 +1631,7 @@ public static <T> Result<T> match (DefaultCase<T> defaultCase, Case<T>... matche
 请注意 ，计算意味着对返回值求值。这次并不会应用任何作用。清单 3.8 展示了完整的类。  
 
 ~~~java
-public class Case<T> extends Tuple<Supplier<Boolean>, Supplier<Result<T>>{
+public class Case<T> extends Tuple<Supplier<Boolean>, Supplier<Result<T>>> {
     private Case(Supplier<Boolean> booleanSupplier, Supplier<Result<T>> resultSupplier) {
         super(booleanSupplier, resultSupplier);
     }
@@ -1640,8 +1640,14 @@ public class Case<T> extends Tuple<Supplier<Boolean>, Supplier<Result<T>>{
         return new Case<>(condition, value);
     }
 
-    public static <T> DefaultCase<T> mcase(Supplier<Result<T> value) {
-        return new DefaultCase<> ( () -> true , value);
+    public static <T> DefaultCase<T> mcase(Supplier<Result<T>> value) {
+        return new DefaultCase<> (() -> true , value);
+    }
+    
+    private static class DefaultCase<T> extends Case<T> {
+        private DefaultCase(Supplier<Boolean> booleanSupplier, Supplier<Result<T>> resultSupplier) {
+            super(booleanSupplier, resultSupplier) ;
+        }
     }
     
     @SafeVarargs
@@ -1690,11 +1696,90 @@ public class EmailValidation {
 
 ### 3.3.1 使用映射抽象列表操作
 
+~~~java
+<T, U> List<U> map(List<T> list, Function<T, U> f) {
+    List<U> newList = new ArrayList<>();
+    for (T value : list) {
+        newList.add(f.apply(value));
+    }
+    return newList;
+}
+~~~
+
 ### 3.3.2 创建列表
+
+**练习3.3** 
+
+编写方法来创建一个空列表、包含一个元素的列表、包含一个集合里所有元素的列表，以及一个从变长参数列表里创建列表的方法。所有的这些列表都是不可变的。
+
+**答案3.3**
+
+~~~java
+public class CollectionUtilities {
+    public static <T> List<T> list() {
+        return Collections.emptyList();
+    }
+
+    public static <T> List<T> list(T t) {
+        return Collections.singletonList(t);
+    }
+
+    public static <T> List<T> list(List<T> ts) {
+        return Collections.unmodifiableList(new ArrayList<>(ts));
+    }
+
+    @SafeVarargs
+    public static <T> List<T> list(T... t) {
+        return Collections.unmodifiableList(Arrays.asList(Arrays.copyOf(t, t.length)));
+    }
+}
+~~~
 
 ### 3.3.3 使用 head 和 tail 操作
 
+**练习 3.4**
+
+创建两个方法分别返回列表的头部（head）和尾部（ tail) 。不允许修改作为参数传递的列表。由于你需要创建列表的副本，所以还需要定义一个 copy 方法。tail 返回的列表必须是不可变的。
+
+**答案 3.4**
+
+head() 方法很简单。如果列表为空，则抛出异常。否则，读取索引 0 处的元素并将其返回。
+
+copy 方法也很基本。它与创建列表的方法相同，以一个列表为参数。
+
+tail 方法稍微复杂一些。它必须创建其参数的副本，删除第一个元素，并返回结果：
+
+~~~java
+public static <T> T head(List<T> list) {
+    if (list.size() == 0) {
+        throw new IllegalStateException("head of empty list");
+    }
+    return list.get(0);
+}
+
+private static <T> List<T> copy(List<T> ts) {
+    return new ArrayList<>(ts);
+}
+
+public static <T> List<T> tail(List<T> list) {
+    if (list.size() == 0) {
+        throw new IllegalStateException("tail of empty list");
+    }
+    List<T> workList = copy(list);
+    workList.remove(0);
+    return Collections.unmodifiableList(workList);
+}
+~~~
+
 ### 3.3.4 函数式地添加列表元素
+
+~~~java
+public static <T> List<T> append(List<T> list, T t) {
+    List<T> ts = copy(list);
+    ts.add(t);
+    return Collections.unmodifiableList(ts);
+}
+~~~
 
 append 方法创建其第一个参数的防御性副本（通过调用先前已经定义好的 copy 方法），向其添加第二个参数，然后返回包装在不可变视图中的己修改列表。你很快就会有机会在无法使用 add 的地方使用这个 append 方法。  
 
@@ -1716,7 +1801,165 @@ append 方法创建其第一个参数的防御性副本（通过调用先前已�
 
 如果操作是可交换的， operation1 和 operation2 就是相同的。否则，如果 operation1 是 `x -> y -> compute (x, y)`，则 operation2 就是 `x -> y -> compute(y, x)`。  
 
-### 3.3.6 复合映射和映射复合  
+**练习 3.5**
+
+创建一个用于折叠整型列表的方法，例如对列表的元素求和。该方法将接收一个整型列表、一个整型初始值和一个函数为参数。
+
+**答案 3.5**
+
+初始值取决于应用的操作。该值必须是**中性的**，或者说是操作的单位**元**。该操作表示为一个柯里化函数，如你在第2章中所学：
+
+~~~java
+public static Integer fold(List<Integer> is, Integer identity, Function<Integer, Function<Integer, Integer>> f) {
+    int result = identity;
+    for (Integer i : is) {
+        result = f.apply(result).apply(i);
+    }
+    return result;
+}
+~~~
+
+**练习 3.6**
+
+将fold方法归纳为foldLeft，以便它可以应用左折叠于任意类型的元素列表
+
+**答案 3.6**
+
+命令式的实现相当简单：
+
+~~~java
+public static <T, U> U foldLeft(List<T> ts, U identity, Function<U, Function<T, U>> f) {
+    U result = identity;
+    for (T t : ts) {
+        result = f.apply(result).apply(t);
+    }
+    return result;
+}
+~~~
+
+**练习 3.7**
+
+编写一个 foldRight 方法的命令式版本。
+
+**答案 3.7**
+
+右折叠是 个递归操作 为了用命令式的循环来实现它，你需要反序处理列表：
+
+~~~java
+public static <T, U> U foldRight(List<T> ts, U identity, Function<T, Function<U, U>> f) {
+    U result = identity;
+    for (int i = ts.size(); i > 0; i--) {
+        result = f.apply(ts.get(i - 1)).apply(result);
+    }
+    return result;
+}
+~~~
+
+**练习 3.8**
+
+编写 foldRight 的递归版本。注意，一个初始递归的版本并不能在 Java 中工作得天衣无缝，因为它使用栈来累积中间计算。在第 4 章中 ，你将学习如何创建栈安全的递归（ stack-safe recursion ）。
+
+**提示**
+
+你应该将该函数应用于列表的 head 和折叠 tail 的结果。
+
+**答案 3.8**
+
+初始版本至少能处理 5000 个元素，对于练习来说已经足矣：
+
+~~~java
+public static <T, U> U foldRight(List<T> ts, U identity, 
+                                 Function<T, Function<U, U>> f) {
+    return ts.isEmpty() 
+        ? identity 
+        : f.apply(head(ts)).apply(foldRight(tail(ts), identity, f));
+}
+~~~
+
+**基于堆的递归** 答案 3.8 并不是尾递归，因此它不适用于以堆替栈的优化。我们将在第5章讨论基于堆的实现。
+
+**反转列表**
+
+反转列表有时挺实用的，但是这个操作的性能不太好。最好能找到其他不需要反转列表的办法，但并不总能找到。
+
+用命令式的实现来定义 reverse 方法很容易通过反向遍历列表实现。但是，你要小心别把索引搞乱：
+
+~~~java
+public static <T> List<T> reverse_imperative(List<T> list) {
+    List<T> result = new ArrayList<>();
+    for (int i = list.size() - 1; i >= 0; i--) {
+        result.add(list.get(i));
+    }
+    return Collections.unmodifiableList(result);
+}
+~~~
+
+**练习 3.9（难）**
+
+定义不用循环的 reverse 方法。改为用你迄今为止开发过的方法。
+
+**提示**
+
+用到的方法是 foldLeft append 。一开始定义 prepend 方法可能会有用，它按照 append 来定义，往列表的最前面添加一个元素。
+
+**答案 3.9**
+
+你可以先定义一个 prepend 的函数式方法，它允许在列表前添加一个元素。可以通过左折叠列表来完成，用一个包含了待添加元素的累加器而非空列表：
+
+~~~java
+public static <T> List<T> prepend(T t, List<T> list) {
+    return foldLeft(list, list(t), a -> b -> append(a, b));
+}
+~~~
+
+然后可以将 reverse 方法定义为左折叠，始于空列表并以 prepend 方法为操作：
+
+~~~java
+public static <T> List<T> reverse(List<T> list) {
+    return foldLeft(list, list(), x -> y -> prepend(y, x));
+}
+~~~
+
+完成以后，你可以用对应的实现替换对 prepend 的调用：
+
+~~~java
+public static <T> List<T> reverse(List<T> list) {
+    return foldLeft(list, list(), x -> y -> 
+                    foldLeft(x, list(y), a -> b -> append(a, b)));
+}
+~~~
+
+**警告** 不要在生产代码中使用答案 3.9 reverse 和 prepend 的实现。它们都悄悄地遍历了整个列表好几次，所以很慢。在第5章中，你将学习如何创建在所有场合都表现良好的函数式不可变列表。
+
+**练习 3.10（难）**
+
+在 3.10 节中，你通过对每个元素应用一个操作定义了一个映射列表的方法。这个操作的实现包括了一个折叠。用 foldLeft 或 foldRight 重写 map 方法。
+
+**提示**
+
+要解决这个问题，应该使用刚定义的 append 或 prepend 方法。
+
+**答案 3.10**
+
+以下是一个使用 append 和 foldLeft 方法的实现：
+
+~~~java
+public static <T, U> List<U> mapViaFoldLeft(List<T> list, Function<T, U> f) {
+    return foldLeft(list, list(), x -> y -> append(x, f.apply(y)));
+}
+~~~
+
+以下实现使用 foldRight 和 prepend:
+
+~~~java
+public static <T, U> List<U> mapViaFoldRight(List<T> list, Function<T, U> f) {
+    return foldRight(list, list(), x -> y -> prepend(f.apply(x), y));
+}
+~~~
+
+### 3.3.6 复合映射和映射复合
+
+一个更好的办法是复合函数而不是复合映射，或者换句话说，映射复合而不是复合映射
 
 ### 3.3.7 对列表应用作用  
 
