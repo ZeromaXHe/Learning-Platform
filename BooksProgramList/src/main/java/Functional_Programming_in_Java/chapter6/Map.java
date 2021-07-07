@@ -1,5 +1,7 @@
 package Functional_Programming_in_Java.chapter6;
 
+import Functional_Programming_in_Java.chapter7.Result;
+
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -20,10 +22,16 @@ public class Map<T, U> {
         return m;
     }
 
-    public Option<U> get(final T t) {
+//    public Option<U> get(final T t) {
+//        return this.map.containsKey(t) ?
+//                Option.some(this.map.get(t)) :
+//                Option.none();
+//    }
+
+    public Result<U> get(final T t) {
         return this.map.containsKey(t) ?
-                Option.some(this.map.get(t)) :
-                Option.none();
+                Result.success(this.map.get(t)) :
+                Result.empty();
     }
 
     public Map<T, U> put(T t, U u) {
