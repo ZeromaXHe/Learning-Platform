@@ -406,6 +406,10 @@ public abstract class List<A> {
         return new Cons<>(a, this);
     }
 
+    public static <T> List<T> cons(T t, List<T> list) {
+        return list.cons(t);
+    }
+
     /**
      * 5.3 在列表操作中共享数据 - 练习5.2 实现实例方法setHead，用新值替换List的第一个元素
      *

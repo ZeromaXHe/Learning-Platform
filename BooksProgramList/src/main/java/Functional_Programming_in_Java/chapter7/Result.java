@@ -13,6 +13,12 @@ import java.io.Serializable;
  * @ModifiedBy: zhuxi
  */
 public abstract class Result<T> implements Serializable {
+    public abstract Boolean isSuccess();
+
+    public abstract Boolean isFailure();
+
+    public abstract Boolean isEmpty();
+
     /**
      * 7.3.1 为Result类添加方法 - 练习7.4 为Result类定义map、flatMap、getOrElse和orElse。
      * 对getOrElse而言，你可以定义两个方法：其一接收一个值为参数，另一个接收一个Supplier。
@@ -77,6 +83,21 @@ public abstract class Result<T> implements Serializable {
     private static class Empty<T> extends Result<T> {
         public Empty() {
             super();
+        }
+
+        @Override
+        public Boolean isSuccess() {
+            return false;
+        }
+
+        @Override
+        public Boolean isFailure() {
+            return false;
+        }
+
+        @Override
+        public Boolean isEmpty() {
+            return true;
         }
 
         @Override
@@ -162,6 +183,16 @@ public abstract class Result<T> implements Serializable {
         }
 
         @Override
+        public Boolean isSuccess() {
+            return false;
+        }
+
+        @Override
+        public Boolean isFailure() {
+            return true;
+        }
+
+        @Override
         public <U> Result<U> map(Function<T, U> f) {
             return failure(exception);
         }
@@ -213,6 +244,21 @@ public abstract class Result<T> implements Serializable {
         private Success(T value) {
             super();
             this.value = value;
+        }
+
+        @Override
+        public Boolean isSuccess() {
+            return true;
+        }
+
+        @Override
+        public Boolean isFailure() {
+            return false;
+        }
+
+        @Override
+        public Boolean isEmpty() {
+            return false;
         }
 
         @Override
