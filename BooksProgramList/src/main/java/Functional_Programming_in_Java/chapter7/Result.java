@@ -1,5 +1,6 @@
 package Functional_Programming_in_Java.chapter7;
 
+import Functional_Programming_in_Java.chapter10.Nothing;
 import Functional_Programming_in_Java.chapter2.Function;
 import Functional_Programming_in_Java.chapter3.Effect;
 import Functional_Programming_in_Java.chapter3.Supplier;
@@ -73,6 +74,8 @@ public abstract class Result<T> implements Serializable {
      * @return
      */
     public abstract Result<RuntimeException> forEachOrException(Effect<T> ef);
+
+    public abstract Result<Nothing> mapEmpty();
 
     @SuppressWarnings("rawtypes")
     private static Result empty = new Empty();
@@ -159,6 +162,11 @@ public abstract class Result<T> implements Serializable {
         }
 
         @Override
+        public Result<Nothing> mapEmpty() {
+            return success(Nothing.instance);
+        }
+
+        @Override
         public String toString() {
             return "Empty()";
         }
@@ -230,6 +238,11 @@ public abstract class Result<T> implements Serializable {
         @Override
         public Result<RuntimeException> forEachOrException(Effect<T> ef) {
             return success(exception);
+        }
+
+        @Override
+        public Result<Nothing> mapEmpty() {
+            return failure(this);
         }
 
         @Override
@@ -328,9 +341,18 @@ public abstract class Result<T> implements Serializable {
         }
 
         @Override
+        public Result<Nothing> mapEmpty() {
+            return failure("Not empty");
+        }
+
+        @Override
         public String toString() {
             return String.format("Success(%s)", value.toString());
         }
+    }
+
+    public static <T, U> Result<T> failure(Failure<U> failure) {
+        return new Failure<>(failure.exception);
     }
 
     public static <T> Result<T> failure(String message) {
