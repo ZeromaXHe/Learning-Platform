@@ -59,7 +59,7 @@ public class Lesson009_011Button extends Application {
         BackgroundFill bgf = new BackgroundFill(
                 Paint.valueOf("#8FBC8F"),
                 new CornerRadii(20),
-                new Insets(10,5,20,5)
+                new Insets(10, 5, 20, 5)
 //                new Insets(10)
         );
         Background bg = new Background(bgf);
@@ -138,6 +138,11 @@ public class Lesson009_011Button extends Application {
             System.out.println("Runnable run()方法 " + Thread.currentThread().getName());
             b1.fire();
         });
+
+        // 快捷键 第五种
+        KeyCombination kc5 = KeyCombination.valueOf("alt+k");
+        Mnemonic mnemonic5 = new Mnemonic(b1, kc5);
+        scene.addMnemonic(mnemonic5);
 
         primaryStage.setScene(scene);
 
