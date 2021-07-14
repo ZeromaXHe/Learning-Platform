@@ -2,6 +2,7 @@ package Functional_Programming_in_Java.chapter5;
 
 import Functional_Programming_in_Java.chapter2.Function;
 import Functional_Programming_in_Java.chapter2.Tuple;
+import Functional_Programming_in_Java.chapter3.Effect;
 import Functional_Programming_in_Java.chapter4.TailCall;
 import Functional_Programming_in_Java.chapter4.Tuple3;
 import Functional_Programming_in_Java.chapter6.Map;
@@ -112,6 +113,13 @@ public abstract class List<A> {
      */
     public abstract Result<A> headOption();
 
+    /**
+     * 13.1.2 实现作用 - 练习13.1 在List类中编写一个forEach方法，该方法接收一个作用并将其应用于列表中的所有元素
+     *
+     * @param ef
+     */
+    public abstract void forEach(Effect<A> ef);
+
     // 用一个单例来表示空列表
     @SuppressWarnings("rawtypes")
     public static final List NIL = new Nil();
@@ -197,6 +205,11 @@ public abstract class List<A> {
         @Override
         public Result<A> headOption() {
             return Result.empty();
+        }
+
+        @Override
+        public void forEach(Effect<A> ef) {
+            // Do nothing
         }
 
         @Override
@@ -339,6 +352,20 @@ public abstract class List<A> {
         @Override
         public Result<A> headOption() {
             return Result.success(head);
+        }
+
+        @Override
+        public void forEach(Effect<A> ef) {
+            forEach_(this, ef).eval();
+        }
+
+        private static <A> TailCall<List<A>> forEach_(List<A> list, Effect<A> ef) {
+            return list.isEmpty() ?
+                    TailCall.ret(list) :
+                    TailCall.sus(() -> {
+                        ef.apply(list.head());
+                        return forEach_(list.tail(), ef);
+                    });
         }
 
         @Override

@@ -2056,8 +2056,8 @@ public abstract class TailCall<T> {
     }
     
     public static class Suspend<T> extends TailCall<T> {
-        private final Supplier<TailCall<T> resume ;
-        private Suspend(Supplier<TailCall<T> resume) {
+        private final Supplier<TailCall<T>> resume ;
+        public Suspend(Supplier<TailCall<T>> resume) {
         	this.resume = resume;
         }
         
@@ -2173,8 +2173,8 @@ public abstract class TailCall<T> {
     }
     
     private static class Suspend<T> extends TailCall<T> {
-        private final Supplier<TailCall<T> resume ;
-        private Suspend(Supplier<TailCall<T> resume) {
+        private final Supplier<TailCall<T>> resume ;
+        private Suspend(Supplier<TailCall<T>> resume) {
         	this.resume = resume;
         }
         

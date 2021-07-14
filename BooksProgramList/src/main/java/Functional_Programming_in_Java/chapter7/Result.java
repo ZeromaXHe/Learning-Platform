@@ -75,6 +75,16 @@ public abstract class Result<T> implements Serializable {
      */
     public abstract Result<RuntimeException> forEachOrException(Effect<T> ef);
 
+    /**
+     * 13.1.3 用于失败情况的更强大的作用 - 练习13.2 在第7章中，你在Result类型中编写了一个forEachOrException方法，它在Empty和Success中的工作方式类似于forEach，
+     * 额外还会返回一个Result.Empty，而在Failure类中返回一个Result.Success<Exception>。
+     * 编写一个forEachOrFail方法，它将返回带有异常消息的Result<String>而非异常本身。
+     *
+     * @param e
+     * @return
+     */
+    public abstract Result<String> forEachOrFail(Effect<T> e);
+
     public abstract Result<Nothing> mapEmpty();
 
     @SuppressWarnings("rawtypes")
@@ -162,6 +172,11 @@ public abstract class Result<T> implements Serializable {
         }
 
         @Override
+        public Result<String> forEachOrFail(Effect<T> e) {
+            return empty();
+        }
+
+        @Override
         public Result<Nothing> mapEmpty() {
             return success(Nothing.instance);
         }
@@ -238,6 +253,11 @@ public abstract class Result<T> implements Serializable {
         @Override
         public Result<RuntimeException> forEachOrException(Effect<T> ef) {
             return success(exception);
+        }
+
+        @Override
+        public Result<String> forEachOrFail(Effect<T> e) {
+            return success(exception.getMessage());
         }
 
         @Override
@@ -337,6 +357,12 @@ public abstract class Result<T> implements Serializable {
         @Override
         public Result<RuntimeException> forEachOrException(Effect<T> ef) {
             ef.apply(value);
+            return empty();
+        }
+
+        @Override
+        public Result<String> forEachOrFail(Effect<T> e) {
+            e.apply(this.value);
             return empty();
         }
 
