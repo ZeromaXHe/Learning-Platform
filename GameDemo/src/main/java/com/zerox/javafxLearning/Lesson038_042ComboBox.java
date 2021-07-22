@@ -24,7 +24,7 @@ import javafx.util.StringConverter;
  * @Description:
  * @ModifiedBy: zhuxi
  */
-public class Lesson038_040ComboBox extends Application {
+public class Lesson038_042ComboBox extends Application {
     private ObservableList<Student> obsAll;
 
     public static void main(String[] args) {
