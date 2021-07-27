@@ -1,4 +1,4 @@
-package com.zerox.javafxLearning;
+package com.zerox.javafxLearning.Lesson024_050;
 
 import javafx.animation.FadeTransition;
 import javafx.application.Application;
