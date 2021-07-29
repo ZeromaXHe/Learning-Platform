@@ -4,14 +4,26 @@ import javafx.application.Application;
 import javafx.beans.property.ReadOnlyDoubleProperty;
 import javafx.beans.property.ReadOnlyDoubleWrapper;
 import javafx.beans.property.SimpleIntegerProperty;
+import javafx.beans.property.SimpleListProperty;
+import javafx.beans.property.SimpleMapProperty;
+import javafx.beans.property.SimpleSetProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
+import javafx.collections.FXCollections;
+import javafx.collections.ListChangeListener;
+import javafx.collections.MapChangeListener;
+import javafx.collections.ObservableList;
+import javafx.collections.ObservableMap;
+import javafx.collections.ObservableSet;
+import javafx.collections.SetChangeListener;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.layout.AnchorPane;
 import javafx.stage.Stage;
 
 import java.beans.PropertyChangeSupport;
+import java.util.Comparator;
+import java.util.function.Function;
 
 /**
  * @Author: zhuxi
@@ -19,7 +31,7 @@ import java.beans.PropertyChangeSupport;
  * @Description:
  * @ModifiedBy: zhuxi
  */
-public class Lesson051_052Binding extends Application {
+public class Lesson051_053Binding extends Application {
     public static void main(String[] args) {
         launch(args);
     }
@@ -61,6 +73,65 @@ public class Lesson051_052Binding extends Application {
 
         AnchorPane.setTopAnchor(bu2, 100.0);
         an.getChildren().addAll(bu, bu2);
+
+        System.out.println("===============[SimpleListProperty]===============");
+
+        ObservableList<String> list = FXCollections.observableArrayList("A", "B", "C");
+        SimpleListProperty<String> slp = new SimpleListProperty<>(list);
+
+        slp.addListener((o, ov, nv) -> {
+            ov.forEach(System.out::println);
+            System.out.println("------------");
+            nv.forEach(System.out::println);
+        });
+        slp.addListener((ListChangeListener.Change<? extends String> c) -> {
+            System.out.println(c);
+//            c.getList().forEach(System.out::println);
+            // 先调用next才能调用wasAdded
+            while (c.next()) {
+                System.out.println("c.getFrom(): " + c.getFrom());
+                System.out.println("c.getTo(): " + c.getTo());
+                System.out.println("c.getAddedSubList(): " + c.getAddedSubList());
+                System.out.println("c.getRemoved(): " + c.getRemoved());
+                System.out.println("c.getPermutation(0): " + c.getPermutation(0));
+
+                System.out.println("c.wasAdded(): " + c.wasAdded());
+                System.out.println("c.wasRemoved(): " + c.wasRemoved());
+                System.out.println("c.wasReplaced(): " + c.wasReplaced());
+                System.out.println("c.wasPermutated(): " + c.wasPermutated());
+                System.out.println("c.wasUpdated(): " + c.wasUpdated());
+            }
+        });
+//        slp.add("D");
+//        slp.addAll("D", "E");
+//        slp.set(0, "F");
+//        slp.remove(0);
+//        slp.remove(0, 2);
+        list.sort(Comparator.comparing(Function.identity()));
+
+        System.out.println("===============[SimpleSetProperty]===============");
+
+        ObservableSet<String> set = FXCollections.observableSet("A", "B", "C");
+        SimpleSetProperty<String> ssp = new SimpleSetProperty<>(set);
+
+        ssp.addListener((SetChangeListener.Change<? extends String> change) -> System.out.println(change.wasAdded()));
+
+        ssp.add("D");
+
+        ssp.forEach(System.out::println);
+
+        System.out.println("===============[SimpleMapProperty]===============");
+
+        ObservableMap<String, String> map = FXCollections.observableHashMap();
+        map.put("1", "A");
+        map.put("2", "B");
+        SimpleMapProperty<String, String> smp = new SimpleMapProperty<>(map);
+
+        smp.addListener((MapChangeListener<String, String>) change -> {
+
+        });
+
+        smp.forEach((k, v) -> System.out.println(k + " - " + v));
 
         Scene scene = new Scene(an);
         primaryStage.setScene(scene);
