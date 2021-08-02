@@ -227,3 +227,342 @@ public class MasterTestSuite {
 
 # 第3章 掌握JUnit
 
+现在我们通过引入和测试一个真实的组件，来更深入地研究JUnit。在这一章中，我们实现了一个使用Controller设计模式的小型应用程序。然后，我们使用JUnit测试该应用程序的每一部分。我们也介绍了一些编写和组织测试时的”JUnit最佳实践“。
+
+## 3.1 引入controller组件
+
+一般而言，controller可以处理以下事务：
+
+- 接受请求；
+- 根据请求执行任意常用计算；
+- 选择一个合适的请求处理器；
+- 路由请求，以便处理器可以执行相关的业务逻辑；
+- 可能提供一个顶层处理器来处理错误和异常。
+
+### 3.1.1 设计接口
+
+~~~java
+public interface Request {
+    String getName();
+}
+public interface Response {
+    
+}
+public interface RequestHandler {
+    Response process(Request request) throws Exception;
+}
+public interface Controller {
+    Response precessRequest(Request request);
+    void addHandler(Request request, RequestHandler requestHandler);
+}
+~~~
+
+
+
+### 3.1.2 实现基类
+
+~~~java
+[...]
+import java.util.HashMap;
+import java.util.Map;
+
+public class DefaultController implements Controller {
+    private Map requestHandlers = new HashMap();
+    
+    protected RequestHandler getHandler(Request request) {
+        if (!this.requestHandlers.containsKey(request.getName())){
+            String message = "Cannot find handler for request name " + "[" + request.getName() + "]";
+            throw new RuntimeException(message);
+        }
+        return (RequestHandler)this.requestHandlers.get(request.getName());
+    }
+    
+    public Response processRequest(Request request) {
+        Response response;
+        try {
+            response = getHandler(request).process(request);
+        } catch (Exception exception) {
+            response = new ErrorResponse(request, exception);
+        }
+        return response;
+    }
+    
+    public void addHandler(Request request, RequestHandler requestHandler) {
+        if (!this.requestHandlers.containsKey(request.getName()) {
+            throw new RuntimeException("A request handler has already been registered for request name [" + request.getName() + "]");
+        } else {
+            this.requestHandlers.put(request.getName(), requestHandler);
+        }
+    }
+}
+~~~
+
+对于许多开发者来说，下一步将是七拼八凑地编写一个stub应用程序，使它能够与controller骨架相匹配。但是，作为深受测试影响的开发者，我们可以为controller编写一个测试集（test suite），而不必为一个stub应用程序手忙脚乱。这就是单元测试的魅力。
+
+## 3.2 让我们来测试它
+
+### 3.2.1 测试DefaultController
+
+~~~java
+[...]
+import org.junit.core.Test;
+import static org.junit.Assert.*;
+
+public class TestDefaultController {
+    private DefaultController controller;
+    
+    @Before
+    public void instantiate() throws Exception {
+        controller = new DefaultController();
+    }
+    
+    @Test
+    public void testMethod() {
+        throw new RuntimeException("implement me");
+    }
+}
+~~~
+
+这里用到了一项“最佳实践”：对还没有实现的测试代码抛出一个异常。这种做法可以防止测试通过并且提醒自己必须实现这部分代码。既然你已经拥有了一个基本的测试，那么下一步就是判断先测试什么。
+
+### 3.2.2 添加一个处理器
+
+当务之急是：你应该测试是否能够添加一个RequestHandler。
+
+针对第一个测试，看起来你可以进行以下操作：
+
+- 添加一个RequestHandler，引用一个Request；
+- 获取一个RequestHandler并传递同一个Request；
+- 检查你获得的RequestHandler是否就是添加的那一个。
+
+#### 测试从何而来
+
+要创建一个单元测试，你需要两种类型的对象：一种是你要测试的**领域对象**（Domain Object），另一种是用来与被测对象交互的**测试对象**（Test Object）。
+
+> **JUnit最佳实践：一次只能单元测试一个对象**
+>
+> 单元测试的一个至关重要的方面就是细粒度。一个单元测试独立地检查你创建的每一个对象，这样你就可以在问题发生的第一时间把它们隔离起来。如果被测试的对象多于一个，那么一旦这些对象发生了变化，你就无法预测它们将如何相互影响。当一个对象与其他复杂的对象交互时，你可以使用可预测的测试对象将被测试的对象包围起来。软件测试的另一种形式是集成测试，检查正在工作的对象彼此之间是如何交互的。更多关于其他类型的测试的内容，可以参考本书的第4章。
+
+#### 测试类存在于何处
+
+你把测试类放在什么地方呢？Java提供了几种选择。对于初学者来说，你可以进行以下操作之一：
+
+- 把测试类作为包（package）中的公有类；
+- 把测试类作为测试用例类的内部类。
+
+如果这些类很简单并且以后也不太可能有很大改变，那么把它们编写成内部类是最简单的做法。在这个示例中的类都非常简单。代码3.5显示了你可以添加到TestDefaultController类中的内部类。
+
+~~~java
+public class TestDefaultController {
+    [...]
+    private class SampleRequest implements Request {
+        public String getName() {
+            return "Test";
+        }
+    }
+    private class SampleHandler implements RequestHandler {
+        public Response process(Request request) throws Exception {
+            return new SampleResponse();
+        }
+    }
+    private class SampleResponse implements Response {
+        // empty
+    }
+    [...]
+}
+~~~
+
+
+
+~~~java
+[...]
+import static org.junit.Assert.*;
+
+public class TestDefaultController {
+    [...]
+    @Test
+    public void testAddHandler() {
+        Request request = new SampleRequest();
+        RequestHandler handler = new SampleHandler();
+        controller.addHandler(request, handler);
+        RequestHandler handler2 = controller.getHandler(request);
+        assertSame("Handler we set in controller should be the same handler we get", handler2, handler);
+    }
+}
+~~~
+
+> **JUnit最佳实践：选择有意义的测试方法名字**
+>
+> 你可能看到，一个方法是带有@Test注释的测试方法。你也必须能够通过阅读一个方法的名字来了解这个方法是用来测试什么的。
+
+随着你创建了更多这样的测试，你就会注意到你遵循着以下一个模式。
+
+1. 通过把环境设置成已知状态（如创建对象，获取资源）来创建测试。测试前的状态通常称为Test Fixture。
+2. 调用待测试的方法
+3. 确认测试结果，通常通过调用一个或更多的assert方法来实现。
+
+### 3.2.3 请求处理
+
+~~~java
+[...]
+import static org.junit.Assert.*;
+
+public class TestDefaultController {
+    [...]
+    @Test
+    public void testProcessRequest() {
+        Request request = new SampleRequest();
+        RequestHandler handler = new SampleHandler();
+        controller.addHandler(request, handler);
+        Response response = controller.processRequest(request);
+        assertNotNull("Must not return a null response", reponse);
+        assertSame("Response should be of type SampleResponse", SampleResponse.class, response.class);
+    }
+}
+~~~
+
+> **JUnit最佳实践：在assert调用中解释失败的原因**
+>
+> 无论何时，只要你使用了JUnit的任何`assert*`方法，就要确保自己使用第一个参数为String类型的那个签名。这个参数让你可以提供一个有意义的文本描述，在断言失败时JUnit的test runner就会显示这个描述。如果不使用这个参数，那么当测试失败时，要找出失败的原因就会比较困难。
+
+#### 分离初始化逻辑
+
+因为testAddHandler和testProcessRequest这两个测试的初始化行为是一样的，所以你可以试着把这部分代码移进一个@Before注释的方法。
+
+注意，你不要试图通过在一个测试方法中测试多个操作来共享初始化代码
+
+> **JUnit最佳实践：一个单元测试等于一个@Test方法**
+>
+> 不要试图把多个测试塞进一个方法。这样导致的结果就是测试方法变得更加复杂，难以阅读也难以理解。更糟糕的是，你在测试方法中编写的逻辑越多，测试失败的可能性就越大，需要进行的调试可能性也就越大。
+
+每一个测试方法都必须尽可能地简洁清晰和目的明确。这正是JUnit为你提供了@Before、@After、@BeforeClass和@AfterClass注释的原因，所以你可以在多个测试之间共享fixture，而不必把测试方法组合起来。
+
+### 3.2.4 改进testProcessRequest
+
+## 3.3 测试异常处理
+
+> **JUnit最佳实践：测试任何可能失败的事物**
+>
+> 单元测试有助于确保你的方法遵守与其他方法的API契约。如果契约仅仅要求其他组件遵守，而没有对你的方法提出什么约束，那么就可能没有什么有意义的行为值得测试。但是，如果方法以任何方式改变了参数值或者字段值，那么这个方法就在提供独特的行为，这就需要测试。这个方法并不仅仅是个中间人——它是一个具有自己的行为的方法，可以想象，未来的改变可能会破坏它的行为。如果一个方法被改变了，变得不再简单，那么当发生这个改变时，你就应当为这个方法增加一个测试，但在改变之前则不需要增加。
+
+### 3.3.1 模拟异常条件
+
+你如何模拟异常条件以测试错误处理器是否正常工作呢？为了测试对正常请求的处理，你创建了一个SampleRequestHandler，这个处理器返回了一个SampleRequest。那么为了测试错误条件的处理，你可以创建一个SampleExceptionHandler，相反这个处理器会抛出一个异常。
+
+> **JUnit最佳实践：让测试改善代码**
+>
+> 编写单元测试常常有助于你写出更好的代码。理由很简单：一个测试用例就是一位你的代码的用户。只有在使用代码时你才能发现代码的缺点。因此，不要犹豫，应当根据测试时发现的问题重构代码，使其更加易于使用。测试驱动开发（TDD）的实践就依赖于这条原则。提供先编写测试，你就可以从代码用户的角度来开发你的类。关于TDD的更多内容可以参见第5章。
+
+### 3.3.2 测试异常
+
+1. 插入应当抛出异常的语句；
+2. 向@Test注释添加expected参数，来指定你所预期的异常类型；
+3. 一切正常进行。
+
+> **JUnit最佳实践：使异常测试更易于阅读**
+>
+> 通常@Test注释中的expected参数会明确告知开发者，应该产生什么类型的异常。但是你可以更进一步。除了以一种清晰易懂的方式命名你的测试方法，来表示这个方法要测试一个异常条件，你也可以向产生expected异常的代码行中添加一些代码注释，以突出显示。
+
+> **JUnit最佳实践：让测试改善代码**
+>
+> 一种识别异常路径的简单方法是检查待测代码中的不同分支路径。这里的“分支路径”指的是if子句、switch语句和try/catch块的结果。当你开始跟踪这些分支时，你有时可能会觉得测试每个分支路径实在是太痛苦了。如果代码难以测试，那么通常也难以使用。
+
+## 3.4 超时测试
+
+JUnit为我们提供了@Test注释的另一个参数，称为timeout。在这个参数中，你能够指定以毫秒为单位的运行时间，并且如果测试执行超时，那么JUnit就会把这个测试标记为失败。
+
+现在，对某些开发者来说，我们已经到了一些超时测试就可能使整个构建失败的地步。所以，有时候跳过一些测试是个好主意。在JUnit3.x中，我们为了跳过车市，就不得不修改测试方法的名称（使其不以test前缀为开头）。然而，在JUnit4.x版本中，我们有一个好方法来跳过测试。唯一需要我们做的是使用@Ignore注释来注释@Test方法，如代码3.16所示。
+
+~~~java
+[...]
+@Test(timeout=130)
+@Ignore(value="Ignore for new until we decide a decent time limit")
+public void testProcessMultipleRequestTimeout() {
+    [...]
+}
+~~~
+
+正如你所看到的，我们唯一所做的是将@Ignore注释添加到方法中。这个注释接收了一个value参数，这个参数让我们插入一个信息，来说明我们为什么跳过这个测试。
+
+> **JUnit最佳实践：总是为跳过测试说明原因**
+>
+> 正如你在以上代码中所看到的，我们说明了为什么需要跳过该测试的执行。在实际中这是一个很好的做法。首先，你向其他的开发成员说明了你为什么想跳过该测试的执行，其次，你也向自己证实了你知道这个测试是做什么的，而且你没有忽略它只是因为它失败了。
+
+上文已经提到过，在JUnit3.x中，跳过测试方法的执行的唯一方式就是重命名方法或者把方法注释掉。这样你就无法知道有多少测试被跳过了。而在JUnit 4.x中，当你使用@Ignore注释方法时，你会获得详细的统计数据，除了通过和失败的测试数量，还包括JUnit跳过了多少测试。
+
+## 3.5 引入Hamcrest匹配器
+
+一些断言太大并且很难看懂。例如，来看一下代码3.17中的代码
+
+~~~java
+[...]
+public class HamcrestTest {
+    private List<String> values;
+    
+    @Before
+    public void setUpList() {
+        values = new ArrayList<>();
+        values.add("x");
+        values.add("y");
+        values.add("z");
+    }
+    
+    @Test
+    public void testWithoutHamcrest() {
+        assertTrue(values.contains("one")
+                  || values.contains("two")
+                  || values.contains("three"));
+    }
+}
+~~~
+
+Hamcrest是一个库，包含了大量有用的匹配器对象（也称为约束或者谓语），它可以被植入到其他几种开发语言（如Java、C++、Objective-C、Python和PHP）中。请注意，Hamcrest本身并不是一个测试框架，但确切地说，它可以帮助你通过声明方式指定简答的匹配规则。这些匹配规则可以在许多不同的情况下使用，但是它们尤其适用于单元测试。
+
+代码3.18是同一个测试方法，但这一次是使用Hamcrest库编写的。
+
+~~~java
+[...]
+import static org.junit.Assert.assertThat;
+import static org.hamcrest.CoreMatchers.anyOf;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.junit.JUnitMatchers.hasItem;
+[...]
+
+@Test
+public void testWithHamcrest(){
+    assertThat(values, hasItem(anyOf(equalTo("one"), equalTo("two"), equalTo("three"))));
+}
+[...]
+~~~
+
+Hamcrest能为你提供标准断言无法提供的功能，即在断言失败时提供一些可读的描述信息。
+
+表3.2列出了一些最常用的Hamcrest匹配器。
+
+| 核心                                                         | 逻辑                                                         |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| anything                                                     | 绝对匹配，在你想使得assert语句更具可读性的某些情况下非常有用 |
+| is                                                           | 仅用于改善语句的可读性                                       |
+| allOf                                                        | 检查是否与所有包含的匹配器匹配（相对于&&运算符）             |
+| anyOf                                                        | 检查是否与任一包含的匹配器匹配（相对于\|\|运算符）           |
+| not                                                          | 与包含的匹配器的意思相反（相当于Java中的 ! 运算符）          |
+| instanceOf、isCompatibleType                                 | 匹配对象是否是兼容类型（是另一个对象的实例）                 |
+| sameInstance                                                 | 测试对象标识                                                 |
+| notNullValue、nullValue                                      | 测试null值（或者非null值）                                   |
+| hasProperty                                                  | 测试JavaBean是否具有某种属性                                 |
+| hasEntry、hasKey、hasValue                                   | 测试给定的Map是否含有某个给定的实体、键或者值                |
+| hasItem、hasItems                                            | 测试给定的集合包含了一个或多个元素                           |
+| closeTo、greaterThan、greaterThanOrEqual、lessThan、lessThanOrEqual | 测试给定的数字是否接近于、大于、大于或等于、小于、小于或等于某个给定的值 |
+| equalToIgnoringCase                                          | 通过忽略大小写，测试给定的字符串是否与另一个字符串相同       |
+| equalToIgnoringWhiteSpace                                    | 通过忽略空格，测试给定的字符串是否与另一个字符串相同         |
+| containsString、endsWith、startWith                          | 测试给定的字符串是否包含了某个字符串，是否是以某个字符串开始或结束 |
+
+最后值得一提的是，Hamcrest极具可扩展性。编写用来检查某个特定条件的匹配器是非常容易的。唯一你需要做的是实现Matcher接口和一个命名适当的工厂方法（Factory Method）。
+
+## 3.6 创建测试项目
+
+> **JUnit最佳实践：相同的包，分离的目录**
+>
+> 把所有测试类和待测试类都放在同一个包中，但采用平行目录结构。为了可以访问受保护的方法，你需要把测试和待测试类放在同一个包中。为了简化文件管理，并让人明确地区分测试类和领域类，你就需要把测试放在一个单独的目录中。
+
+# 第4章 软件测试原则
