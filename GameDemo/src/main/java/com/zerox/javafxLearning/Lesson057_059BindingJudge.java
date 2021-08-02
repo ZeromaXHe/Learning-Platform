@@ -3,7 +3,14 @@ package com.zerox.javafxLearning;
 import javafx.application.Application;
 import javafx.beans.binding.BooleanBinding;
 import javafx.beans.binding.DoubleBinding;
+import javafx.beans.binding.IntegerExpression;
+import javafx.beans.binding.NumberBinding;
+import javafx.beans.binding.When;
+import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleIntegerProperty;
+import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextField;
@@ -17,7 +24,7 @@ import javafx.stage.Stage;
  * @Description:
  * @ModifiedBy: zhuxi
  */
-public class Lesson057BindingJudge extends Application {
+public class Lesson057_059BindingJudge extends Application {
     public static void main(String[] args) {
         launch(args);
     }
@@ -38,6 +45,45 @@ public class Lesson057BindingJudge extends Application {
         System.out.println(a.isNotEqualTo(9, 1).get());
         System.out.println(a.greaterThanOrEqualTo(b).get());
         System.out.println(a.lessThanOrEqualTo(b).get());
+
+        IntegerExpression n2 = SimpleIntegerProperty.integerExpression(b);
+        System.out.println(n2.get());
+        ObjectProperty<Integer> objectProperty = new SimpleObjectProperty<>(2);
+        System.out.println(IntegerExpression.integerExpression(objectProperty).get());
+
+        SimpleIntegerProperty.readOnlyIntegerProperty(b);
+
+        System.out.println("----------------[Boolean]----------------");
+
+        SimpleBooleanProperty b1 = new SimpleBooleanProperty(true);
+        SimpleBooleanProperty b2 = new SimpleBooleanProperty(false);
+        System.out.println(b1.and(b2).get());
+        System.out.println(b1.or(b2).get());
+        System.out.println(b1.not().get());
+        System.out.println(b1.isEqualTo(b2).get());
+
+        System.out.println("----------------[String]----------------");
+
+        SimpleStringProperty ssp1 = new SimpleStringProperty("A");
+        SimpleStringProperty ssp2 = new SimpleStringProperty("B");
+        System.out.println(ssp1.greaterThan(ssp2).get());
+        System.out.println(ssp1.concat(ssp2).get());
+        System.out.println(ssp1.isEqualTo(ssp2).get());
+        System.out.println(ssp1.isEqualToIgnoreCase(ssp2).get());
+        System.out.println(ssp1.isEmpty().get());
+        System.out.println(ssp1.isNull().get());
+
+        System.out.println("----------------[三元运算符]----------------");
+
+        SimpleIntegerProperty x = new SimpleIntegerProperty(1);
+        SimpleIntegerProperty y = new SimpleIntegerProperty(2);
+//        SimpleBooleanProperty boo = new SimpleBooleanProperty(true);
+//        When when = new When(boo);
+        When when = new When(x.greaterThan(y));
+        NumberBinding n3 = when.then(10).otherwise(20);
+        System.out.println(n3.doubleValue());
+        x.set(3);
+        System.out.println(n3.doubleValue());
     }
 
     @Override
@@ -74,9 +120,9 @@ public class Lesson057BindingJudge extends Application {
             a.set(valueA);
             b.set(valueB);
 
-            if(boo.get()){
+            if (boo.get()) {
                 an.setStyle("-fx-background-color: #007777");
-            }else{
+            } else {
                 an.setStyle("-fx-background-color: #990099");
             }
         });
