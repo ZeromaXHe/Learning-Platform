@@ -795,3 +795,220 @@ Cobertura（译注：cobertura在西班牙语是覆盖的意思）是一个与JU
 
 # 第6章 使用stub进行粗粒度测试
 
+这里有两个策略供我们生成模拟对象：stub技术和使用mock objects。stub是一种原始的方法，但如今仍然很流行，其主要原因是它们允许用户在不修改代码（修改代码是为了使代码具有可测性）的情况下测试代码。mock objects则适用于另一种情况。
+
+## 6.1 stub简介
+
+stub是一种机制，用来模拟真实代码或者尚未完成的代码所产生的行为。stub允许用户测试系统的某一部分，即使其他部分还不可用。通常，stub不会改变你所测试的代码，但是会适当调整代码以提供无缝集成。
+
+> **DEFINITION**
+>
+> stub是一段代码，通常在运行期间使用插入的stub来代替真实的代码，以便将其调用者与真实的实现隔离开来，其目的是用一个简单一点的行为替换一个复杂的行为，从而允许独立地测试真实代码的某一部分。
+
+这里有一些可以用到stub的示例。
+
+- 当你不能修改一个现有的系统，因为它太复杂，很容易崩溃。
+- 对于粗粒度测试而言，就如同在不同的子系统之间进行集成测试。
+
+stub通常能够在被测系统中提供非常好的可靠性。使用了stub，你就不必修改待测对象，并且你所测试的对象就同将来在产品中要运行的一样。使用stub进行测试通常是在运行环境中完成的，这样就提供了额外的可靠性。
+
+从另一方面来说，stub通常很难编写，尤其当仿真系统非常复杂的时候。stub需要实现与它所替换的代码相同的逻辑，并且要准确地再现复杂的逻辑是非常困难的。因此，这里列出一些使用stub的弊端。
+
+- stub往往比较复杂难以编写，并且它们本身还需要测试。
+- 因为stub的复杂性，它们可能很难维护。
+- stub不能很好地运用于细粒度测试。
+- 不同的情况需要不同的stub策略。
+
+一般而言， stub 更适合代替代码中的粗粒度部分。你通常会使用 stub 来代替一个成熟的外部系统，如文件系统、一个到服务器的连接、一个数据库等。使用 stub 替代对单一类的方法调用是完全可以做到的，但是实现会更加困难
+
+## 6.2 使用stub测试一个HTTP连接
+
+### 6.2.1 选择使用stub的方案
+
+### 6.2.2 使用Jetty作为嵌入式服务器
+
+## 6.3 使用stub替换Web服务器资源
+
+### 6.3.1 建立第一个stub测试
+
+### 6.3.2 针对故障情况进行测试
+
+### 6.3.3 回顾第一个stub测试
+
+这个做法的缺点是它非常复杂。一个 Jetty 初学者为了正确地建立测试，可能需要花费半天的工夫才能掌握足够多的 Jetty 知识。在一些实例中，你将必须对 stub 进行调试才能使它们正常工作。要时刻牢记：stub 须保持简单，不要使它们成为需要测 式和维护的、功能完备的应用程序。如果你在调试 stub 上花费了太多的时间，那就要考虑采用另一种不同的解决方法。
+
+## 6.4 替换连接
+
+当不需要改变代码就可以替换连接的时候，我们就会发现，得益于Java的URL和HttpURLConnection类，我们可以引入自定义的协议处理器来处理任何类型的通信协议。你可以使任何HttpURLConnection类的调用指向你自己的测试类，这些类会返回测试中需要的任何内容。
+
+### 6.4.1 创建自定义的URL协议处理器
+
+~~~java
+[...]
+import java.net.URL;
+import java.net.URLStreamHandlerFactory;
+import java.net.URLStreamHandler;
+import java.net.URLConnection;
+import java.io.IOException;
+
+public class TestWebClient1 {
+    @BeforeClass
+    public static void setUp() {
+        TestWebClient1 t = new TestWebClient1();
+        URL.setURLStreamHandlerFactory(t.new StubStreamHandlerFactory());
+    }
+    
+    private class StubStreamHandlerFactory implements URLStreamHandlerFactory {
+        public URLStreamHandler createURLStreamHandler(String protocol) {
+            return new StubHttpURLStreamHandler();
+        }
+    }
+    
+    private class StubHttpURLStreamHandler extends URLStreamHandler {
+        protected URLConnection openConnection(URL url) throws IOException {
+            return new StubHttpURLConnection(url);
+        }
+    }
+    
+    @Test
+    public void testGetContentOk() throws Exception {
+        WebClient client = new WebClient();
+        String result = client.getContent(new URL("http://localhost"));
+        assertEquals("It works", result);
+    }
+}
+~~~
+
+注意，你目前还没有编写StubHttpURLConnection类，我们会在下一节中详细介绍这个类。
+
+### 6.4.2 创建一个JDK的HttpURLConnection stub
+
+~~~java
+[...]
+import java.net.HttpURLConnection;
+import java.net.ProtocolException;
+import java.net.URL;
+import java.io.InputStream;
+import java.io.IOException;
+import java.io.ByteArrayInputStream;
+
+public class StubHttpURLConnection extends HttpURLConnection {
+    private boolean isInput = true;
+    protected StubHttpURLConnection (URL url) {
+        super(url);
+    }
+    public InputStream getInputStream() throws IOException {
+        if(!isInput) {
+            throw new ProtocolException("Cannot read from URLConnection if doInput=false (call setDoInput(true))");
+        }
+        ByteArrayInputStream bais = new ByteArrayInputStream(new String("It works").getBytes());
+        return bais;
+    }
+    public void disconnect() {}
+    public void connect() throws IOException {}
+    public boolean usingProxy() {
+        return false;
+    }
+}
+~~~
+
+### 6.4.3 运行测试
+
+# 第7章 使用mock objects进行测试
+
+Tim Mackinnon、Steve Freeman与Philip Craig三人首次在XP2000上提出了mock objects的概念。mock objects策略允许你在可能的最细等级上进行单元测试以及逐个方法地进行开发，同时为每一种方法都提供了单元测试。
+
+## 7.1 mock objects简介
+
+隔离测试确实可以带来巨大的好处，比如可以测试还没有写完的代码（只要你至少有一个接口可以使用）。另外，隔离测试可以帮助团队单元测试某一部分代码，而无须等到其他代码全部完成。
+
+不过，最大的好处在于可以编写专门测试单一方法的测试代码，而不会受到被测方法调用某个对象所带来的副作用影响。
+
+mock objects（或者简称为mocks），非常适用于将某一部分代码与其他代码隔离开来，并对这部分代码进行测试。mocks替换了测试中与你的方法协作的对象，从而提供了一个隔离层。从这一点来讲，它与stub有些类似。不过相似之处也仅限于此，因为mocks并不实现任何逻辑：它们只是提供了一种使测试能够控制仿造类的所有业务逻辑方法行为的方法的空壳。
+
+## 7.2 使用 mock objects 进行单元测试
+
+> **JUnit最佳实践：不要在mock objects中写入业务逻辑**
+>
+> 在编写一个mock时，要考虑的最重要的一点是不应该有任何的业务逻辑。它必须是一个“傻”对象，只做测试要求它做的事情。也就是说，它纯粹是由测试来驱动的。这个特征恰好与stub相反，stub包含了所有的逻辑（参见第6章）。
+>
+> 当然这里也有两个不错的结论。第一，mock objects可以很容易生成，在下面的章节里你会看到这一点。第二，因为mock objects是空壳，它们太简单了而不至于出错，所以不需要测试它们自己。
+
+> **JUnit最佳实践：只测试那些可能出错的代码**
+>
+> 你可能已经注意到我们并没有使用mock模拟Account类。原因就在于，这个数据访问对象类并不需要mock——它不依赖于环境，并且十分简单。其他测试用到了Account对象，因此相当于间接地测试了它。如果Account无法正常工作，那么基于此的测试将会失败并提醒我们所存在的问题。
+
+## 7.3 使用 mock objects 来重构
+
+有一些人曾经说过，单元测试应该对被测代码完全透明，并且你不应该为了简化测试而更改运行时的代码。 这是错误的！实际上，单元测试是对运行时代码的最好运用，应该同其他运用同等看待。如果你的代码太不灵活，以致在测试中无法使用，那么你就应该对它进行修改。
+
+一个有效的设计策略就是，将直接业务逻辑外的其他对象传递给逻辑内的对象。外围对象选择应该由在调用链上更高层次的某个人控制。最终，当你沿着调用层向上移动时，使用一个给定的记录器或者配置的决定权就应该推给最高层次的人。这种策略可以提供最好的代码灵活性以及应付变化的能力。并且我们都知道 ，唯一不变的就是变化。
+
+### 7.3.1 重构示例
+
+> **设计模式实践：控制反转（loC）**
+>
+> 应用 IoC 模式到 个类中，意味着该类不再创建其不直接负责的对象实例，取而代之的是传递任何所需要的 。实例可以通过使用一个具体的构造器、 setter 或者需要这些实例地方法的参数，而被传递过去。在被调用类上正确地设置这些域对象就成了调用代码的责任。
+
+## 7.4 替换一个HTTP连接
+
+为了了解mock objects在实际例子中是如何工作的，我们以一个简单的应用程序为例，它打开了一个远程服务器的HTTP连接，然后读取页面内容。
+
+另外，你将会学习到如何为没有Java接口的类（即HttpURLConnection类）编写mock。
+
+### 7.4.1 定义 mock objects
+
+MockURL类代表了真正的URL类。在getContent里面所有对URL类的调用都会指向MockURL类。你可以看到，测试其实是一个控制器：它创建并配置mock在此测试中所要完成的行为；它会（由于某些原因）使用MockURL类替代真正的URL类，然后再运行测试。
+
+在生产代码中需要能够被mock替换。细心的读者可能已经注意到，URL类是final类型的，因此不太可能创建一个扩展的MockURL类。
+
+在接下来的章节里，我们将展示如何使用不同的方式实现这一技巧（通过在另一个级别上使用 mock ）。在任何情况下，当使用 mock objects 策略时，将真正的类替换成 mock 是一个难点。这也许可以被视为 mock objects 的一个缺点， 因为通常我们需要修改代码以提供一个暗门。不过具有讽刺意味的是， 修改代码以提高灵活性同时也是使用 mock 的优势之一，正如 7.3.1 小节所描述的那样。
+
+### 7.4.2 测试一个简单的方法
+
+### 7.4.3 第一次尝试：简单的方法重构技巧
+
+### 7.4.4 第二个尝试：使用类工厂来重构
+
+## 7.5 把mocks用作特洛伊木马
+
+## 7.6 介绍mock框架
+
+到目前为止，我们已经从零开始实现了 mock objects。 如你所看到的， 这虽然不是一项枯燥乏味的工作，但却是一项经常性的工作。你可能会猜测，我们并不是在需要 mock 时都要从头开始。而且，你说的对一一有很多已经编写好的好项目， 可以帮助我们使得 mock 在项目中的使用更为简单。在本节中，我们将深入探讨两个最广泛使用的 mock 框架 EasyMock 与 JMock。我们试图到再次借助 HTTP 连接应用程序示例， 展示如何使用这两个 mock 框架。
+
+### 7.6.1 使用EasyMock
+
+> **JUnit最佳实践：创建EasyMock对象**
+>
+> 这里有一个关于 createMock 方法的有用的技巧。 如果你检查 EasyMock 的 API，你会发现createMock方法带有很多签名。我们所用到的签名是
+>
+> ~~~java
+> createMock(String name, Class claz);
+> ~~~
+>
+> 但是另外还有：
+>
+> ~~~java
+> createMock(Class claz);
+> ~~~
+>
+> 那么到底要用哪一个呢？选择第一个更好一些。如果你使用第二个，并且你的预期还没有满足，那么就会得到一个错误信息，如下所示：
+>
+> ~~~
+> java.lang.AssertionError:
+> 	Exception failure on verify:
+> 		read(): expected:7, actual:0
+> ~~~
+>
+> 你可以看到，上面的信息并不像我们想象得那样清楚地描述了具体情况。如果我们使用第一个签名，并且把类映射到一个指定的名称，那么我们将会获得诸如以下信息：
+>
+> ~~~
+> java.lang.AssertionError:
+> 	Exception failure on verify:
+> 		name.read(): expected:7, actual:0
+> ~~~
+
+### 7.6.2 使用JMock
+
+# 第8章 容器内测试
+
