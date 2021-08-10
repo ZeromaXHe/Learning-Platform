@@ -1,5 +1,6 @@
 import java.io.File
 
+import org.apache.log4j.{Level, Logger}
 import org.apache.spark.ml.classification.LogisticRegression
 import org.apache.spark.ml.feature.{FeatureHasher, StringIndexer}
 import org.apache.spark.mllib.evaluation.MulticlassMetrics
@@ -10,6 +11,10 @@ import org.apache.spark.sql.{Row, SparkSession}
  */
 object SparkTest {
   def main(args: Array[String]): Unit = {
+    // 不加这个的话，中间INFO日志太多了
+    Logger.getLogger("org").setLevel(Level.WARN)
+    Logger.getLogger("akka").setLevel(Level.WARN)
+
     val rootPath = System.getProperty("user.dir")
     println(rootPath)
 

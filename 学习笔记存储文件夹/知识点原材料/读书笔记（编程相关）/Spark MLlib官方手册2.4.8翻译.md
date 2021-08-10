@@ -2,6 +2,42 @@
 
 http://spark.apache.org/docs/2.4.8/ml-guide.html
 
+MLlib是Spark的机器学习（ML）库。它的目标是使得机器学习实践变得可扩展和容易。在高层次上，它提供了以下工具：
+
+- ML 算法：常见的学习算法，如分类、回归、聚类和协同过滤
+- 特征化：特征提取、变换、降维和选择
+- 管道：用于构建、评估和调整 ML 管道的工具
+- 持久性：保存和加载算法、模型和管道
+- 实用工具：线性代数、统计、数据处理等。
+
+## 声明：基于DataFrame的API是主要API
+
+**基于 MLlib RDD 的 API 现在处于维护模式。**
+
+从 Spark 2.0 开始，`spark.mllib` 包中基于 RDD 的 API 已进入维护模式。 Spark 的主要机器学习 API 现在是 `spark.ml` 包中基于 DataFrame 的 API。
+
+### 有什么影响？
+
+- MLlib 仍将支持 spark.mllib 中基于 RDD 的 API，并修复了错误。
+- MLlib 不会向基于 RDD 的 API 添加新功能。
+- 在 Spark 2.x 版本中，MLlib 将向基于 DataFrames 的 API 添加功能，以达到与基于 RDD 的 API 相同的功能。
+- 在达到功能等价（粗略估计为 Spark 2.3）后，基于 RDD 的 API 将被弃用。
+- 预计将在 Spark 3.0 中删除基于 RDD 的 API。
+
+### 为什么 MLlib 切换到基于 DataFrame 的 API？
+
+- DataFrames 提供了比 RDDs 更用户友好的 API。 DataFrames 的许多优点包括 Spark 数据源、SQL/DataFrame 查询、Tungsten 和 Catalyst 优化以及跨语言的统一 API。
+- MLlib 的基于 DataFrame 的 API 提供了跨 ML 算法和跨多种语言的统一 API。
+- DataFrames 促进了实用的 ML Pipelines，特别是特征转换。 有关详细信息，请参阅管道指南。
+
+### 什么是“Spark ML”？
+
+“Spark ML”不是官方名称，但偶尔用于指代基于 MLlib DataFrame 的 API。 这主要是由于基于 DataFrame 的 API 使用的 `org.apache.spark.ml` Scala 包名称，以及我们最初用来强调管道概念的“Spark ML Pipelines”术语。
+
+### MLlib 已弃用了吗？
+
+不。MLlib 包括基于 RDD 的 API 和基于 DataFrame 的 API。 基于 RDD 的 API 现在处于维护模式。 但是 API 和 MLlib 都没有被弃用。
+
 ## 1.1 基本统计
 
 ### 1.1.1 相关性
@@ -447,6 +483,79 @@ for (Row r : predictions.select("id", "text", "probability", "prediction").colle
 
 #### FeatureHasher
 
+特征散列将一组分类或数字特征投影到指定维度的特征向量中（通常比原始特征空间小得多）。这是使用散列技巧来把特征映射到特征向量中的索引来完成的。
+
+FeatureHasher转换器在多列上进行操作。每列可能包含数字或分类特征。列数据类型的行为和处理如下：
+
+- 数字列：对于数字特征，列名的哈希值用于将特征值映射到其在特征向量中的索引。 默认情况下，数字特征不被视为分类特征（即使它们是整数）。 要将它们视为分类的，请使用 categoricalCols 参数指定相关列。
+- 字符串列：对于分类特征，使用字符串“column_name=value”的哈希值映射到向量索引，指标值为1.0。 因此，分类特征是“one-hot”编码的（类似于使用带有 dropLast=false 的 OneHotEncoder）。
+- 布尔列：布尔值的处理方式与字符串列相同。 即布尔特征表示为“column_name=true”或“column_name=false”，指标值为1.0。
+
+null（缺失）值被忽略（在结果特征向量中隐式为零）。
+
+这里使用的哈希函数也是HashingTF中使用的MurmurHash 3。 由于散列值的简单模数用于确定向量索引，因此建议使用 2 的幂作为 numFeatures 参数； 否则特征将不会被均匀地映射到向量索引。
+
+##### 示例
+
+假设我们有一个包含 4 个输入列 real、bool、stringNum 和 string 的 DataFrame。 这些作为输入的不同数据类型将说明转换的行为以产生一列特征向量。
+
+~~~
+real| bool|stringNum|string
+----|-----|---------|------
+ 2.2| true|        1|   foo
+ 3.3|false|        2|   bar
+ 4.4|false|        3|   baz
+ 5.5|false|        4|   foo
+~~~
+
+那么 FeatureHasher.transform 在这个 DataFrame 上的输出是：
+
+~~~
+real|bool |stringNum|string|features
+----|-----|---------|------|-------------------------------------------------------
+2.2 |true |1        |foo   |(262144,[51871, 63643,174475,253195],[1.0,1.0,2.2,1.0])
+3.3 |false|2        |bar   |(262144,[6031,  80619,140467,174475],[1.0,1.0,1.0,3.3])
+4.4 |false|3        |baz   |(262144,[24279,140467,174475,196810],[1.0,1.0,4.4,1.0])
+5.5 |false|4        |foo   |(262144,[63643,140467,168512,174475],[1.0,1.0,1.0,5.5])
+~~~
+
+然后可以将生成的特征向量传递给学习算法。
+
+~~~java
+import java.util.Arrays;
+import java.util.List;
+
+import org.apache.spark.ml.feature.FeatureHasher;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.RowFactory;
+import org.apache.spark.sql.types.DataTypes;
+import org.apache.spark.sql.types.Metadata;
+import org.apache.spark.sql.types.StructField;
+import org.apache.spark.sql.types.StructType;
+
+List<Row> data = Arrays.asList(
+  RowFactory.create(2.2, true, "1", "foo"),
+  RowFactory.create(3.3, false, "2", "bar"),
+  RowFactory.create(4.4, false, "3", "baz"),
+  RowFactory.create(5.5, false, "4", "foo")
+);
+StructType schema = new StructType(new StructField[]{
+  new StructField("real", DataTypes.DoubleType, false, Metadata.empty()),
+  new StructField("bool", DataTypes.BooleanType, false, Metadata.empty()),
+  new StructField("stringNum", DataTypes.StringType, false, Metadata.empty()),
+  new StructField("string", DataTypes.StringType, false, Metadata.empty())
+});
+Dataset<Row> dataset = spark.createDataFrame(data, schema);
+
+FeatureHasher hasher = new FeatureHasher()
+  .setInputCols(new String[]{"real", "bool", "stringNum", "string"})
+  .setOutputCol("features");
+
+Dataset<Row> featurized = hasher.transform(dataset);
+
+featurized.show(false);
+~~~
+
 ### 1.4.2 特征转换器
 
 #### Tokenizer
@@ -464,6 +573,128 @@ for (Row r : predictions.select("id", "text", "probability", "prediction").colle
 #### Discrete Cosine Transform (DCT)
 
 #### StringIndexer
+
+StringIndexer 将标签字符串列编码为标签索引列。 索引在 [0, numLabels) 中，支持四种排序选项（默认 = “frequencyDesc”）：
+
+- “frequencyDesc”：按标签频率降序排列（最频繁的标签分配为 0），
+- “frequencyAsc”：按标签频率升序（分配最少的标签为 0） , 
+- “alphabetDesc”：字母降序，
+- “alphabetAsc”：字母升序
+
+如果用户选择保留看不见的标签，它们将放在索引 numLabels 处。 如果输入列是数字，我们将其转换为字符串并索引字符串值。 当 Estimator 或 Transformer 等下游管道组件使用此字符串索引标签时，您必须将组件的输入列设置为此字符串索引列名称。 在很多情况下，您可以使用 setInputCol 设置输入列。
+
+##### 示例
+
+假设我们有以下的数据帧的列ID和类别：
+
+~~~
+ id | category
+----|----------
+ 0  | a
+ 1  | b
+ 2  | c
+ 3  | a
+ 4  | a
+ 5  | c
+~~~
+
+category 是一个字符串列，带有三个标签：“a”、“b”和“c”。 应用以 category 作为输入列和 categoryIndex 作为输出列的 StringIndexer，我们应该得到以下结果：
+
+~~~
+ id | category | categoryIndex
+----|----------|---------------
+ 0  | a        | 0.0
+ 1  | b        | 2.0
+ 2  | c        | 1.0
+ 3  | a        | 0.0
+ 4  | a        | 0.0
+ 5  | c        | 1.0
+~~~
+
+“a”得到索引 0，因为它是最常见的，其次是“c”的索引 1 和“b”的索引 2。
+
+此外，当您在一个数据集上拟合 StringIndexer 然后使用它来转换另一个数据集时，关于 StringIndexer 如何处理看不见的标签，有三种策略：
+
+- 抛出异常（这是默认值）
+- 完全跳过包含不可见标签的行
+- 将看不见的标签放在一个特殊的附加桶中，在索引 numLabels
+
+##### 示例2
+
+让我们回到之前的示例，但这次在以下数据集上重用我们之前定义的 StringIndexer：
+
+~~~
+ id | category
+----|----------
+ 0  | a
+ 1  | b
+ 2  | c
+ 3  | d
+ 4  | e
+~~~
+
+如果您没有设置 StringIndexer 如何处理看不见的标签或将其设置为“错误”，则会抛出异常。 但是，如果您调用了 setHandleInvalid("skip")，则会生成以下数据集：
+
+~~~
+ id | category | categoryIndex
+----|----------|---------------
+ 0  | a        | 0.0
+ 1  | b        | 2.0
+ 2  | c        | 1.0
+~~~
+
+请注意，没有出现包含“d”或“e”的行。
+
+如果调用 setHandleInvalid("keep")，将生成以下数据集：
+
+~~~
+ id | category | categoryIndex
+----|----------|---------------
+ 0  | a        | 0.0
+ 1  | b        | 2.0
+ 2  | c        | 1.0
+ 3  | d        | 3.0
+ 4  | e        | 3.0
+~~~
+
+请注意，包含“d”或“e”的行被映射到索引“3.0”
+
+~~~java
+import java.util.Arrays;
+import java.util.List;
+
+import org.apache.spark.ml.feature.StringIndexer;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.RowFactory;
+import org.apache.spark.sql.types.StructField;
+import org.apache.spark.sql.types.StructType;
+
+import static org.apache.spark.sql.types.DataTypes.*;
+
+List<Row> data = Arrays.asList(
+  RowFactory.create(0, "a"),
+  RowFactory.create(1, "b"),
+  RowFactory.create(2, "c"),
+  RowFactory.create(3, "a"),
+  RowFactory.create(4, "a"),
+  RowFactory.create(5, "c")
+);
+StructType schema = new StructType(new StructField[]{
+  createStructField("id", IntegerType, false),
+  createStructField("category", StringType, false)
+});
+Dataset<Row> df = spark.createDataFrame(data, schema);
+
+StringIndexer indexer = new StringIndexer()
+  .setInputCol("category")
+  .setOutputCol("categoryIndex");
+
+Dataset<Row> indexed = indexer.fit(df).transform(df);
+indexed.show();
+~~~
+
+
 
 #### IndexToString
 

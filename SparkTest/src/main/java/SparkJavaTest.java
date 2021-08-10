@@ -1,18 +1,14 @@
-import org.apache.spark.api.java.JavaRDD;
-import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.function.Function;
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
 import org.apache.spark.ml.classification.LogisticRegression;
 import org.apache.spark.ml.classification.LogisticRegressionModel;
 import org.apache.spark.ml.feature.FeatureHasher;
 import org.apache.spark.ml.feature.StringIndexer;
 import org.apache.spark.ml.feature.StringIndexerModel;
 import org.apache.spark.mllib.evaluation.MulticlassMetrics;
-import org.apache.spark.rdd.RDD;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
-import scala.Tuple2;
-import scala.reflect.ClassTag;
 
 import java.io.File;
 
@@ -25,6 +21,10 @@ import java.io.File;
  */
 public class SparkJavaTest {
     public static void main(String[] args) {
+        // 不加这个的话，中间INFO日志太多了
+        Logger.getLogger("org").setLevel(Level.WARN);
+        Logger.getLogger("akka").setLevel(Level.WARN);
+
         SparkSession spark = SparkSession.builder()
                 .appName("SparkCtrLrTest")
                 .master("local[2]")
@@ -46,6 +46,7 @@ public class SparkJavaTest {
         Dataset<Row> train_index = split[0];
         Dataset<Row> test_index = split[1];
         for (String catalog_feature : catalog_features) {
+            // 对于分类特征可以使用StringIndexer将标签的字符串列编码为标签索引列，将字符串特征转化为数值特征，便于下游管道组件处理。
             StringIndexer indexer = new StringIndexer()
                     .setInputCol(catalog_feature)
                     .setOutputCol(catalog_feature.concat("_index"));
@@ -59,6 +60,7 @@ public class SparkJavaTest {
         train_index.show(5, false);
         test_index.show(5, false);
         //    特征Hasher
+        // 特征哈希将一组分类或数值特征投射到指定维的特征向量(通常比原始特征空间小很多)。这是使用哈希技巧将特征映射到特征向量中的索引。
         FeatureHasher hasher = new FeatureHasher()
                 .setInputCols(new String[]{"site_id_index", "site_domain_index", "site_category_index", "app_id_index", "app_domain_index", "app_category_index", "device_id_index", "device_ip_index", "device_model_index", "device_type", "device_conn_type", "C14", "C15", "C16", "C17", "C18", "C19", "C20", "C21"})
                 .setOutputCol("feature");
@@ -85,6 +87,11 @@ public class SparkJavaTest {
                 .setLabelCol("click_index")
                 .setPredictionCol("click_predict");
         LogisticRegressionModel model_lr = lr.fit(train_hs);
+
+        // 使用 model_lr.coefficients() 的话，报错org.apache.spark.SparkException:
+        // Multinomial models contain a matrix of coefficients, use coefficientMatrix instead.
+        // 使用 model_lr.intercept() 的话，报错org.apache.spark.SparkException:
+        // Multinomial models contain a vector of intercepts, use interceptVector instead.
         System.out.println("每个特征对应系数: " + model_lr.coefficientMatrix() + " 截距: " + model_lr.interceptVector());
 
         Dataset<Row> predictions = model_lr.transform(test_hs);
