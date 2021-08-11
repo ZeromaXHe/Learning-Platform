@@ -38,7 +38,7 @@ MLlib是Spark的机器学习（ML）库。它的目标是使得机器学习实�
 
 不。MLlib 包括基于 RDD 的 API 和基于 DataFrame 的 API。 基于 RDD 的 API 现在处于维护模式。 但是 API 和 MLlib 都没有被弃用。
 
-## 1.1 基本统计
+## 1.1 基础统计
 
 ### 1.1.1 相关性
 
@@ -965,3 +965,237 @@ $$
 
 ### 1.9.1 模型选择（或超参数调优）
 
+# 二、MLlib 基于RDD的API指南
+
+## 2.1 数据类型
+
+## 2.2 基础统计
+
+## 2.3 分类和回归
+
+## 2.9 评估指标
+
+spark.mllib 附带了许多机器学习算法，可用于从数据中学习和预测数据。 当这些算法应用于构建机器学习模型时，需要根据某些标准评估模型的性能，这取决于应用程序及其要求。 spark.mllib 还提供了一套用于评估机器学习模型性能的指标。
+
+特定的机器学习算法属于更广泛类型的机器学习应用程序，如分类、回归、聚类等。这些类型中的每一种都有完善的性能评估指标，本节详细介绍了目前在 spark.mllib 中可用的指标。
+
+### 2.9.1 分类模型评估
+
+虽然分类算法有很多种，但对分类模型的评估都有相似的原则。在监督分类问题中，每个数据点都存在真实输出和模型生成的预测输出。因此，可以将每个数据点的结果分配到以下四个类别之一：
+
+- 真阳性（True Positive，TP） - 标签为正，预测也为正
+- 真阴性（True Negative，TN） - 标签为负，预测也为负
+- 假阳性（False Positive，FP）- 标签为负但预测为正
+- 假阴性（False Negative，FN） - 标签为正但预测为负
+
+这四个数字是大多数分类器评估指标的构建块。考虑分类器评估时的一个基本观点是，纯粹的准确性（即预测是正确还是错误）通常不是一个好的度量标准。这样做的原因是因为数据集可能高度不平衡。例如，如果一个模型被设计为从一个数据集预测欺诈，其中 95% 的数据点不是欺诈，5% 的数据点是欺诈，那么无论输入如何，预测非欺诈的朴素分类器将是 95 ％ 准确的。出于这个原因，通常使用精度和召回率等指标，因为它们考虑了错误的类型。在大多数应用中，精确率和召回率之间存在某种期望的平衡，可以通过将两者组合成一个单一的度量标准来实现，称为 F 度量。
+
+#### 二分类
+
+二元分类器用于将给定数据集的元素分成两个可能的组之一（例如欺诈或非欺诈），并且是多类分类的特例。 大多数二元分类指标可以推广到多类分类指标。
+
+##### 阈值调整
+
+了解到许多分类模型实际上是为每个类别输出一个“分数”（通常是概率）这一点很重要，其中分数越高表示可能性越高。在二元情况下，模型可能会输出每个类别的概率：P(Y=1|X) 和 P(Y=0|X)。不是简单地采用更高的概率，在某些情况下可能需要调整模型，以便仅在概率非常高时预测一个类别（例如，仅阻止信用卡交易模型预测欺诈概率大于 90%的情况）。因此，存在一个预测阈值，它根据模型输出的概率确定预测的类别。
+
+调整预测阈值会改变模型的准确率和召回率，是模型优化的重要部分。为了可视化精度、召回率和其他指标如何作为阈值的函数而变化，通常的做法是绘制相互竞争的指标，由阈值参数化。 P-R 曲线绘制不同阈值的（精确度、召回率）点，而接收者操作特征或 ROC 曲线绘制（召回率、假阳性率）点。
+
+##### 可用指标
+
+| 指标                | 定义                                                         |
+| ------------------- | ------------------------------------------------------------ |
+| 精度（正预测值）    | $PPV=\frac{TP}{TP+FP}$                                       |
+| 召回率（真阳性率）  | $TPR=\frac{TP}{P}=\frac{TP}{TP+FN}$                          |
+| F-度量              | $F(\beta)=(1+\beta^2)\cdot(\frac{PPV \cdot TPR}{\beta^2 \cdot PPV + TPR})$ |
+| 接收器工作特性(ROC) | $FPR(T) = \int^\infin_T P_0(T) dT \\ TPR(T) = \int^\infin_T P_1(T) dT$ |
+| ROC曲线下面积       | $AUROC = \int^1_0 \frac{TP}{P}d(\frac{FP}{N})$               |
+| 精确召回曲线下面积  | $AUPRC = \int^1_0 \frac{TP}{TP+FP}d(\frac{TP}{P})$           |
+
+##### 示例
+
+以下代码片段说明了如何加载示例数据集、对数据训练二进制分类算法，并通过多个二进制评估指标评估算法的性能。
+
+有关 API 的详细信息，请参阅 LogisticRegressionModel Java 文档和 LogisticRegressionWithLBFGS Java 文档。
+
+~~~java
+import scala.Tuple2;
+
+import org.apache.spark.api.java.*;
+import org.apache.spark.mllib.classification.LogisticRegressionModel;
+import org.apache.spark.mllib.classification.LogisticRegressionWithLBFGS;
+import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics;
+import org.apache.spark.mllib.regression.LabeledPoint;
+import org.apache.spark.mllib.util.MLUtils;
+
+String path = "data/mllib/sample_binary_classification_data.txt";
+JavaRDD<LabeledPoint> data = MLUtils.loadLibSVMFile(sc, path).toJavaRDD();
+
+// Split initial RDD into two... [60% training data, 40% testing data].
+JavaRDD<LabeledPoint>[] splits =
+  data.randomSplit(new double[]{0.6, 0.4}, 11L);
+JavaRDD<LabeledPoint> training = splits[0].cache();
+JavaRDD<LabeledPoint> test = splits[1];
+
+// Run training algorithm to build the model.
+LogisticRegressionModel model = new LogisticRegressionWithLBFGS()
+  .setNumClasses(2)
+  .run(training.rdd());
+
+// Clear the prediction threshold so the model will return probabilities
+model.clearThreshold();
+
+// Compute raw scores on the test set.
+JavaPairRDD<Object, Object> predictionAndLabels = test.mapToPair(p ->
+  new Tuple2<>(model.predict(p.features()), p.label()));
+
+// Get evaluation metrics.
+BinaryClassificationMetrics metrics =
+  new BinaryClassificationMetrics(predictionAndLabels.rdd());
+
+// Precision by threshold
+JavaRDD<Tuple2<Object, Object>> precision = metrics.precisionByThreshold().toJavaRDD();
+System.out.println("Precision by threshold: " + precision.collect());
+
+// Recall by threshold
+JavaRDD<?> recall = metrics.recallByThreshold().toJavaRDD();
+System.out.println("Recall by threshold: " + recall.collect());
+
+// F Score by threshold
+JavaRDD<?> f1Score = metrics.fMeasureByThreshold().toJavaRDD();
+System.out.println("F1 Score by threshold: " + f1Score.collect());
+
+JavaRDD<?> f2Score = metrics.fMeasureByThreshold(2.0).toJavaRDD();
+System.out.println("F2 Score by threshold: " + f2Score.collect());
+
+// Precision-recall curve
+JavaRDD<?> prc = metrics.pr().toJavaRDD();
+System.out.println("Precision-recall curve: " + prc.collect());
+
+// Thresholds
+JavaRDD<Double> thresholds = precision.map(t -> Double.parseDouble(t._1().toString()));
+
+// ROC Curve
+JavaRDD<?> roc = metrics.roc().toJavaRDD();
+System.out.println("ROC curve: " + roc.collect());
+
+// AUPRC
+System.out.println("Area under precision-recall curve = " + metrics.areaUnderPR());
+
+// AUROC
+System.out.println("Area under ROC = " + metrics.areaUnderROC());
+
+// Save and load model
+model.save(sc, "target/tmp/LogisticRegressionModel");
+LogisticRegressionModel.load(sc, "target/tmp/LogisticRegressionModel");
+~~~
+
+#### 多分类
+
+多类分类描述了一个分类问题，其中每个数据点有 M>2 个可能的标签（M=2 的情况是二元分类问题）。例如，将手写样本分类为数字 0 到 9，有 10 个可能的类别。
+
+对于多类指标，正面和负面的概念略有不同。预测和标签仍然可以是正面的或负面的，但必须在特定类别的上下文中考虑它们。每个标签和预测都采用多个类之一的值，因此它们被称为对其特定类为正，对所有其他类为负。因此，只要预测和标签匹配，就会出现真阳性，而当预测和标签都不采用给定类的值时，就会出现真阴性。按照这个约定，给定的数据样本可以有多个真阴性。从以前的正面和负面标签的定义扩展假阴性和假阳性很简单。
+
+##### 基于标签的指标
+
+与只有两个可能标签的二元分类相反，多类分类问题有许多可能的标签，因此引入了基于标签的度量的概念。 准确度衡量所有标签的准确度 - 任何类别被正确预测（真阳性）的次数，由数据点的数量归一化。 标签精度只考虑一个类别，并通过标签在输出中出现的次数来衡量正确预测特定标签的次数。
+
+##### 可用指标
+
+定义分类集或者说标签集：
+$$
+L = \{l_0,l_1,\cdots,l_{M-1}\}
+$$
+真正的输出向量 y 由 N 个元素组成
+$$
+\bold y_0,\bold y_1,\cdots,\bold y_{N-1}\in L
+$$
+多类预测算法生成拥有N 个元素的预测向量 $\hat{\bold y}$
+$$
+\hat{\bold y}_0,\hat{\bold y}_1,\cdots,\hat{\bold y}_{N-1}\in L
+$$
+对于本节，修改后的 delta 函数 $\hat\delta(x)$​​ 将证明是有用的
+$$
+\hat\delta(x) = \begin{cases}  1,  & \mbox{if }x = 0 \\ 0, & \mbox{otherwise} \end{cases}
+$$
+
+##### 示例
+
+~~~java
+import scala.Tuple2;
+
+import org.apache.spark.api.java.*;
+import org.apache.spark.mllib.classification.LogisticRegressionModel;
+import org.apache.spark.mllib.classification.LogisticRegressionWithLBFGS;
+import org.apache.spark.mllib.evaluation.MulticlassMetrics;
+import org.apache.spark.mllib.regression.LabeledPoint;
+import org.apache.spark.mllib.util.MLUtils;
+import org.apache.spark.mllib.linalg.Matrix;
+
+String path = "data/mllib/sample_multiclass_classification_data.txt";
+JavaRDD<LabeledPoint> data = MLUtils.loadLibSVMFile(sc, path).toJavaRDD();
+
+// Split initial RDD into two... [60% training data, 40% testing data].
+JavaRDD<LabeledPoint>[] splits = data.randomSplit(new double[]{0.6, 0.4}, 11L);
+JavaRDD<LabeledPoint> training = splits[0].cache();
+JavaRDD<LabeledPoint> test = splits[1];
+
+// Run training algorithm to build the model.
+LogisticRegressionModel model = new LogisticRegressionWithLBFGS()
+    .setNumClasses(3)
+    .run(training.rdd());
+
+// Compute raw scores on the test set.
+JavaPairRDD<Object, Object> predictionAndLabels = test.mapToPair(p -> new Tuple2<>(model.predict(p.features()), p.label()));
+
+// Get evaluation metrics.
+MulticlassMetrics metrics = new MulticlassMetrics(predictionAndLabels.rdd());
+
+// Confusion matrix
+Matrix confusion = metrics.confusionMatrix();
+System.out.println("Confusion matrix: \n" + confusion);
+
+// Overall statistics
+System.out.println("Accuracy = " + metrics.accuracy());
+
+// Stats by labels
+for (int i = 0; i < metrics.labels().length; i++) {
+    System.out.format("Class %f precision = %f\n", metrics.labels()[i],metrics.precision(
+        metrics.labels()[i]));
+    System.out.format("Class %f recall = %f\n", metrics.labels()[i], metrics.recall(
+        metrics.labels()[i]));
+    System.out.format("Class %f F1 score = %f\n", metrics.labels()[i], metrics.fMeasure(
+        metrics.labels()[i]));
+}
+
+//Weighted stats
+System.out.format("Weighted precision = %f\n", metrics.weightedPrecision());
+System.out.format("Weighted recall = %f\n", metrics.weightedRecall());
+System.out.format("Weighted F1 score = %f\n", metrics.weightedFMeasure());
+System.out.format("Weighted false positive rate = %f\n", metrics.weightedFalsePositiveRate());
+
+// Save and load model
+model.save(sc, "target/tmp/LogisticRegressionModel");
+LogisticRegressionModel sameModel = LogisticRegressionModel.load(sc, "target/tmp/LogisticRegressionModel");
+~~~
+
+
+
+
+
+# 三、Spark SQL 指南
+
+Spark SQL 是一个用于结构化数据处理的 Spark 模块。 与基本的 Spark RDD API 不同，Spark SQL 提供的接口为 Spark 提供有关数据结构和正在执行的计算的更多信息。 在内部，Spark SQL 使用这些额外的信息来执行额外的优化。 有多种与 Spark SQL 交互的方式，包括 SQL 和数据集 API。 计算结果时，使用相同的执行引擎，与您使用哪种 API/语言来表达计算无关。 这种统一意味着开发人员可以轻松地在不同的 API 之间来回切换，这提供了表达给定转换的最自然的方式。
+
+此页面上的所有示例都使用 Spark 发行版中包含的示例数据，并且可以在 spark-shell、pyspark shell 或 sparkR shell 中运行。
+
+### SQL
+
+Spark SQL 的一种用途是执行 SQL 查询。 Spark SQL 也可用于从现有的 Hive 安装中读取数据。 有关如何配置此功能的更多信息，请参阅 Hive 表部分。 从另一种编程语言中运行 SQL 时，结果将作为数据集/数据帧返回。 您还可以使用命令行或通过 JDBC/ODBC 与 SQL 界面进行交互。
+
+### DateSet 和 DataFrame
+
+数据集是数据的分布式集合。 Dataset 是 Spark 1.6 中添加的一个新接口，它提供了 RDD 的优点（强类型、使用强大 lambda 函数的能力）以及 Spark SQL 优化执行引擎的优点。数据集可以从 JVM 对象构建，然后使用函数转换（map、flatMap、filter 等）进行操作。数据集 API 在 Scala 和 Java 中可用。 Python 不支持 Dataset API。但是由于 Python 的动态特性，Dataset API 的许多好处已经可用（即您可以自然地通过名称访问行的字段 row.columnName）。 R 的情况类似。
+
+DataFrame 是组织成命名列的数据集。它在概念上等同于关系数据库中的表或 R/Python 中的数据框，但在幕后进行了更丰富的优化。 DataFrames 可以从多种来源构建，例如：结构化数据文件、Hive 中的表、外部数据库或现有 RDD。 DataFrame API 在 Scala、Java、Python 和 R 中可用。在 Scala 和 Java 中，DataFrame 由行数据集表示。在 Scala API 中，DataFrame 只是 Dataset[Row] 的类型别名。而在 Java API 中，用户需要使用 `Dataset<Row>` 来表示一个 DataFrame。
+
+在本文档中，我们经常将 Scala/Java 行数据集称为数据帧（DataFrame）。

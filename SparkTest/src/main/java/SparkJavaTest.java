@@ -1,10 +1,18 @@
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
+import org.apache.spark.ml.Pipeline;
+import org.apache.spark.ml.PipelineStage;
 import org.apache.spark.ml.classification.LogisticRegression;
 import org.apache.spark.ml.classification.LogisticRegressionModel;
+import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator;
 import org.apache.spark.ml.feature.FeatureHasher;
 import org.apache.spark.ml.feature.StringIndexer;
 import org.apache.spark.ml.feature.StringIndexerModel;
+import org.apache.spark.ml.param.ParamMap;
+import org.apache.spark.ml.tuning.CrossValidator;
+import org.apache.spark.ml.tuning.CrossValidatorModel;
+import org.apache.spark.ml.tuning.ParamGridBuilder;
+import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics;
 import org.apache.spark.mllib.evaluation.MulticlassMetrics;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -20,15 +28,19 @@ import java.io.File;
  * @ModifiedBy: zhuxi
  */
 public class SparkJavaTest {
-    public static void main(String[] args) {
+    public static SparkSession getSparkSession() {
         // 不加这个的话，中间INFO日志太多了
         Logger.getLogger("org").setLevel(Level.WARN);
         Logger.getLogger("akka").setLevel(Level.WARN);
 
-        SparkSession spark = SparkSession.builder()
-                .appName("SparkCtrLrTest")
+        return SparkSession.builder()
+                .appName("SparkJavaTest")
                 .master("local[2]")
                 .getOrCreate();
+    }
+
+    public static void main(String[] args) {
+        SparkSession spark = getSparkSession();
 
         File inputFile = new File("./SparkTest/src/main/resources/ctr_data.csv");
         System.out.println(inputFile.exists());
@@ -98,7 +110,38 @@ public class SparkJavaTest {
         predictions.select("click_index", "click_predict", "probability").show(100, false);
         // scala 版本的 case语句感觉没有处理什么东西，而且不知道怎么翻译成java的，所以直接合并了。
         // 根据运行结果，应该是没有影响metrics
-        MulticlassMetrics metrics = new MulticlassMetrics(predictions.select("click_predict", "click_index"));
+        showMetrics(predictions, "click_index");
+
+        // CrossValidator一定要求标签由’label’标记，特征一定由’features’标记
+        // 不加下面三行会报错： Field "label" does not exist.
+        lr.setLabelCol("label");
+        train_hs = train_hs.withColumnRenamed("click_index","label");
+        test_hs = test_hs.withColumnRenamed("click_index","label");
+        System.out.println("\n\nlr.extractParamMap():" + lr.extractParamMap());
+
+        Pipeline pipeline = new Pipeline()
+                .setStages(new PipelineStage[]{lr});
+        ParamMap[] paramGrid = new ParamGridBuilder()
+                .addGrid(lr.regParam(), new double[]{0.1, 0.01})
+                .build();
+        CrossValidator cv = new CrossValidator()
+                .setEstimator(pipeline)
+                .setEvaluator(new BinaryClassificationEvaluator())
+                .setEstimatorParamMaps(paramGrid)
+                .setNumFolds(2)  // Use 3+ in practice
+                .setParallelism(2);
+        System.out.println("\n\ncv.extractParamMap():" + cv.extractParamMap());
+
+        CrossValidatorModel cvModel = cv.fit(train_hs);
+        Dataset<Row> predictions2 = cvModel.transform(test_hs);
+        System.out.println("----------------predictions2----------------");
+        showMetrics(predictions2, "label");
+
+        spark.stop();
+    }
+
+    private static void showMetrics(Dataset<Row> predictions, String labelName) {
+        MulticlassMetrics metrics = new MulticlassMetrics(predictions.select("click_predict", labelName));
         double accuracy = metrics.accuracy();
         double weightedPrecision = metrics.weightedPrecision();
         double weightedRecall = metrics.weightedRecall();
@@ -108,5 +151,10 @@ public class SparkJavaTest {
                 "加权正确率：" + weightedPrecision + "\n" +
                 "加权召回率：" + weightedRecall + "\n" +
                 "F1值：" + f1);
+
+        System.out.println("[BinaryClassificationMetrics]");
+        BinaryClassificationMetrics binaryMetrics = new BinaryClassificationMetrics(predictions.select("click_predict", labelName));
+        System.out.println("areaUnderROC:" + binaryMetrics.areaUnderROC());
+        System.out.println("areaUnderPR:" + binaryMetrics.areaUnderPR());
     }
 }
