@@ -702,6 +702,53 @@ indexed.show();
 
 #### OneHotEncoderEstimator
 
+One-Hot 编码将一个表示为一个标签索引的种类特征映射到一个最多一维为1（表示特定特征值的存在）的二进制向量。 这种编码允许期望连续特征的算法（例如逻辑回归）使用分类特征。对于字符串类型的输入数据，是很常见的编码分类首先使用StringIndexer功能。
+
+OneHotEncoderEstimator可以变换多列，对于每一个输入列返回一个One-Hot的编码输出向量列。这是常见的这些载体合并成使用VectorAssembler单个特征向量。
+
+OneHotEncoderEstimator支持handleInvalid参数选择如何将数据在处理无效的输入。可用的选项包括“keep”（任何无效的输入被分配到一个额外的分类指数）和“error”（抛出一个错误）。
+
+~~~java
+import java.util.Arrays;
+import java.util.List;
+
+import org.apache.spark.ml.feature.OneHotEncoderEstimator;
+import org.apache.spark.ml.feature.OneHotEncoderModel;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.RowFactory;
+import org.apache.spark.sql.types.DataTypes;
+import org.apache.spark.sql.types.Metadata;
+import org.apache.spark.sql.types.StructField;
+import org.apache.spark.sql.types.StructType;
+
+List<Row> data = Arrays.asList(
+  RowFactory.create(0.0, 1.0),
+  RowFactory.create(1.0, 0.0),
+  RowFactory.create(2.0, 1.0),
+  RowFactory.create(0.0, 2.0),
+  RowFactory.create(0.0, 1.0),
+  RowFactory.create(2.0, 0.0)
+);
+
+StructType schema = new StructType(new StructField[]{
+  new StructField("categoryIndex1", DataTypes.DoubleType, false, Metadata.empty()),
+  new StructField("categoryIndex2", DataTypes.DoubleType, false, Metadata.empty())
+});
+
+Dataset<Row> df = spark.createDataFrame(data, schema);
+
+OneHotEncoderEstimator encoder = new OneHotEncoderEstimator()
+  .setInputCols(new String[] {"categoryIndex1", "categoryIndex2"})
+  .setOutputCols(new String[] {"categoryVec1", "categoryVec2"});
+
+OneHotEncoderModel model = encoder.fit(df);
+Dataset<Row> encoded = model.transform(df);
+encoded.show();
+~~~
+
+
+
 #### VectorIndexer
 
 #### Interaction
@@ -1199,3 +1246,84 @@ Spark SQL 的一种用途是执行 SQL 查询。 Spark SQL 也可用于从现有
 DataFrame 是组织成命名列的数据集。它在概念上等同于关系数据库中的表或 R/Python 中的数据框，但在幕后进行了更丰富的优化。 DataFrames 可以从多种来源构建，例如：结构化数据文件、Hive 中的表、外部数据库或现有 RDD。 DataFrame API 在 Scala、Java、Python 和 R 中可用。在 Scala 和 Java 中，DataFrame 由行数据集表示。在 Scala API 中，DataFrame 只是 Dataset[Row] 的类型别名。而在 Java API 中，用户需要使用 `Dataset<Row>` 来表示一个 DataFrame。
 
 在本文档中，我们经常将 Scala/Java 行数据集称为数据帧（DataFrame）。
+
+# 四、Spark Java API 文档
+
+## 4.1 DataSet
+
+DataSet是特定领域对象的强类型集合，可以使用函数或关系操作并行转换。每个 Dataset 也有一个无类型视图，称为 DataFrame，它是一个 Dataset of Row。
+DataSet上可用的操作分为转换和操作。转换是产生新数据集的那些，而动作是触发计算和返回结果的那些。示例转换包括映射（map）、过滤器（filter）、选择（select）和聚合 (groupBy)。示例操作计数、显示或将数据写入文件系统。
+
+DataSet数据集是“惰性的”，即只有在调用操作时才会触发计算。在内部，数据集表示描述生成数据所需的计算的逻辑计划。当一个动作被调用时，Spark 的查询优化器会优化逻辑计划并生成一个物理计划，以便以并行和分布式的方式高效执行。要探索逻辑计划以及优化的物理计划，请使用解释功能。
+
+为了有效地支持特定于域的对象，需要一个Encoder编码器。Encoder将域特定类型 T 映射到 Spark 的内部类型系统。例如，给定一个具有两个字段 name（string）和 age（int）的类 Person，编码器用于告诉 Spark 在运行时生成代码以将 Person 对象序列化为二进制结构。这种二进制结构通常具有低得多的内存占用，并且针对数据处理的效率进行了优化（例如以列格式）。要了解数据的内部二进制表示，请使用 schema 函数。
+
+通常有两种方法可以创建数据集。最常见的方法是使用 SparkSession 上可用的读取功能将 Spark 指向存储系统上的某些文件。
+
+~~~scala
+val people = spark.read.parquet("...").as[Person]  // Scala
+~~~
+
+~~~java
+Dataset<Person> people = spark.read().parquet("...").as(Encoders.bean(Person.class)); // Java
+~~~
+
+也可以通过现有数据集上可用的转换来创建数据集。 例如，以下内容通过对现有数据集应用过滤器来创建新数据集：
+
+~~~scala
+val names = people.map(_.name)  // in Scala; names is a Dataset[String]
+~~~
+
+~~~java
+Dataset<String> names = people.map((Person p) -> p.name, Encoders.STRING));
+~~~
+
+数据集操作也可以是无类型的，通过以下定义的各种领域特定语言 (DSL) 函数：数据集（此类）、列和函数。 这些操作与 R 或 Python 中数据框抽象中可用的操作非常相似。
+
+要从数据集中选择一列，请在 Scala 中使用 apply 方法，在 Java 中使用 col。
+
+~~~scala
+val ageCol = people("age")  // in Scala
+~~~
+
+~~~java
+Column ageCol = people.col("age"); // in Java
+~~~
+
+请注意，Column 类型也可以通过其各种功能进行操作。
+
+~~~scala
+// The following creates a new column that increases everybody's age by 10.
+people("age") + 10  // in Scala
+~~~
+
+~~~java
+people.col("age").plus(10);  // in Java
+~~~
+
+Scala 中更具体的示例：
+
+~~~scala
+// To create Dataset[Row] using SparkSession
+val people = spark.read.parquet("...")
+val department = spark.read.parquet("...")
+
+people.filter("age > 30")
+    .join(department, people("deptId") === department("id"))
+    .groupBy(department("name"), people("gender"))
+    .agg(avg(people("salary")), max(people("age")))
+~~~
+
+Java的：
+
+~~~java
+// To create Dataset<Row> using SparkSession
+Dataset<Row> people = spark.read().parquet("...");
+Dataset<Row> department = spark.read().parquet("...");
+
+people.filter(people.col("age").gt(30))
+    .join(department, people.col("deptId").equalTo(department.col("id")))
+    .groupBy(department.col("name"), people.col("gender"))
+    .agg(avg(people.col("salary")), max(people.col("age")));
+~~~
+

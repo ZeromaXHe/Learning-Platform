@@ -4,6 +4,7 @@ import org.apache.spark.ml.Pipeline;
 import org.apache.spark.ml.PipelineStage;
 import org.apache.spark.ml.classification.LogisticRegression;
 import org.apache.spark.ml.classification.LogisticRegressionModel;
+import org.apache.spark.ml.classification.LogisticRegressionTrainingSummary;
 import org.apache.spark.ml.evaluation.BinaryClassificationEvaluator;
 import org.apache.spark.ml.feature.FeatureHasher;
 import org.apache.spark.ml.feature.StringIndexer;
@@ -107,6 +108,10 @@ public class SparkJavaTest {
         System.out.println("每个特征对应系数: " + model_lr.coefficientMatrix() + " 截距: " + model_lr.interceptVector());
 
         Dataset<Row> predictions = model_lr.transform(test_hs);
+
+        LogisticRegressionTrainingSummary trainingSummary = model_lr.summary();
+        showSummary(trainingSummary);
+
         predictions.select("click_index", "click_predict", "probability").show(100, false);
         // scala 版本的 case语句感觉没有处理什么东西，而且不知道怎么翻译成java的，所以直接合并了。
         // 根据运行结果，应该是没有影响metrics
@@ -138,6 +143,69 @@ public class SparkJavaTest {
         showMetrics(predictions2, "label");
 
         spark.stop();
+    }
+
+    private static void showSummary(LogisticRegressionTrainingSummary trainingSummary) {
+        // Obtain the loss per iteration.
+        double[] objectiveHistory = trainingSummary.objectiveHistory();
+        System.out.println("\n\nloss:");
+        for (double lossPerIteration : objectiveHistory) {
+            System.out.println(lossPerIteration);
+        }
+
+        // for multiclass, we can inspect metrics on a per-label basis
+        System.out.println("\n\nFalse positive rate by label:");
+        int i = 0;
+        double[] fprLabel = trainingSummary.falsePositiveRateByLabel();
+        for (double fpr : fprLabel) {
+            System.out.println("label " + i + ": " + fpr);
+            i++;
+        }
+
+        System.out.println("True positive rate by label:");
+        i = 0;
+        double[] tprLabel = trainingSummary.truePositiveRateByLabel();
+        for (double tpr : tprLabel) {
+            System.out.println("label " + i + ": " + tpr);
+            i++;
+        }
+
+        System.out.println("Precision by label:");
+        i = 0;
+        double[] precLabel = trainingSummary.precisionByLabel();
+        for (double prec : precLabel) {
+            System.out.println("label " + i + ": " + prec);
+            i++;
+        }
+
+        System.out.println("Recall by label:");
+        i = 0;
+        double[] recLabel = trainingSummary.recallByLabel();
+        for (double rec : recLabel) {
+            System.out.println("label " + i + ": " + rec);
+            i++;
+        }
+
+        System.out.println("F-measure by label:");
+        i = 0;
+        double[] fLabel = trainingSummary.fMeasureByLabel();
+        for (double f : fLabel) {
+            System.out.println("label " + i + ": " + f);
+            i++;
+        }
+
+        double accuracy = trainingSummary.accuracy();
+        double falsePositiveRate = trainingSummary.weightedFalsePositiveRate();
+        double truePositiveRate = trainingSummary.weightedTruePositiveRate();
+        double fMeasure = trainingSummary.weightedFMeasure();
+        double precision = trainingSummary.weightedPrecision();
+        double recall = trainingSummary.weightedRecall();
+        System.out.println("Accuracy: " + accuracy);
+        System.out.println("FPR: " + falsePositiveRate);
+        System.out.println("TPR: " + truePositiveRate);
+        System.out.println("F-measure: " + fMeasure);
+        System.out.println("Precision: " + precision);
+        System.out.println("Recall: " + recall);
     }
 
     private static void showMetrics(Dataset<Row> predictions, String labelName) {
