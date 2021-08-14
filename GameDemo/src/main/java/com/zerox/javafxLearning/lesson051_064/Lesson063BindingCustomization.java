@@ -1,4 +1,4 @@
-package com.zerox.javafxLearning;
+package com.zerox.javafxLearning.lesson051_064;
 
 import javafx.beans.binding.IntegerBinding;
 import javafx.beans.property.SimpleIntegerProperty;

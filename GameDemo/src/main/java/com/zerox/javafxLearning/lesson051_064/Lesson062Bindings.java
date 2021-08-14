@@ -1,5 +1,6 @@
-package com.zerox.javafxLearning;
+package com.zerox.javafxLearning.lesson051_064;
 
+import com.zerox.javafxLearning.Stu;
 import javafx.beans.binding.Bindings;
 import javafx.beans.binding.StringBinding;
 import javafx.beans.binding.StringExpression;

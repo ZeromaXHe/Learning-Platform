@@ -1,4 +1,4 @@
-package com.zerox.javafxLearning;
+package com.zerox.javafxLearning.lesson051_064;
 
 import javafx.application.Application;
 import javafx.beans.binding.BooleanBinding;
