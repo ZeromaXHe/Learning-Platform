@@ -1001,3 +1001,463 @@ Scala基本类型的可调用的方法远多于前几段里面讲到的。表5.4
 # 第6章 函数式对象
 
 有了从前几章获得的Scala基础知识，你已经为探索如何在Scala里设计出拥有更全面特征的对象做好了准备。本章的重点在于定义函数式对象，也就是说，不具有任何可改变状态的对象的类。为了便于说明和演示，我们将创造若干以有理数作为不可变对象来建模的类版本。在此过程中，我们会学习Scala面向对象编程的更多知识：类参数和构造函数，方法和操作符，私有成员，子类方法重载，先决条件检查，同类方法重载和自指向。
+
+## 6.2 创建Rational
+
+~~~scala
+class Rational(n:Int, d:Int)
+~~~
+
+这行代码里首先应当注意到的是如果类没有主体，就不需要指定一对空的花括号（你想的话亦可以）
+
+类名Rational之后的括号里的n和d，被称为类参数（class parameter）
+
+Scala编译器会收集这两个类参数并创造出带同样的两个参数的主构造器（primary constructor）
+
+## 6.3 重新实现toString方法
+
+方法定义前的override修饰符说明这是对原方法定义的重载
+
+## 6.4 检查先决条件
+
+先决条件是对传递给方法或构造器的值的限制，是调用者必须满足的需求。
+
+一种方法是使用require方法实现：
+
+require方法带一个布尔型参数。如果传入的值为真，require将正常返回。反之，require将抛出IllegalArgumentException阻止对象被构造。
+
+## 6.5 添加字段
+
+方法仅能访问调用对象自身的类参数
+
+## 6.6 自指向
+
+this
+
+## 6.7 辅助构造器
+
+Scala的辅助构造器定义开始于 def this (...)。
+
+Scala中的每个辅助构造器的第一个动作都是调用同类的别的构造器。
+
+因此主构造器是类的唯一入口点。
+    
+
+## 6.8 私有字段和方法
+
+## 6.9 定义操作符
+
+5.8节中曾经说过的Scala的操作符优先规则，*方法要比+方法优先级更高
+
+## 6.10 Scala的标识符
+
+- 字母数字标识符（alphanumeric identifier）
+  以字母或下划线开始，之后可以跟字母、数字或下划线。
+  '`$`'字符也被当作是字母，但被保留作为Scala编译器产生的标识符之用。
+- 操作符标识符（operator identifier）
+  由一个或多个操作符字符组成
+  Scala编译器将在内部“粉碎”操作符标识符以转换成合法的内嵌'`$`​'的Java标识符。
+- 混合标识符（mixed identifier）
+  由字母数字组成，后面跟着下划线和一个操作符标识符
+- 字面量标识符（literal identifier）
+  用反引号\`...\`包括的任意字符串，结果总被当作Scala标识符
+  例如，Thread.\`yield\`()。yield是Scala的保留字
+       
+
+## 6.11 方法重载
+
+## 6.12 隐式转换
+
+~~~scala
+implicit def intToRational(x:Int) = new Rational(x)
+~~~
+
+方法前面的implicit修饰符告诉编译器可以在一些情况下自动调用。
+
+请注意要隐式转换起作用，需要定义在作用范围之内。
+
+# 第7章 内建控制结构
+
+## 7.1 If表达式
+
+指令式风格
+
+~~~scala
+var filename = "default.txt"
+if (!args.isEmpty)
+	filename = args(0)
+~~~
+
+这段代码还有优化的余地，Scala的if是能返回值的表达式。
+
+~~~scala
+val filename = 
+	if (!args.isEmpty) args(0)
+	else "default.txt"
+~~~
+
+
+
+使用val而不是var的第二点好处是它能更好地支持等效推论（equational reasoning）。
+
+## 7.2 While循环
+
+while和do-while结构之所以被称为“循环”，而不是表达式，是因为它们不能产生有意义的结果。结果的类型是Unit
+
+存在并且唯一存在类型为Unit的值，称为unit value，写成`()`。
+
+对var再赋值等式本身也是unit值
+
+while循环和var经常是结对出现的。审慎地使用while循环。
+
+## 7.3 For表达式
+
+### 枚举集合类
+
+~~~scala
+for (file <- filesHere)
+~~~
+
+~~~scala
+for (i <- 1 to 4)
+~~~
+
+不想包括被枚举的Range上边界
+
+~~~scala
+for (i <- 1 until 4)
+~~~
+
+### 过滤
+
+~~~scala
+for (file <- filesHere if file.getName.endsWith(".scala"))
+~~~
+
+你可以包含更多的过滤器
+
+~~~scala
+for {
+	file <- filesHere
+    if file.isFile;
+    if file.getName.endsWith(".scala")
+} println(file)
+~~~
+
+> **注意**
+>
+> 如果在发生器加入超过一个过滤器，if子句必须用分号分隔。
+
+### 嵌套枚举
+
+~~~scala
+for {
+    file <- filesHere
+    if file.getName.endsWith(".scala")
+    line <- fileLines(file)
+    if line.trim.matches(pattern)
+} println(file + ": " + line.trim)
+~~~
+
+### 流间（mid-stream）变量绑定
+
+绑定的变量被当作val引入和使用，不过不带关键字val
+
+~~~scala
+for {
+    file <- filesHere
+    if file.getName.endsWith(".scala")
+    line <- fileLines(file)
+    trimmed = line.trim
+    if trimmed.matches(pattern)
+} println(file + ": " + trimmed)
+~~~
+
+### 制造新集合
+
+~~~scala
+for {
+    file <- filesHere
+    if file.getName.endsWith(".scala")
+    line <- fileLines(file)
+    trimmed = line.trim
+    if trimmed.matches(pattern)
+} yield trimmed.length
+~~~
+
+## 7.4 使用try表达式处理异常
+
+
+
+# 第14章 断言和单元测试
+
+## 14.1 断言
+
+~~~scala
+def above(that:Element): Element = {
+    val this1 = this widen that.width
+    val that1 = that widen this.width
+    assert(this1.width == that1.width)
+    elem(this1.contents ++ that1.contents)
+}
+~~~
+
+可以使用Predef里的名为ensuring的方法来简化这些操作
+
+~~~scala
+private def widen(w:Int): Element = 
+	if (w <= width)
+		this
+	else {
+        val left = elem(' ', (w - width) / 2, height)
+        var right = elem(' ', w - width - left.width, height)
+        left beside this beside right
+    } ensuring (w <= _.width)
+~~~
+
+## 14.2 Scala里的单元测试
+
+Scala的单元测试可以有许多选择，从Java实现的工具，如JUnit和TestNG，到Scala编写的新工具，如ScalaTest、specs，还有ScalaCheck。
+
+ScalaTest提供了若干编写测试的方法，最简单的就是创建扩展org.scalatest.Suite的类并在这些类中定义测试方法。Suite代表一个测试集。测试方法以“test”开头
+
+尽管ScalaTest包含了Runner应用，你也还是可以直接在Scala解释器中通过execute方法运行Suite。特质Suite的execute方法使用反射发现测试方法并调用它们。
+
+由于execute可以在Suite子类型中重载，因此ScalaTest为不同风格的测试提供了遍历。比方说，ScalaTest提供了名为FunSuite的特质，重载了execute，从而可以让你以函数值的方式而不是方法定义测试。
+
+## 14.3 翔实的失败报告
+
+你可以在断言中放一个包含了两个值的字符串信息得到这两个值，不过还有一种更清晰的方式，就是使用三等号操作符，这是ScalaTest为了这个目的专门提供的：
+
+~~~scala
+assert(ele.width === 2)
+~~~
+
+如果断言失败了，你会在失败报告中看到“3 did not equal 2”这样的信息。
+
+如果你希望区分实际结果和希望结果，可以改用ScalaTest的expect方法
+
+~~~scala
+expect(2) {
+    ele.width
+}
+~~~
+
+测试失败报告中看到“Expected 2, but got 3”的消息
+
+是否抛出了期待的异常，可以使用ScalaTest的intercept方法，如下：
+
+~~~scala
+intercept(classOf(IllegalArgumentException)) {
+    elem('x', -2, 3)
+}
+~~~
+
+## 14.4 使用JUnit和TestNG
+
+## 14.5 规格测试
+
+行为驱动开发（behavior-driven development, BDD）测试风格中，重点放在了编写人类可读的预期代码行为的规格说明上，并辅以验证代码具有规定行为的测试。ScalaTest包含了特质Spec，以便于进行这种风格的测试。
+
+## 14.6 基于属性的测试
+
+## 14.7 组织和运行测试
+
+# 第15章 样本类和模式匹配
+
+## 15.1 简单例子
+
+~~~scala
+abstract class Expr
+case class Var(name: String) extends Expr
+case class Number(num: Double) extends Expr
+case class UnOp(operator: String, arg: Expr) extends Expr
+case class BinOp(operator: String, left: Expr, right: Expr) extends Expr
+~~~
+
+层级包括一个抽象基类Expr和四个子类，每个代表一种表达式。所有的五个类都没有类结构体。就像之前提到的，Scala里可以去掉围绕空类结构体的花括号，因此class C与 class C {}相同。
+
+### 样本类
+
+带有case修饰符的类被称为样本类(case class)。这种修饰符可以让Scala编译器自动给你的类添加一些句法上的便携设定。
+
+首先，它会添加与类名一致的工厂方法。
+
+第二个句法便捷设定是样本类参数列表中的所有参数隐式获得了val前缀，因此它被当作字段维护
+
+第三个，是编译器为你的类添加了方法toString、hashCode和equals的“自然”实现。
+
+样本类的最大的好处还在于它们能够支持模式匹配。
+
+### 模式匹配
+
+~~~scala
+def simplifyTop (expr: Expr): Expr = expr match {
+    case UnOp("-", UnOp("-", e)) => e // 双重负号
+    case BinOp("+", e, Number(0)) => e // 加0
+    case BinOp("*", e, Number(1)) => e // 乘1
+    case _ => expr
+}
+~~~
+
+### match与switch的比较
+
+匹配表达式可以被看做Java风格switch的泛化。不过有三点不同要牢记在心。
+
+首先， match是Scala的表达式，也就是说，它始终以值作为结果；
+
+第二，Scala的备选项表达式永远不会“掉到”下一个case；
+
+第三，如果没有模式匹配，MatchError异常会被抛出。
+
+## 15.2 模式的种类
+
+### 通配模式
+
+通配模式（_）匹配任意对象
+
+### 常量模式
+
+常量模式仅匹配自身。
+
+### 变量模式
+
+变量模式类似于通配符，可以匹配任意对象。不过与通配符不同的地方在于，Scala把变量绑定在匹配的对象上。因此之后你可以使用这个变量操作对象。
+
+用小写字母开始的简单名被当作是模式变量；所有其他的引用被认为是常量
+
+可以通过以下两种手法之一给模式常量使用小写字母名，首先，如果常量是某个对象的字段，可以在其之上用限定符前缀。如果这不起作用（比如说，因为pi是本地变量），还可以用反引号包住变量名
+
+### 构造器模式
+
+构造器（模式）的存在使得模式匹配真正变得强大。假如这个名称指定了一个样本类，那么这个模式就是表示首先检查对象是该名称的样本类的成员，然后检查对象的构造器参数是符合额外提供的模式的。
+
+这些额外的模式意味着Scala模式支持深度匹配（deep match）。这种模式不只检查顶层对象是否一致，还会检查对象的内容是否匹配内层的模式。
+
+### 序列模式
+
+你也可以像匹配样本类那样匹配如List或Array这样的序列类型。
+
+~~~scala
+expr match {
+    case List(0, _, _) => println("found it")
+    case _ =>
+}
+~~~
+
+如果你想匹配一个不指定长度的序列，可以指定_*作为模式的最后元素。
+
+### 元组模式
+
+你还可以匹配元组。类似（a, b, c）这样的模式可以匹配任意的3-元组
+
+### 类型模式
+
+你可以把类型模式（typed pattern）当作类型测试和类型转换的简易替代。
+
+~~~scala
+def generalSize(x: Any) = x match {
+    case s: String => s.length
+    case m: Map[_, _] => m.size
+    case _ => 1
+}
+~~~
+
+为了测试表达式expr是String类型的，你得这么写：
+
+~~~scala
+expr.isInstanceOf[String]
+~~~
+
+要转换同样的表达式为类型String，你要写成：
+
+~~~scala
+expr.asInstanceOf[String]
+~~~
+
+#### 类型擦除
+
+Scala使用了泛型的擦除（erasure）模式，就如Java那样。也就是说类型参数信息没有保留到运行期。
+
+擦除规则的唯一例外就是数组，因为在Scala里和Java里，它们都被特殊处理了。数组的元素类型与数组值保存在一起，因此它可以做模式匹配。
+
+### 变量绑定
+
+除了独立的变量模式之外，你还可以对任何其他模式添加变量。只要简单地写上变量名、一个@符号，以及这个模式。这种写法创造了变量绑定模式。这种模式的意义在于它能像通常的那样做模式匹配，并且如果匹配成功，则把变量设置成匹配的对象，就像使用简单的变量模式那样。
+
+举个例子，寻找一行中使用了两遍绝对值操作符的模式匹配，这样的表达式可以被简化为仅使用一次绝对值操作：
+
+~~~scala
+expr match {
+    case UnOp("abs", e @ UnOp("abs", _)) => e
+    case _ =>
+}
+~~~
+
+## 15.3 模式守卫
+
+模式变量仅允许在模式中出现一次。不过你可以使用模式守卫（pattern guard）重新指定这个匹配规则
+
+~~~scala
+def simplifyAdd(e: Expr) = e match {
+    case BinOp("+", x, y) if x == y => BinOp("*", x, Number(2))
+    case _ => e
+}
+~~~
+
+模式守卫接在模式之后，开始于if。守卫可以是任意的引用模式中变量的布尔表达式。如果存在模式守卫，那么只有在守卫返回true的时候匹配才成功。
+
+## 15.4 模式重叠
+
+~~~scala
+def simplifyAll(expr: Expr): Expr = expr match {
+    case UnOp("-", UnOp("-", e)) => simplifyAll(e)
+    case BinOp("+", e, Number(0)) => simplifyAll(e)
+    case BinOp("*", e, Number(1)) => simplifyAll(e)
+    case UnOp(op, e) => UnOp(op, simplifyAll(e))
+    case BinOp(op, l, r) => BinOp(op, simplifyAll(l), simplifyAll(r))
+    case _ => expr
+}
+~~~
+
+全匹配的样本要跟在更具体地简化方法之后
+
+## 15.5 封闭类
+
+可选方案就是让样本类的超类被封闭（sealed）。封闭类除了类定义所在的文件之外不能再添加任何新的子类。
+
+如果你使用继承自封闭类的样本类做匹配，编译器将通过警告信息标志出缺失的模式组合。
+
+因此，如果要写打算做模式匹配的类层级，你应当考虑封闭它们。只要把关键字sealed放在最顶类的前边即可。
+
+有时编译器弹出太过挑剔的警告。轻量级的做法是给匹配的选择器表达式添加@unchecked注解。如下：
+
+~~~scala
+def describe(e: Expr): String = (e: @unchecked) match {
+    case Number(_) => "a number"
+    case Var(_) => "a variable"
+}
+~~~
+
+## 15.6 Option类型
+
+分离可选值最通常的办法是通过模式匹配。例如：
+
+~~~scala
+def show(x: Option[String]) = x match {
+    case Some(s) => s
+    case None => "?"
+}
+~~~
+
+## 15.7 模式无处不在
+
+### 模式在变量定义中
+
+### 用作偏函数的样本序列
+
+### for表达式里的模式
+
+## 15.8 一个更大的例子
+
+# 第16章 使用列表
