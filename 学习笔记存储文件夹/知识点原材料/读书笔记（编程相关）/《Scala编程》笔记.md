@@ -1461,3 +1461,551 @@ def show(x: Option[String]) = x match {
 ## 15.8 一个更大的例子
 
 # 第16章 使用列表
+
+## 16.1 列表字面量
+
+首先，列表是不可变的。
+
+其次，列表具有递归结构，而数组是连续的。
+
+## 16.2 List类型
+
+就像数组一样，列表是同质（homogeneous）的：列表的所有元素都具有相同的类型。
+
+Scala里的列表类型是协变（covariant）的。这意味着对于每一对类型S和T来说，如果S是T的子类型，那么List[S]是List[T]的子类型。
+
+注意空列表的类型为List[Nothing]。你应该在11.3节看到过Nothing是Scala的类层级的底层类型。它是每个Scala类型的子类。因为列表是协变的，所以对于任意类型T的List[T]来说，List[Nothing]都是其子类。
+
+## 16.3 构造列表
+
+所有的列表都是由两个基础构造块Nil和::（发音为“cons”）构造出来的。
+
+由于以冒号结尾，::操作遵循右结合规则：`A::B::C`等同于`A::(B::C)`。
+
+## 16.4 列表的基本操作
+
+head 返回列表的第一个元素。
+
+tail 返回除第一个之外所有元素组成的列表。
+
+isEmpty 如果列表为空，则返回真。
+
+## 16.5 列表模式
+
+你既可以用List(...)形式的模式对列表所有的元素做匹配，也可以用::操作符和Nil常量组成的模式逐位拆分列表。
+
+## 16.6 List类的一阶方法
+
+一阶方法是指不以函数做入参的方法。
+
+### 连接列表
+
+连接操作是与::接近的一种操作，写做“:::”。不过不像::，:::的两个操作元都是列表。
+
+与cons一样，列表的连接操作也是右结合的。
+
+### 分治原则
+
+append
+
+### 计算列表的长度：length方法
+
+length方法能够计算列表的长度。
+
+### 访问列表的尾部：init方法和last方法
+
+last返回（非空）列表的最后一个元素，init返回除了最后一个元素之外余下的列表。
+
+和head和tail一样的地方是，对空列表调用这些方法的时候，会抛出异常
+
+不一样的是，head和tail运行的时间都是常量，但init和last需要遍历整个列表以计算结果。因此所耗的时间与列表的长度成正比。
+
+### 反转列表：reverse方法
+
+reverse创建了新的列表而不是就地改变被操作列表。
+
+### 前缀与后缀：drop、take和splitAt
+
+drop和take操作泛化了tail和init，它们可以返回列表任意长度的前缀或后缀。表达式“xs take n”返回xs列表的前n个元素。如果n大于xs.length，则返回整个xs。操作“xs drop n”返回xs列表除了前n个元素之外的所有元素。如果n大于xs.length，则返回空列表。
+
+splitAt操作在指定位置拆分列表，并返回对偶（pair）列表。它的定义符合以下等式：
+
+~~~scala
+xs splitAt n 等价于 (xs take n, xs drop n)
+~~~
+
+然而，splitAt避免了对列表xs的二次遍历。
+
+### 元素选择：apply方法和indices方法
+
+apply方法实现了随机元素的选择；不过与数组中的同名方法相比，它使用得并不广泛。
+
+~~~scala
+abcde apply 2 // Scala中罕见
+~~~
+
+与其他类型一样，当对象出现在应该是方法调用的函数位置上时，就会隐式地插入apply方法，因此上面的代码可以缩写为：
+
+~~~scala
+abcde(2) // Scala中罕见
+~~~
+
+在列表中使用随机元素访问比在数组中要少得多，原因之一在于xs(n)花费的时间与索引值n成正比。实际上，apply仅简单定义为drop和head的组合：
+
+~~~scala
+xs apply n 等价于 (xs drop n).head
+~~~
+
+这个定义同时也说明了列表的索引范围是从0到列表长度减一。indices方法可以返回指定列表的所有有效索引值组成的列表。
+
+### 啮合列表：zip
+
+zip操作可以把两个列表组成一个对偶列表
+
+如果两个列表的长度不一致，那么任何不能匹配的元素将被丢掉
+
+常用到的情况是把列表元素与索引值啮合在一起，这时使用zipWithIndex方法会更为有效，它能把列表的每个元素与元素在列表中的位置值组成一对。
+
+### 显示列表：toString方法和mkString方法
+
+toString操作返回列表的标准字符串表达形式
+
+如果你需要其他表达方式，可以使用mkString方法。xs mkString(pre, sep, post)操作有四个操作元：待显示的列表xs，需要显示在所有元素之前的前缀字符串pre，需要显示在两个元素之间的分隔符字符串sep，以及显示在最后面的后缀字符串post。
+
+mkString方法有两个重载变体以便让你可以忽略部分乃至全部参数。第一个变体仅带有分隔符字符串：
+
+~~~scala
+xs mkString sep 等价于 xs mkString ("", sep, "")
+~~~
+
+第二个变体让你可以忽略所有的参数：
+
+~~~scala
+xs.mkString 等价于 xs mkString ""
+~~~
+
+mkString方法还有名为addString的变体，它可以把构建好的字符串添加到StringBuilder对象中，而不是作为结果返回
+
+mkString和addString方法都继承自List的超特质Iterable，因此它们可以应用到各种可枚举的集合类上。
+
+### 转换列表：elements、toArray、copyToArray
+
+想要让数据存储格式在连续存放的数组和递归存放的列表之间进行转换，可以使用List类的toArray方法和Array类的toList方法
+
+另外还有一个方法叫copyToArray，可以把列表元素复制到目标数组的一段连续空间。操作如下：
+
+~~~scala
+xs copyToArray (arr, start)
+~~~
+
+这将把列表xs的所有元素复制到数组arr中，填入位置开始为start。必须确保目标数组arr有足够的空间可以放下列表元素。
+
+最后，如果你需要枚举器访问列表元素，可以使用elements方法
+
+### 举例：归并排序
+
+~~~scala
+def msort[T](less: (T, T) => Boolean)(xs: List[T]): List[T] = {
+    def merge(xs: List[T], ys: List[T]): List[T] = (xs, ys) match {
+        case (Nil, _) => ys
+        case (_, Nil) => xs
+        case (x::xs1, y::ys1) => 
+        	if (less(x, y)) x :: merge(xs1, ys)
+        	else y :: merge(xs, ys1)
+    }
+    
+    val n = xs.length / 2
+    if (n == 0) xs
+    else {
+        val (ys, zs) = xs splitAt n
+        merge(msort(less)(ys), msort(less)(zs))
+    }
+}
+~~~
+
+## 16.7 List类的高阶方法
+
+### 列表间映射：map、flatMap和foreach
+
+### 列表过滤：filter、partition、find、takeWhile、dropWhile和span
+
+partition方法与filter类似，不过返回的是列表对。其中一个包含所有论断为真的元素，另一个包含所有论断为假的元素。
+
+~~~scala
+xs partition p 等价于 (xs filter p, xs filter(!p(_)))
+~~~
+
+span方法把takeWhile和dropWhile组合成一个操作，就好像splitAt组合了take和drop一样。
+
+### 列表的论断：forall和exists
+
+### 折叠列表：/:和:\
+
+左折叠（fold left）操作“(z /: xs) (op)”与三个对象有关：开始值z，列表xs，以及二元操作op。折叠的结果是op 应用到前缀值z及每个相邻元素上，如下：
+
+~~~scala
+(z :/ List(a, b, c)) (op) 等价于 op(op(op(z, a), b), c)
+~~~
+
+/: 操作符产生向左侧倾斜的操作树（语法中反斜杠“/”的前进方向也有意反映了这一点）。与之相类似，操作符:\产生向右倾斜的操作树。如：
+
+~~~scala
+(List(a, b, c) :\ z) (op) 等价于 op(a, op(b, op(c, z)))
+~~~
+
+:\ 操作符被称为右折叠（fold right）。与左折叠一样带有三个操作元，不过前两个的出现次序相反：第一个操作元是待折叠的列表，第二个是开始值。
+
+如果你喜欢，也可以使用名为foldLeft和foldRight方法，它们同样定义在List类中。
+
+### 例子：使用折叠操作完成列表反转
+
+### 列表排序：sort
+
+## 16.8 List对象的方法
+
+### 通过元素创建列表：List.apply
+
+### 创建数值范围：List.range
+
+List.range(from, until)，可以创建从from开始到until减一的所有数值的列表。因此尾部值until不在范围之内。
+
+还有另外一个版本的range可以带step值作为第三参数。
+
+### 创建统一的列表：List.make
+
+make方法创建由相同元素的零份或多份拷贝组成的列表。
+
+### 解除啮合列表：List.unzip
+
+### 连接列表：List.flatten、List.concat
+
+### 映射及测试配对列表：List.map2、List.forall2、List.exists2
+
+## 16.9 了解Scala的类型推断算法
+
+# 第17章 集合类型
+
+## 17.1 集合库概览
+
+Iterable是主要特质，它同时还是可变和不可变序列（Seq）、集（Set），以及映射（Map）的超特质。
+
+Iterator
+
+## 17.2 序列
+
+### 列表
+
+List
+
+### 数组
+
+Array
+
+### 列表缓存
+
+ListBuffer是可变对象，它可以更高效地通过添加元素的方式构建列表。ListBuffer能够支持常量时间的添加和前缀操作。元素的添加使用+=操作符，前缀使用+:操作符。完成之后，可以通过对ListBuffer调用toList方法获得List。
+
+使用ListBuffer替代List的另一个理由是为了避免栈溢出的风险。
+
+### 数组缓存
+
+ArrayBuffer
+
+### 队列（Queue）
+
+### 栈
+
+### 字符串（经RichString隐式转换）
+
+RichString也是应该知道的序列，它的类型是Seq[Char]。
+
+## 17.3 集（Set）和映射（Map）
+
+### 使用集
+
+### 使用映射
+
+### 默认的（Default）集和映射
+
+| 元素数量 | 实现                                |
+| -------- | ----------------------------------- |
+| 0        | scala.collection.immutable.EmptySet |
+| 1        | scala.collection.immutable.Set1     |
+| 2        | scala.collection.immutable.Set2     |
+| 3        | scala.collection.immutable.Set3     |
+| 4        | scala.collection.immutable.Set4     |
+| 5或更多  | scala.collection.immutable.HashSet  |
+
+| 元素数量 | 实现                                |
+| -------- | ----------------------------------- |
+| 0        | scala.collection.immutable.EmptyMap |
+| 1        | scala.collection.immutable.Map1     |
+| 2        | scala.collection.immutable.Map2     |
+| 3        | scala.collection.immutable.Map3     |
+| 4        | scala.collection.immutable.Map4     |
+| 5或更多  | scala.collection.immutable.HashMap  |
+
+### 有序的（Sorted）集和映射
+
+有时，可能你需要集或映射的枚举器能够返回按特定顺序排列的元素。为此，Scala的集合库提供了SortedSet和SortedMap特质。
+
+这两个特质分别由类TreeSet和TreeMap实现，它们都使用了红黑树有序地保存元素（TreeSet类）或键（TreeMap类）
+
+### 同步的（Synchronized）集和映射
+
+如果你需要线程安全的映射，可以把SynchronizedMap特质混入到你想要的特定类实现中。
+
+## 17.4 可变（mutable）集合 vs. 不可变（immutable）集合
+
+## 17.5 初始化集合
+
+### 数组与列表之间的互转
+
+### 集和映射的可变与不可变互转
+
+## 17.6 元组
+
+# 第18章 有状态的对象
+
+## 18.1 什么让对象具有状态？
+
+## 18.2 可重新赋值的变量和属性
+
+Scala里，对象的每个非私有的var类型成员变量都隐含定义了getter和setter的方法。然而这些getter和setter方法的命名方式并没有沿袭Java的约定。var变量x的getter方法命名为“x”，它的setter方法命名为“x_=”。
+
+请注意，Scala中不可以随意省略“= _”初始化器。如果写成：
+
+~~~scala
+var celsius: Float
+~~~
+
+这将定义为抽象变量，而不是未初始化的变量。
+
+## 18.3 案例研究：离散事件模拟
+
+## 18.4 为数字电路定制的语言
+
+## 18.5 Simulation API
+
+## 18.6 电路模拟
+
+# 第19章 类型参数化
+
+## 19.1 queues函数式队列
+
+## 19.2 信息隐藏
+
+### 私有构造器及工厂方法
+
+Java中，你可以把构造器声明为私有的使其不可见。Scala中，主构造器无须明确定义；不过虽然它的定义隐含于类参数及类方法体中，还是可以通过把private修饰符添加在类参数列表的前边把主构造器隐藏起来，如清单19.2所示：
+
+~~~scala
+class Queue[T] private (
+	private val leading: List[T],
+    private val trailing: List[T]
+)
+~~~
+
+夹在类名与其参数之间的private修饰符表明Queue的构造器是私有的：它只能被类本身及伴生对象访问。
+
+### 可选方案：私有类
+
+私有构造器和私有成员是隐藏类的初始化代码和表达代码的一种方式。另一种更为彻底的方式是直接把类本身隐藏掉，仅提供能够暴露类公共接口的特质。
+
+## 19.3 变化型注解
+
+在Scala中，泛型类型缺省的是非协变的（nonvariant）（或称为“严谨的”）子类型化。
+
+然而，可以用如下方式改变Queue类定义的第一行，以要求队列协变（弹性）的子类型化：
+
+~~~scala
+trait Queue[+T] {...}
+~~~
+
+在正常的类型参数前加上+号表面这个参数的子类型化是协变（弹性）的。
+
+除了+号以外，还可以前缀加上-号，这表明是需要逆变的（contravariant）子类型化。如果Queue定义如下：
+
+~~~scala
+trait Queue[-T] {...}
+~~~
+
+那么如果T是类型S的子类型，这将隐含Queue[S]是Queue[T]的子类型。
+
+无论类型参数是协变的，逆变的，还是非协变的，都被称为参数的变化型。可以放在类型参数前的+号和-号被称为变化型注解。
+
+### 变化型和数组
+
+Java中数组被认为是协变的。
+
+数组的协变被用来确保任意参考类型的数组都可以传入排序方法。当然，随着Java引入了泛型，这种排序方法现在可以带有类型参数，因此数组的协变不再有用。只是考虑到兼容的原因，直到今天它都存在于Java中。
+
+Scala不认为数组是协变的，以尝试保持比Java更高的纯粹性。
+
+然而，有时需要使用对象数组作为模拟泛型数组的手段与Java的遗留方法执行交互。为了满足这种情况，Scala允许你把T类型的数组造型为任意T的超类型数组：
+
+~~~scala
+val a2: Array[Object] = a1.asInstanceOf[Array[Object]]
+~~~
+
+编译时的造型始终合法，并且将在运行时永远成功，因为JVM的内含运行时模型与Java语言一致，把数组当作是协变的。
+
+## 19.4 检查变化型注解
+
+为了核实变化型注解的正确性，Scala编译器会把类或特质结构体的所有位置分类为正，负，或中立。所谓的“位置”是指类（或特质，但从此开始为我们只用“类”代表）的结构体内可能会用到类型参数的地方。例如，任何方法的值参数都是这种位置，因为方法值参数具有类型，所以类型参数可以出现在这个位置上。
+
+## 19.5 下界
+
+语法“U >: T”，定义了T为U的下界
+
+## 19.6 逆变
+
+## 19.7 对象私有数据
+
+## 19.8 上界
+
+使用“T <: Ordered[T]”语法，你指明了类型参数T具有上界，Ordered[T]。
+
+# 第20章 抽象成员
+
+Java允许你声明抽象方法。Scala也可以让你声明这种方法，但不仅限于此，而是在更一般性的场合实现了这一思想：除了方法之外，你还可以声明抽象字段乃至抽象类型为类和特质的成员。
+
+## 20.1 抽象成员的快速浏览
+
+下面的特质对每种抽象成员各声明了一个例子，它们分别是，类型（T），方法（transform），val（initial），以及var（current）：
+
+~~~scala
+trait Abstract {
+    type T
+    def transform(x: T): T
+    val initial: T
+    var current: T
+}
+~~~
+
+Abstract的具体实现需要对每种抽象成员填入定义。下面的例子是提供这些定义的实现：
+
+~~~scala
+class Concrete extends Abstract {
+    type T = String
+    def transform(x: String) = x + x
+    val initial = "hi"
+    var current = initial
+}
+~~~
+
+## 20.2 类型成员
+
+使用类型成员的理由之一是为类型定义短小的、具有说明性的别名，因为类型的实际名称可能比别名要更冗长，或语义不清。
+
+类型成员的另一种主要用途是声明必须被定义为子类的抽象类型。
+
+## 20.3 抽象val
+
+抽象的val限制了合法的实现方式：任何实现都必须是val类型的定义；不可以是var或def。
+
+## 20.4 抽象var
+
+## 20.5 初始化抽象val
+
+抽象val有时会扮演类似于超类的参数这样的角色：它们能够让你在子类中提供超类缺少的细节信息。这对于特质来说尤其重要，因为特质缺少能够用来传递参数的构造器。因此通常参数化特质的方式就是通过需要在子类中实现的抽象val完成。
+
+### fields预初始化字段
+
+第一种解决方案，预初始化字段，可以让你在调用超类之前初始化子类的字段。操作的方式是把字段定义加上花括号，放在超类构造器调用之前。
+
+### 懒加载val
+
+这一目的可以通过让你的val定义变成懒惰的（lazy）来达成。如果你把lazy修饰符前缀在val定义上，那么右侧的初始化表达式将直到val第一次被使用的时候才计算。
+
+## 20.6 抽象类型
+
+## 20.7 路径依赖类型
+
+## 20.8 枚举
+
+Scala不需要关于枚举的特别语法，而是代之以标准库中的类，scala.Enumeration。想要创建新的枚举，只需定义扩展这个类的对象即可，下面的例子定义了新的Color枚举：
+
+~~~scala
+object Color extends Enumeration {
+    val Red = Value
+    val Green = Value
+    val Blue = Value
+}
+~~~
+
+Scala还能让你简化掉若干右侧一致的相连val或var定义。与上面等价，你也可以写成：
+
+~~~scala
+object Color extends Enumeration {
+    val Red, Green, Blue = Value
+}
+~~~
+
+Enumeration定义了内部类，名为Value，以及同名的无参方法Value返回该类的新对象。
+
+## 20.9 案例研究：货币
+
+# 第21章 隐式转换和参数
+
+你的代码与其他人的库函数之间有项根本的差别：你可以随意改变或者扩展自己的代码，但如果你想要使用别人的库函数，通常只能原封不动。
+
+为了缓解这一问题，各种编程语言中涌现除了许多灵感：Ruby引入了模块，Smalltalk让不同的包能够加入各自的类中。这些都很有好处，但也非常危险，因为你改变了整个程序中类的行为，其中可能有你想不到的问题。C#3.0有静态扩展方法，它更为本地化，同时也更为局限，你只能对类添加方法，而不能添加字段，并且不能让类实现新的接口。
+
+Scala的办法是隐式转换和隐式参数。
+
+## 21.1 隐式转换
+
+为了让String表现为RandomAccessSeq的子类，你需要定义从String到实际为RandomAccessSeq子类的适配类隐式转换。
+
+~~~scala
+implicit def stringWrapper(s: String) =
+	new RandomAccessSeq[Char] {
+        def length = s.length
+        def apply(i:Int) = s.charAt(i)
+    }
+~~~
+
+## 21.2 隐式操作规则
+
+隐式转换由以下通用规则掌控：
+
+标记规则：只有标记为implicit的定义才是可用的。implicit关键字被用来标记编译器可以用于隐式操作的声明。你可以使用它标记任何变量，函数，或对象定义。
+
+作用域规则：插入的隐式转换必须以单一标识符的形式处于作用域中，或与转换的源或目标类型关联在一起。
+
+“单一标识符”规则有一个例外。编译器还将在原类型或转换的期望目标类型的伴生对象中寻找隐式定义。
+
+无歧义规则：隐式转换唯有不存在其他可插入转换的前提下才能插入。
+
+单一调用规则：只会尝试一个隐式操作。编译器将不会把x+y重写成convert1(convert2(x))+y。
+
+显式操作先行规则：若编写的代码类型检查无误，则不会尝试任何隐式操作。
+
+命名隐式转换。隐式转换可以任意命名。
+
+隐式操作在哪里尝试。Scala语言中能用到隐式操作的有三个地方：转换为期望类型、指定（方法）调用者的转换、隐式参数。
+
+## 21.3 隐式转换为期望类型
+
+## 21.4 转换（方法调用的）接收者
+
+### 与新类型的交互操作
+
+### 模拟新的语法
+
+## 21.5 隐式参数
+
+## 21.6 视界
+
+可以认为“T <% Ordered[T]”是在说，“任何的T都好，只要T能被当作Ordered[T]即可。”
+
+## 21.7 隐式操作调试
+
+把这些转换明确写出来有助于发现问题。
+
+调试程序的时候，如果能看到编译器正在插入的隐式转换可能会有一些帮助。编译器的-Xprint:typer选项可以用于这一目的。
+
+# 第22章 实现列表
+
+## 22.1 List类原理
