@@ -55,7 +55,8 @@ public class SparkJavaTest {
         data.show(5, false);
 
         Dataset<Row>[] split = data.randomSplit(new double[]{0.7, 0.3}, 2L);
-        String[] catalog_features = new String[]{"click", "site_id", "site_domain", "site_category", "app_id", "app_domain", "app_category", "device_id", "device_ip", "device_model"};
+        String[] catalog_features = new String[]{"click", "site_id", "site_domain", "site_category", "app_id",
+                "app_domain", "app_category", "device_id", "device_ip", "device_model"};
         Dataset<Row> train_index = split[0];
         Dataset<Row> test_index = split[1];
         for (String catalog_feature : catalog_features) {
@@ -75,7 +76,9 @@ public class SparkJavaTest {
         //    特征Hasher
         // 特征哈希将一组分类或数值特征投射到指定维的特征向量(通常比原始特征空间小很多)。这是使用哈希技巧将特征映射到特征向量中的索引。
         FeatureHasher hasher = new FeatureHasher()
-                .setInputCols(new String[]{"site_id_index", "site_domain_index", "site_category_index", "app_id_index", "app_domain_index", "app_category_index", "device_id_index", "device_ip_index", "device_model_index", "device_type", "device_conn_type", "C14", "C15", "C16", "C17", "C18", "C19", "C20", "C21"})
+                .setInputCols(new String[]{"site_id_index", "site_domain_index", "site_category_index", "app_id_index",
+                        "app_domain_index", "app_category_index", "device_id_index", "device_ip_index", "device_model_index",
+                        "device_type", "device_conn_type", "C14", "C15", "C16", "C17", "C18", "C19", "C20", "C21"})
                 .setOutputCol("feature");
         System.out.println("特征Hasher编码：");
         Dataset<Row> train_hs = hasher.transform(train_index);
