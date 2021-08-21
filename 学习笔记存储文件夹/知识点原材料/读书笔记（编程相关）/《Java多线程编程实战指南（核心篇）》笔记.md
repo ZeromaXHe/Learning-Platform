@@ -940,6 +940,155 @@ It's done. data=4
 
 ## 5.4 栅栏（CyclicBarrier）
 
+有时候多个线程可能需要相互等待对方执行到代码中的某个地方（集合点），这时这些线程才能够继续执行。JDK 1.5开始引入了一个类java.util.concurrent.CyclicBarrier，该类可以用来实现这种等待。CyclicBarrier类的类名中虽然包含Barrier这个单词，但是它和我们前面讲的内存屏障没有直接的关联。类名中Cyclic表示CyclicBarrier实例是可以重复使用的。
+
+使用CyclicBarrier实现等待的线程被称为**参与方**（Party）。参与方只需要执行CyclicBarrier.await()就可以实现等待。尽管从应用代码的角度来看，参与方是并发执行CyclicBarrier.await()的，但是，CyclicBarrier内部维护了一个显式锁，这使得其总是可以在所有参与方中区分出一个最后执行CyclicBarrier.await()的线程，该线程被称为**最后一个线程**。除最后一个线程外的任何参与方执行CyclicBarrier.await()都会导致该线程被暂停（线程生命周期状态变为WAITING）。最后一个线程执行Cyclic.await()会使得使用相应CyclicBarrier实例的其他所有参与方被唤醒，而最后一个线程自身并不会被暂停。
+
+与CountDownLatch不同的是，CyclicBarrier实例是可重复使用的：所有参与方被唤醒的时候，任何线程再次执行CyclicBarrier.await()又会被暂停，直到这些线程中的最后一个线程执行了CyclicBarrier.await()。
+
+CyclicBarrier的其中一个构造器允许我们指定一个被称为barrierAction的任务（Runnable接口实例）。barrierAction会被最后一个线程执行CyclicBarrier.await方法时执行，该任务执行结束后其他等待线程才会被唤醒。
+
+由于CyclicBarrier内部实现是基于条件变量的，因此CyclicBarrier的开销与条件变量的开销相似，其主要开销在可能产生的上下文切换。
+
+> **扩展阅读** CyclicBarrier的内部实现
+>
+> CyclicBarrier内部使用了一个条件变量trip来实现等待/通知。CyclicBarrier内部实现使用了分代（Generation）的概念用于表示CyclicBarrier实例是可以重复使用的。除最后一个线程外的任何一个参与方都相当于一个等待线程，这些线程所使用的保护条件是“当前分代内，尚未执行await方法的参与方个数（parties）为0”。当前分代的初始状态是parties等于参与方总数（通过构造器中的parties参数指定）。CyclicBarrier.await()每被执行一次会使相应实例的parties值减少1.最后一个线程相当于通知线程，它执行CyclicBarrier.await()会使相应实例的parties值变为0，此时该线程会先执行barrierAction.run()，然后再执行trip.signalAll()来唤醒所有等待线程。接着，开始下一个分代，即使得CyclicBarrier的parties值又重新恢复为其初始值。
+
+设cyclicBarrier为一个任意的CyclicBarrier实例，任意一个参与方在执行cyclicBarrier.await()前所执行的任何操作对barrierAction.run()而言是可见的、有序的。barrierAction.run()中所执行的任何操作对所有参与方在cyclicBarrier.await()调用成功返回之后的代码而言是可见的、有序的。
+
+### CyclicBarrier的典型应用场景
+
+CyclicBarrier的典型应用场景包括以下几个，它们都可以在上述例子中找到影子。
+
+- 使迭代（Iterative）算法并发化。在并发化的迭代算法中，迭代算法是由多个工作者线程并行执行的。CyclicBarrier可用来实现执行迭代操作的任何一个工作者线程必须等待其他工作者线程也完成当前迭代操作的情况下才继续其下一轮的迭代操作，以便形成迭代操作的中间结果作为下一轮迭代的基础（输入）。因此，该应用场景从代码上反映出来的是，CyclicBarrier.await()调用是在一个循环中执行的。
+- 在测试代码中模拟高并发。在编写多线程程序的测试代码时，我们常常需要使用有限的工作者线程来模拟高并发操作。为此，CyclicBarrier可用来实现这些工作者线程中的任意一个线程在执行其操作前必须等待其他线程也准备就绪，即使得这些工作者线程尽可能地在同一时刻开始其操作，正如上述例子我们使用CyclicBarrier来实现一排中的士兵在同一时刻开始射击。
+
+CyclicBarrier往往被滥用，其表现是在没有必要使用CyclicBarrier的情况下使用了CyclicBarrier。这种滥用的一个典型例子是利用CyclicBarrier的构造器参数barrierAction来指定一个任务，以实现一种等待线程结束的效果：barrierAction中的任务只有在目标线程结束后才能够被执行。事实上，这种情形下我们完全可以使用更加对口的Thread.join()或者CountDownLatch来实现。因此，如果代码对CyclicBarrier.await()调用不是放在一个循环之中，并且使用CyclicBarrier的目的也不是为了模拟高并发操作，那么此时对CyclicBarrier的使用可能是一种滥用。
+
+## 5.5 生产者-消费者模式
+
+在生产者-消费者模式中，生产者（Producer）的主要职责是生产（创建）产品（Product）。产品既可以是数据，也可以是任务。消费者（Consumer）的主要职责是消费生产者所生产的产品。这里的“消费”包括对产品所代表的数据进行加工处理或者执行产品所代表的任务。生产者和消费者是并发地运行在各自的线程之中的，这就意味着运用生产者-消费者模式可以使程序中原本串行的处理得以并发化。
+
+由于线程之间无法像函数调用那样通过参数直接传递数据，因此生产者和消费者之间需要一个用于传递产品的传输通道（Channel）。传输通道相当于生产者和消费者之间的缓冲区，生产者每生产一个产品就将其放入传输通道，消费者则不断地从传输通道中取出产品进行消费，传输通道通常可以使用一个线程安全的队列来实现。
+
+> **术语定义**
+>
+> 将产品存入传输通道的线程就被称为生产者线程，从传输通道中取出产品进行消费的线程就被称为消费者线程。
+
+由于生产者和消费者运行在不同的线程中，因此生产者将产品（对象）存入传输通道，消费者再从相应的传输通道中取出产品的过程其实就是生产者线程将对象（产品）发布到消费者线程的过程，这种对象发布必须是线程安全的。
+
+通常，生产者和消费者的处理能力是不同的，即生产者生产产品的速率和消费者消费产品的速率是不同的，较为常见的情形是生产者的处理能力比消费者的处理能力大。这种情况下，传输通道所起的作用不仅仅作为生产者和消费者之间传递数据的中介，它在一定程度上还起到一个平衡生产者和消费者处理能力的作用。
+
+### 5.5.1 阻塞队列
+
+传输通道相当于如清单5-10所示的接口。在该接口中，类型参数P代表产品的类型，take方法用于从传输通道中取出一个产品，put方法用于往传输通道中存入一个产品。
+
+显然，当传输通道为空的时候消费者无法取出一个产品，此时消费者线程可以进行等待，直到传输通道非空，即生产者线程生产了新的产品。当传输通道存储空间满的时候生产者无法往其中存入新的产品，此时生产者线程可以进行等待，直到传输通道非满，即有消费者消费了产品而腾出新的存储空间。
+
+生产者线程往传输通道中成功存入产品之后就会唤醒等待传输通道非空的消费者线程，而消费者线程从传输通道中取出一个产品之后就会唤醒等待传输通道非满的生产者线程。我们称这种传输通道的运作方式为阻塞式（Blocking），即从传输通道中存入一个产品或者取出一个产品时，相应的线程可能因为传输通道中没有产品或者其存储空间已满而被阻塞（暂停）。
+
+> **术语定义**
+>
+> 一般而言，一个方法或者操作如果能够导致其执行线程被暂停（生命周期状态为WAITING或者BLOCKING），那么我们就称相应的方法/操作为阻塞方法（Blocking Method）或者阻塞操作。可见，阻塞方法/操作能够导致上下文切换。常见的阻塞方法/操作包括InputStream.read()、ReentrantLock.lock()、申请内部锁等。相反，如果一个方法或者操作并不会导致其执行线程被暂停，那么相应的方法/操作就被称为非阻塞方法（Non-blocking Method）或者非阻塞操作。
+
+JDK 1.5中引入接口java.util.concurrent.BlockingQueue定义了一种线程安全的队列——阻塞队列。该接口相当于上述接口的超集。因此，我们也可以直接使用BlockingQueue的实现类作为传输通道。BlockingQueue的常用实现类包括ArrayBlockingQueue、LinkedBlockingQueue和SynchronousQueue等。
+
+> **术语定义**
+>
+> 阻塞队列按照其存储空间的容量是否受限制来划分，可分为有界队列（Bounded Queue）和无界队列（Unbounded Queue）。有界队列的存储容量限制是由应用程序指定的，无界队列的最大存储容量为Integer.MAX_VALUE(2^31-1)个元素。
+>
+> 往队列中存入一个元素（对象）的操作被称为put操作，从队列中取出一个元素（对象）的操作被称为take操作。
+
+put操作相当于生产者线程将对象（产品）安全发布到消费者线程。生产者线程执行put操作前所执行的任何内容操作，对后续执行take操作的消费者线程而言是可见的、有序的。
+
+当消费者的处理能力低于生产者的处理能力时，产品的生产速率大于消费速率，这会导致队列中的产品积压，即队列中存储的产品会越来越多。由此导致队列中的这些对象（产品）所占用的内存空间以及其他资源越来越多。因此，我们可能需要限制传输通道的存储容量。此时，我们可以使用有界阻塞队列作为传输通道。
+
+使用有界队列作为传输通道的另外一个好处是可以造成“反压”的效果：当消费者的处理能力跟不上生产者的处理能力时，队列中的产品会逐渐挤压到队列满。此时生产者会被暂停，直到消费者消费了部分产品而使队列非满，这相当于生产者暂停其产品生产而给消费者一个跟上其步伐的机会。当然，这里的代价是可能增加的上下文切换。
+
+
+
+有界队列可以使用ArrayBlockingQueue或者LinkedBlockingQueue来实现。
+
+ArrayBlockingQueue内部使用一个数组作为其存储空间，而数组的存储空间是预先分配的，因此ArrayBlockingQueue的put操作、take操作本身并不会增加垃圾回收的负担。ArrayBlockingQueue的缺点是其内部在实现put、take操作的时候使用的是同一个锁（显式锁），从而可能导致锁的高争用，进而导致较多的上下文切换。
+
+LinkedBlockingQueue既能实现无界队列，也能实现有界队列。LinkedBlockingQueue的其中一个构造器允许我们创建队列的时候指定队列容量。
+
+LinkedBlockingQueue的优点是其内部在实现put、take操作的时候分别使用了两个显式锁（putLock 和 takeLock），这降低了锁争用的可能性。LinkedBlockingQueue 的内部存储空间是一个链表，而链表节点（对象）所需的存储空间是动态分配的，put操作、take操作都会导致链表节点的动态创建和移除，因此LinkedBlockingQueue的缺点是它可能增加垃圾回收的负担。另外，由于LinkedBlockingQueue的put、take操作使用的是两个锁，因此LinkedBlockingQueue维护其队列的当前长度（size）时无法使用一个普通的int型变量而是使用了一个原子变量（AtomicInteger）。这个原子变量可能会被生产者线程和消费者线程争用，因此它可能导致额外的开销。
+
+SynchronousQueue可以被看做一种特殊的有界队列。SynchronousQueue内部并不维护用于存储队列元素的存储空间。设synchronousQueue为一个任意的SynchronousQueue实例，生产者线程执行synchronousQueue.put(E)时如果没有消费者线程执行synchronousQueue.take()，那么该生产者线程会被暂停，直到有消费者线程执行了synchronousQueue.take()；类似地，消费者线程执行synchronousQueue.take()时如果没有生产者线程执行了synchronousQueue.put(E)，那么该消费者线程会被暂停，直到有生产者线程执行了synchronousQueue.put(E)。
+
+因此，在使用SynchronousQueue作为传输通道的生产者-消费者模式中，生产者线程生产好一个产品之后，会等待消费者线程来取走这个产品才继续生产下一个产品，而不像使用ArrayBlockingQueue、LinkedBlockingQueue作为传输通道的情况下生产者线程将生产好的产品存入队列就继续生产下一个产品。
+
+
+
+队列可以被看作生产者线程和消费者之间的共享资源，因此资源调度的公平性在队列上有所体现。占用队列的线程可以对队列进行put或者take操作，那么对队列（作为一种资源）的调度就是决定哪个线程可以进行put或者take操作的过程。ArrayBlockingQueue和SynchronousQueue都既支持非公平调度也支持公平调度，而LinkedBlockingQueue仅支持非公平调度。
+
+如果生产者线程和消费者线程之间的并发程度比较大，那么这些线程对传输通道内部所使用的锁的争用可能性也随之增加。这时，有界队列的实现适合选用LinkedBlockingQueue，否则我们可以考虑ArrayBlockingQueue。
+
+阻塞队列也支持非阻塞式操作（即不会导致执行线程被暂停）。比如，BlockingQueue接口定义的offer(E)和poll()分别相当于put(E)和take()的非阻塞版。非阻塞式方法通常用特殊的返回值表示操作结果：offer(E)的返回值false表示入队列失败（队列已满），poll()返回null表示队列为空。
+
+> **提示**
+>
+> LinkedBlockingQueue适合在生产者线程和消费者线程之间的并发程度比较大的情况下使用。
+>
+> ArrayBlockingQueue适合在生产者线程和消费者线程之间的并发程度较低的情况下使用。
+>
+> SynchronousQueue适合在消费者处理能力与生产者处理能力相差不大的情况下使用。
+
+### 5.5.2 限购：流量控制与信号量（Semaphore）
+
+使用无界队列作为传输通道的一个好处是put操作并不会导致生产者线程被阻塞。因此，无界队列的使用不会影响生产者线程的步伐。但是在队列积压的情况下，无界队列中存储的元素可能越来越多，最终导致这些元素所占用的资源过多。因此，一般我们在使用无界队列作为传输通道的时候会同时限制生产者的生产速率，即进行流量控制以避免传输通道中积压过多的产品。
+
+JDK 1.5中引入的标准库类java.util.concurrent.Semaphore可以用来实现流量控制。为了便于讨论，我们把代码所访问的特定资源或者执行特定操作的机会统一看作一种资源，这种资源被称为虚拟资源（Virtual Resource）。Semephore相当于虚拟资源配额管理器，它可以用来控制同一时间内对虚拟资源的访问次数。为了对虚拟资源的访问进行流量控制，我们必须使相应代码只有在获得相应配额的情况下才能够访问这些资源。为此，相应代码在访问虚拟资源前必须先申请相应的配额，并在资源访问结束后返还相应的配额。
+
+Semaphore.acquire()/release()分别用于申请配额和返还配额。Semaphore.acquire()在成功获得一个配额后会立即返回。如果当前的可用配额不足，那么Semaphore.acquire()会使其执行线程暂停。Semaphore内部会维护一个等待队列用于存储这些被暂停的线程。Semaphore.acquire()在其返回之前总是会将当前的可用配额减少1.Semaphore.release()会使当前可用配额增加1，并唤醒相应Semaphore实例的等待队列中的一个任意等待线程。
+
+Semaphore的使用需要注意以下几点。
+
+- Semaphore.acquire()和Semaphore.release()总是配对使用。应用代码在访问虚拟资源前调用Semaphore.acquire()来申请配额，并在虚拟资源访问结束后调用Semaphore.release()来返回配额。由于Semaphore本身并不强制这种配对，即一个线程可以在未执行Semaphore.acquire()的情况下执行Semaphore.release()，因此Semaphore.acquire()/release()的配对使用需要由应用代码来保证。这点和锁的获得与释放有所不同，因为一个线程只有在持有某个锁的情况下才能释放该锁。
+- Semaphore.release()调用总是应该放在一个finally块中，以避免虚拟资源访问出现异常的情况下当前线程所获得的配额无法返还（类似于锁泄漏）。
+- 创建Semaphore实例时如果构造器中的参数permits值为1，那么所创建的Semaphore实例相当于一个互斥锁。与其他互斥锁不同的是，由于一个线程可以在未执行过Semaphore.acquire()的情况下执行相应的Semaphore.release()，因此这种互斥锁允许一个线程释放另外一个线程锁所持有的锁。
+- 配额本身可被看作程序执行特定操作前所需持有的资源，因此对配额的调度也涉及公平性问题。默认情况下，Semaphore采用的是非公平性调度策略，因此在可用配额数为0的情况下，一个线程返回一个配额之后获得配额的那个线程可能是等待队列中那个被唤醒的线程，也可能是其他申请配额的活跃线程。
+
+### *5.5.3 管道：线程间的直接输出与输入
+
+Java标准库类PipedOutputStream和PipedInputStream是生产者-消费者模式的一个具体例子。PipedOutputStream和PipedInputStream分别是OutputStream和InputStream的一个子类，它们可用来实现线程间的直接输出和输入。所谓“直接”是指从应用代码的角度来看，一个线程的输出可作为另外一个线程的输入，而不必借用文件、数据库、网络连接等其他数据交换中介。
+
+PipedOutputStream相当于生产者，其生产的产品是字节形式的数据：PipedInputStream相当于消费者。PipedInputStream内部使用byte型数组维护了一个循环缓冲区（Circular Buffer），这个缓冲区相当于传输通道。在使用PipedOutputStream、PipedInputStream进行输出、输入操作前，PipedOutputStream实例和PipedInputStream实例需要建立起关联（Connect）。建立关联的PipedOutputStream实例和PipedInputStream实例就像一条输送水流的管道，管道的一端连着注水口（PipedOutputStream），另一端连着出水口（PipedInputStream）。这样，生产者所生产的数据（相当于水流）通过向PipedOutputStream实例输出（相当于向管道注水），就可以被消费者通过关联的PipedInputStream实例所读取（相当于从出水口接水）。PipedOutputStream实例和PipedInputStream实例之间的关联可以通过调用各自实例的connect方法实现，也可以通过在创建相应实例的时候将对方的实例指定为自己的构造器参数来实现。
+
+使用PipedOutputStream和PipedInputStream时需要注意以下几点。
+
+- PipedOutputStream和PipedInputStream适合在两个线程间使用，即适用于单生产者-单消费者的情形。在PipedOutputStream和PipedInputStream所实现的生产者-消费者模式中，产品不是一个普通的对象而是字节形式的原始数据，因此在生产者线程不止一个或者消费者线程不止一个的情况下，我们往往需要保证产品序列（字节流）的顺序性，而这可能增加代码的复杂性和额外开销，比如为保证数据的顺序性而引入额外的锁所导致的开销。另外，PipedOutputStream和PipedInputStream不宜在单线程程序中使用，因为那样可能导致无限制的等待（死锁）。
+- 输出异常的处理。如果生产者线程在其执行过程中出现了不可恢复的异常，那么消费者线程就会永远也无法读取到新的数据。但是，由于消费者线程和生产者线程不是同一个线程，因此生产者线程中出现了异常，消费者线程是无法直接侦测的，即无法像单线程程序那样通过try-catch捕获异常。所以，生产者线程出现异常时需要通过某种方式“知会”相应的消费者线程，否则消费者线程可能会无限制地等待新的数据。生产者线程通常可以通过关闭PipedOutputStream实例来实现这种“知会”。
+
+### 5.5.4 一手交钱，一手交货：双缓冲与Exchanger
+
+缓冲（Buffering）是一种常用的数据传递技术。缓冲区相当于数据源（Source，即数据的原始提供方）与数据使用方（Sink）之间的数据容器。从这个角度来看，数据源相当于生产者，数据使用方相当于消费者。数据源所提供的数据相当于产品，而缓冲区可被看作产品的容器或者外包装。在多线程环境下，有时候我们会使用两个（或者更多）缓冲区来实现数据从数据源到数据使用方的移动。其中一个缓冲区填充满来自数据源的数据后可以被数据使用方进行“消费”，而另外一个空的（或者已经使用过的）缓冲区则用来填充来自数据源的新的数据。这里，负责填充缓冲区的是一个线程（生产者线程），而使用已填充完毕的另外一个缓冲区的则是另外一个线程（消费者线程）。因此，当消费者线程消费一个已填充的缓冲区时，另外一个缓冲区可以由生产者线程进行填充，从而实现了数据生成与消费的并发。这种缓冲技术就被称为**双缓冲**（Double Buffering）。
+
+JDK 1.5中引入的标准库类java.util.concurrent.Exchanger可以用来实现双缓冲。Exchanger相当于一个只有两个参与方的CyclicBarrier。Exchanger.exchange(V)相当于CyclicBarrier.await()。Exchanger.exchange(V)的声明如下：
+
+~~~java
+public V exchange(V x) throws InterruptedException
+~~~
+
+其中，V是Exchanger类的类型参数，参数x和返回值相当于缓冲区。
+
+通常，初始状态下生成者和消费者各自创建一个空的缓冲区。消费者线程执行Exchanger.exchange(V)时将参数x指定为一个空的或者已经使用过的缓冲区，生产者线程执行Exchanger.exchange(V)时将参数x指定为一个已经填充完毕的缓冲区。比照CyclicBarrier来说，生产者线程和消费者线程都执行到Exchanger.exchange(V)相当于这两个线程都到达了集合点，此时生产者线程和消费者线程各自对Exchanger.exchange(V)的调用就会返回。Exchanger.exchange(V)的返回值是对方线程执行该方法时所指定的参数x的值。
+
+因此，Exchanger.exchange(V)的返回就造成一种生产者线程和消费者线程之间交换缓冲区（产品）的效果，即消费者线程向生产者线程提供（通过指定参数x的值）的是一个空的（或者已经使用过的）的缓冲区，而生产者线程向消费者线程提供（通过指定参数x的值）的则是一个已经填充完毕的缓冲区。
+
+这样，生产者线程和消费者线程之间通过不断地交换缓冲区（相当于产品的容器）就实现了将生产者所生产的一个个产品传递给消费者的效果。因此，Exchanger从逻辑上可以被看作一种SynchronousQueue，其内部也不维护用于存储产品的存储空间。
+
+在单生产者-单消费者模式中，我们可以考虑使用Exchanger作为传输通道。
+
+### 5.5.5 一个还是一批：产品的粒度
+
+产品的粒度是一个相对的概念。在问题规模一定的情况下，产品的粒度过细会导致产品在传输通道上的移动次数增大；产品的粒度稍微大些可以减少产品在传输通道上的移动次数，但是产品所占用的资源也随之增加。因此，产品粒度的确定是权衡产品在传输通道上的移动次数和产品所占用资源的结果。
+
+### 5.5.6 再探线程与任务之间的关系
+
+## 5.6 对不起，打扰一下：线程中断机制
+
 
 
 # 第6章 保障线程安全的设计技术
