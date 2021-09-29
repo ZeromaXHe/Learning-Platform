@@ -714,3 +714,84 @@ spring事务`tx:annotation-driven`在使用中可能存在的问题。起因是�
 ## 总结
 
 这个问题总算是解决了，不再出现事务错误的问题了。谨记一点，能使用注解就使用注解 `<tx:annotation-driven transaction-manager="transactionManager"/>` 和 `@Transactional`，避免使用 `<tx:advice />` 这个配置项。
+
+# @autowired 获取bean 在static方法中 报null指针异常(@PostConstruct等方式解决)
+
+https://blog.csdn.net/qq_32784303/article/details/95750543
+
+错误代码：
+
+```java
+@Component
+public final class Util {
+    private static Log log = LogFactory.getLog(Util.class);
+    @Autowired
+    private static RedisUtil redisUtil;
+
+    public static String getValue(String key) {
+        return redisUtil.getKey(key);
+    }
+}
+```
+原因：
+
+静态变量、类变量不是对象的属性，而是一个类的属性，所以静态方法是属于类（class）的，普通方法才是属于实体对象（也就是New出来的对象）的，spring注入是在容器中实例化对象，所以不能使用静态方法。
+
+## 解决方法1：
+
+
+```java
+@Component
+public final class Util {
+    private static Log log = LogFactory.getLog(Util.class);
+    private static RedisUtil redisUtil;
+    @Autowired
+    public Util(RedisUtil redisUtil){
+        Util.redisUtil=redisUtil;
+    }
+
+    public static String getValue(String key) {
+        return redisUtil.getKey(key);
+    }
+}
+```
+## 解决方法2：
+
+
+```java
+@Component
+public final class Util {
+    private static Log log = LogFactory.getLog(Util.class);
+    private static RedisUtil redisUtil;
+
+    @Autowired
+    private RedisUtil redisUtil2;
+
+    @PostConstruct
+    public void beforeInit() {
+        redisUtil = redisUtil2;
+    }
+
+    public static String getValue(String key) {
+        return redisUtil.getKey(key);
+    }
+}
+```
+## 解决方法3：实现ApplicationContextAware类
+
+```java
+@Component
+public class SMSVerificationUtils implements ApplicationContextAware{
+    protected static Logger smsLogger=LoggerFactory.getLogger("SMSVerificationUtils");
+
+    private static SmsConfig smsConfig;
+    @Resource(name="smsConfig")
+    private SmsConfig smsConfigs;
+    @Override
+    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+        // TODO Auto-generated method stub
+        smsConfig=smsConfigs;
+    }
+}
+```
+
