@@ -221,3 +221,61 @@ git pull ../folder-parent module-b-branch
 git remote add origin XXXXXXXXX.git
 git push -u origin master
 ~~~
+
+# GitHub现在push不能使用密码登录，只能使用token
+
+版权声明：本文为CSDN博主「smileNicky」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。
+
+原文链接：https://blog.csdn.net/u014427391/article/details/119913677
+
+
+
+最近在写一个项目提交到github，一直提示如下
+
+~~~
+remote: Support for password authentication was removed on August 13, 2021. Please use a personal access token instead.
+remote: Please see https://github.blog/2020-12-15-token-authentication-requirements-for-git-operations/ for more information.
+~~~
+
+刚开始没注意看提示，一直因为是网速问题，因为github是国外网站，速度一直比较慢，所以没注意到，后面重复好几次，发现都提交不上去，马上去github看一下，发现也是正常，那就不是网速问题了，然后认证看了一下错误提示？其意思就是github从2021.08.13开始就不支持账号密码方式提交代码，详情github官网也给出如下链接
+https://github.blog/2020-12-15-token-authentication-requirements-for-git-operations
+
+然后可以用什么方法处理？网上不少地方是有用ssh key方式，不过我觉得太麻烦了，所以直接使用access Token的方式
+
+## 1、生成AccessToken
+
+在个人中心，点击setting
+
+选择Developer settings
+
+选择Personal access tokens，然后点击generate new Token
+
+
+Note，可以自己做个标记，这个Expiration是token的过期时间，根据自己项目需要设置
+
+`select scopes`这里是权限设置，因为是自己项目，那就全选了也无所谓
+
+
+点击Generate Token之后，就会生成token，同时给你邮箱发一份邮件
+
+## 2、github项目设置
+
+token生成之后，对原来项目进行远程链接修改，然后重新更新项目即可
+
+~~~shell
+# 移除原来的远程链接
+git remote remove origin
+# 查看git的远程链接
+git remote -v
+# 重新新增git远程链接
+git remote add origin https://<your token>@github.com/<your account>/<your repository>.git
+# 下拉master分支
+git push origin master -u
+~~~
+
+如果是git客户端的，比如smartgit，重新设置github链接即可
+
+## 3、IDEA
+
+idea提交的时候，原来密码的地方填token就可以了
+
