@@ -795,3 +795,141 @@ public class SMSVerificationUtils implements ApplicationContextAware{
 }
 ```
 
+# Spring Boot 和 JavaFX 的集成
+
+转载自：https://codingdict.com/questions/130490
+
+
+
+有很多方法可以将依赖项注入到JavaFX应用程序中。例如，Gluon有一个名为[Gluon Ignite](https://gluonhq.com/labs/ignite/)的项目，该项目使JavaFX应用程序可用于各种依赖项注入框架，例如Guice，Spring和Dagger。
+
+在为依赖项注入框架选择了Spring并希望使用大量其他Spring工具（例如Spring Data存储库）之后，您可能希望考虑使用SpringBoot应用程序。
+
+您可以将JavaFX应用程序设为SpringBoot应用程序（尽管严格来说，这并不是为了获得依赖注入而必须这样做），以便在应用程序中获得大量Spring设施。如果您四处搜寻，网上会有一些教程。
+
+## Spring和JavaFX的基本示例集成
+
+这是有关将JavaFX与SpringBoot应用程序集成的教程的示例：
+
+- [让Spring成为您的JavaFX Controller Factory](http://www.greggbolinger.com/let-spring-be-your-javafx-controller-factory/)
+
+该示例的关键部分是应用程序的 init() 方法（我刚刚在此处复制并粘贴并复制以供参考）：
+
+```
+@SpringBootApplication
+public class DemoApplication extends Application {
+
+    private ConfigurableApplicationContext springContext;
+    private Parent root;
+
+    @Override
+    public void init() throws Exception {
+        springContext = SpringApplication.run(DemoApplication.class);
+        FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("/sample.fxml"));
+        fxmlLoader.setControllerFactory(springContext::getBean);
+        root = fxmlLoader.load();
+    }
+
+    @Override
+    public void start(Stage primaryStage) throws Exception {
+        primaryStage.setTitle("Hello World");
+        Scene scene = new Scene(root, 800, 600);
+        primaryStage.setScene(scene);
+        primaryStage.show();
+    }
+
+    @Override
+    public void stop() throws Exception {
+        springContext.stop();
+    }
+
+
+    public static void main(String[] args) {
+        launch(DemoApplication.class, args);
+    }
+}
+```
+
+示例应用程序正在运行SpringBoot应用程序以启动Spring系统，并在init方法中提供应用程序上下文。然后，该应用程序使用FXMLLoader
+[`setControllerFactory()`](https://openjfx.io/javadoc/13/javafx.fxml/javafx/fxml/FXMLLoader.html#setControllerFactory(javafx.util.Callback))方法允许Spring实例化FXML控制器，并在应用程序中注入对Spring Bean的引用。
+
+## 自动接线JavaFX控制器
+
+要自动连接您的JAVAFX FXML控制器，除了以下调用，还需要调用FXMLLoader：
+
+```
+fxmlLoader.setControllerFactory(springContext::getBean);
+```
+
+您还需要将类注释为Spring`@Component`，并且`@Autowired`在您希望控制器使用的任何Spring依赖项中。这样，FXMLLoader将注入基于@FXML的对UI元素的引用，还将委托给Spring上下文以注入Spring依赖项。
+
+```
+@Component
+public class DemoController {
+    @FXML
+    private Label usernameLabel;
+
+    @Autowired
+    public void mySpringService;
+
+    public void initialize() {
+        usernameLabel.setText(
+            mySpringService.getLoggedInUsername()
+        );
+    }
+}
+```
+
+注意，Spring有一个`@Controller`注释，该注释可用于注释JavaFX控制器而不是`@Component`注释，但是我建议避免`@Controller`为此目的使用，而应`@Controller`为Spring REST服务端点控制器定义注释。
+
+## Spring Boot应用程序和JavaFX应用程序之间的关注点分离
+
+您可能需要注意的一件事是，运行SpringBoot应用程序，生成该应用程序的新实例，并且您已经拥有JavaFX系统启动的JavaFX应用程序实例，因此如果使用SpringBoot应用程序，则将导致两个JavaFX应用程序实例和JavaFX应用程序基于相同的类（如上所示），这可能会造成混淆。
+
+因此，最好将Spring应用程序和JavaFX应用程序分开。这增强了应用程序的UI和服务部分之间关注点的分离，并使得测试更加容易，因为可以独立于启动和关闭JavaFX应用程序而对Spring应用程序进行单元测试。
+
+## 自动装配JavaFX应用程序类
+
+注意，使用上面的设置，它不会自动装配JavaFX应用程序类实例化实例。如果您希望这样做，可以使用下面说明的技术在JavaFX实例化的应用程序类中注入bean：
+
+- [将bean注入到Spring托管上下文之外的类中](http://codingdict.com/questions/136398)
+
+将以下代码放入应用程序的init方法中：
+
+```
+springContext
+    .getAutowireCapableBeanFactory()
+    .autowireBeanProperties(
+        this,
+        AutowireCapableBeanFactory.AUTOWIRE_BY_TYPE, 
+        true
+    );
+```
+
+该[mvvmFX框架](https://github.com/sialcasa/mvvmFX)采用了类似的方法除了以上概述，以SpringBoot使用JavaFX应用程序集成：
+
+- [用于集成SpringBoot的mvvmFX代码](https://github.com/sialcasa/mvvmFX/blob/develop/mvvmfx-spring-boot/src/main/java/de/saxsys/mvvmfx/spring/MvvmfxSpringApplication.java)。
+
+## 将命令行参数从JavaFX传递到SpringBoot
+
+要将参数从JavaFX应用程序传递到SpringBoot应用程序，请使用：
+
+```
+SpringApplication.run(
+    DemoApplication.class, 
+    getParameters().getRaw().toArray(new String[0])
+);
+```
+
+**其他事宜**
+
+如果需要甚至更多地控制SpringApplication的启动，则可以使用SpringApplicationBuilder例如：
+
+```
+ConfigurableApplicationContext startupContext =
+        new SpringApplicationBuilder(DemoApplication.class)
+                .web(WebApplicationType.NONE)
+                .run(args);
+```
+
+编写此答案仅是为了提示您如何解决此问题，而不是作为有关如何将依赖项注入与JavaFX集成的通用指南，这可能会是一个棘手的问题，因此无法全面介绍。
