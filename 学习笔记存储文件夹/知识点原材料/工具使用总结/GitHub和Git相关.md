@@ -279,3 +279,52 @@ git push origin master -u
 
 idea提交的时候，原来密码的地方填token就可以了
 
+# git删除远程仓库的某个标签或分支
+
+版权声明：本文为CSDN博主「benben_2015」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。
+
+原文链接：https://blog.csdn.net/benben_2015/article/details/102762921
+
+————————————————
+
+例如你远程仓库有标签v1.0，你现在想在本地删除它，怎么做呢？很简单，只需要下面两个命令：
+
+~~~shell
+git tag -d v1.0
+git push origin :refs/tags/v1.0
+~~~
+
+这两条命令分别的作用是：先在本地删除想删除的标签，然后再将其推送到关联的远程仓库。
+
+## Git相关原理——Refspec
+
+`Refspec`用来定义本地仓库和远程哪个仓库进行关联。`Refspec`的格式是一个可选的`+`号，接着是`<src>:<dst>`的格式。`<src>`是远程仓库的引用格式，`<dst>`是本地仓库的引用格式。
+git remote add命令会自动生成refspec，Git会拉取远程仓库上refs/heads/下面的所有引用，并将它写入到本地的refs/remotes/origin/。
+
+例如，你想查看master分支的提交记录，下面三个命令都是等价的。
+
+~~~shell
+git log origin/master
+git log remotes/origin/master
+git log refs/remotes/origin/master
+~~~
+
+Git会将前两个命令扩展成refs/remotes/origin/master，例如你想让Git每次只拉取远程的master分支，而不是远程的所有分支，你可以在定义fetch为如下的格式：
+
+~~~shell
+fetch = +refs/heads/master:refs/remotes/origin/master
+~~~
+
+再比如，拉取远程master分支到本地的mymaster分支，其命令如下：
+
+~~~shell
+git fetch origin master:refs/remotes/origin/mymaster
+~~~
+
+你可以使用refspec来删除远程的引用，通过把`<src>`部分留空的方式，表示把本地对应的远程分支变为空，即删除它。
+例如删除远程仓库的develop分支，命令可以如下：
+
+~~~shell
+git push origin :develop
+~~~
+
