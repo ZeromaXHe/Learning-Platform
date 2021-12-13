@@ -266,6 +266,144 @@ sequenceDiagram
     A--x B: 有箭头虚线，加上叉
 ```
 
+###  激活
+
+1. 角色可以选择激活或停用，可以以专用声明决定是否激活
+
+   > sequenceDiagram
+   > Alice ->> John : Hello John, how are you?
+   > activate John
+   > John -->> Alice: Great!
+   > deactivate John
+
+   ~~~mermaid
+   sequenceDiagram
+   Alice ->> John : Hello John, how are you?
+   activate John
+   John -->> Alice: Great!
+   deactivate John
+   ~~~
+
+2. 还可以在箭头上附加+/-作为快捷表示方法
+
+   > sequenceDiagram
+   > Alice ->>+ John : Hello John, how are you?
+   > John -->>- Alice: Great!
+
+   ~~~mermaid
+   sequenceDiagram
+   Alice ->>+ John : Hello John, how are you?
+   John -->>- Alice: Great!
+   ~~~
+
+3. 同一个角色可以多次激活
+
+   > sequenceDiagram
+   > Alice ->>+ John: Hello John, how are you?
+   > Alice ->>+ John: John, can you hear me?
+   > John -->>- Alice: Hi Alice, I can hear you!
+   > John -->>- Alice: I feel great!
+
+   ~~~mermaid
+   sequenceDiagram
+   Alice ->>+ John: Hello John, how are you?
+   Alice ->>+ John: John, can you hear me?
+   John -->>- Alice: Hi Alice, I can hear you!
+   John -->>- Alice: I feel great!
+   ~~~
+
+### 注释
+
+1. 序列图可以添加注释，格式为：`N(n)ote [right of | left of | over][Actor]`
+
+   > sequenceDiagram
+   > participant John
+   > Note right of John: Text in note
+
+   ~~~mermaid
+   sequenceDiagram
+   participant John
+   Note right of John: Text in note
+   ~~~
+
+2. 也可以创建跨越两个角色的笔记
+
+   > sequenceDiagram
+   > Alice -> John: Hello John, how are you?
+   > Note over Alice, John: A typical interaction
+
+   ~~~mermaid
+   sequenceDiagram
+   Alice -> John: Hello John, how are you?
+   Note over Alice, John: A typical interaction
+   ~~~
+
+### 循环
+
+1. 可以在序列图中实现用符号表示的循环
+
+   > loop Loop-text
+
+   示例：
+
+   > sequenceDiagram
+   > Alice->John: Hello John, how are you?
+   > loop Every minute
+   > John-->Alice: Great!
+   > end
+
+   ~~~mermaid
+   sequenceDiagram
+   Alice->John: Hello John, how are you?
+   loop Every minute
+   John-->Alice: Great!
+   end
+   ~~~
+
+   
+
+### 备选路径
+
+1. 可以在序列图中实现用符号表示的备选路径
+
+   > alt Describing text
+   > … statements …
+   > else
+   > … statements …
+   > end
+
+   或者如果还有序列是可选的
+
+   > opt Describing-text
+   > … statements …
+   > end
+
+   示例：
+
+   > sequenceDiagram
+   > Alice->>Bob:Hello Bob, how are you?
+   > alt is sick
+   > Bob->>Alice:Not so good:(
+   > else is well
+   > Bob->>Alice:Feeling fresh like a daisy
+   > end
+   > opt Extra response
+   > Bob->>Alice:Thanks for asking
+   > end
+
+   ~~~mermaid
+   sequenceDiagram
+   Alice->>Bob:Hello Bob, how are you?
+   alt is sick
+   Bob->>Alice:Not so good:(
+   else is well
+   Bob->>Alice:Feeling fresh like a daisy
+   end
+   opt Extra response
+   Bob->>Alice:Thanks for asking
+   end
+   ~~~
+
 ## 类图
 
 ### 泛化（Generalization）
