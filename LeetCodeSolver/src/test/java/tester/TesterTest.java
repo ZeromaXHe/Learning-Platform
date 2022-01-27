@@ -1,7 +1,6 @@
 package tester;
 
 import com.zerox.entity.Tester;
-import leetcode.first100.Solution5;
 
 /**
  * @Author: zhuxi
