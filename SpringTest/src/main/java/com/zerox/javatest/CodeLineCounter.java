@@ -5,6 +5,12 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 
 /**
  * @Author: zhuxi
@@ -14,6 +20,7 @@ import java.io.InputStreamReader;
  */
 public class CodeLineCounter {
     static int count = 0;
+    static int nioCount = 0;
 
     public static void main(String[] args) throws IOException {
         //获取所要查询文件夹路径
@@ -26,10 +33,31 @@ public class CodeLineCounter {
         myCodeCount(file1);
 //        myCodeCount(file2);
 //        myCodeCount(file3);
+        myCodeCountNio(".");
+
         System.out.println("总代码行数为" + count);
         System.out.println(file1.getAbsolutePath());
 //        System.out.println(file2.getAbsolutePath());
 //        System.out.println(file3.getAbsolutePath());
+
+        System.out.println("NIO 检测总代码行数为： " + nioCount);
+    }
+
+    public static void myCodeCountNio(String first, String... more) throws IOException {
+        // 遍历 g:\public\codes\15 目录下的所有文件和子目录
+        Path path = Paths.get(first, more);
+        System.out.println(path.toAbsolutePath());
+        Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
+            // 访问文件时触发该方法
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                if (file.toString().endsWith(".java")) {
+                    int i = readData(file.toFile());
+                    nioCount += i;
+                }
+                return FileVisitResult.CONTINUE;
+            }
+        });
     }
 
     /**
