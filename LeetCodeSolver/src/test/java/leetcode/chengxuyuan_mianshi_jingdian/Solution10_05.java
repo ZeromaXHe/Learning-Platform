@@ -1,55 +1,65 @@
 package leetcode.chengxuyuan_mianshi_jingdian;
 
+import java.util.Objects;
+
 /**
  * @Author: zhuxi
- * @Time: 2022/5/13 20:28
- * @Description: 面试题 10.09. 排序矩阵查找 | 难度：中等 | 标签：数组、二分查找、分治、矩阵
- * 给定M×N矩阵，每一行、每一列都按升序排列，请编写代码找出某元素。
+ * @Time: 2022/5/13 20:15
+ * @Description: 面试题 10.05. 稀疏数组搜索 | 难度：简单 | 标签：数组、字符串、二分查找
+ * 稀疏数组搜索。有个排好序的字符串数组，其中散布着一些空字符串，编写一种方法，找出给定字符串的位置。
  * <p>
- * 示例:
- * 现有矩阵 matrix 如下：
- * [
- * [1,   4,  7, 11, 15],
- * [2,   5,  8, 12, 19],
- * [3,   6,  9, 16, 22],
- * [10, 13, 14, 17, 24],
- * [18, 21, 23, 26, 30]
- * ]
- * 给定 target = 5，返回 true。
- * 给定 target = 20，返回 false。
+ * 示例1:
+ * 输入: words = ["at", "", "", "", "ball", "", "", "car", "", "","dad", "", ""], s = "ta"
+ * 输出：-1
+ * 说明: 不存在返回-1。
+ * <p>
+ * 示例2:
+ * 输入：words = ["at", "", "", "", "ball", "", "", "car", "", "","dad", "", ""], s = "ball"
+ * 输出：4
+ * <p>
+ * 提示:
+ * words的长度在[1, 1000000]之间
  * <p>
  * 来源：力扣（LeetCode）
- * 链接：https://leetcode.cn/problems/sorted-matrix-search-lcci
+ * 链接：https://leetcode.cn/problems/sparse-array-search-lcci
  * 著作权归领扣网络所有。商业转载请联系官方授权，非商业转载请注明出处。
  * @ModifiedBy: zhuxi
  */
 public class Solution10_05 {
     /**
-     * 执行用时： 5 ms , 在所有 Java 提交中击败了 94.22% 的用户
-     * 内存消耗： 46.9 MB , 在所有 Java 提交中击败了 81.97% 的用户
-     * 通过测试用例： 129 / 129
-     * <p>
-     * 天天搞 [] 这种测试用例，想骂人……
+     * 执行用时： 0 ms , 在所有 Java 提交中击败了 100.00% 的用户
+     * 内存消耗： 41 MB , 在所有 Java 提交中击败了 90.25% 的用户
+     * 通过测试用例： 28 / 28
      *
-     * @param matrix
-     * @param target
+     * @param words
+     * @param s
      * @return
      */
-    public boolean searchMatrix(int[][] matrix, int target) {
-        if (matrix.length == 0) {
-            return false;
+    public int findString(String[] words, String s) {
+        return binaryFindString(words, 0, words.length, s);
+    }
+
+    private int binaryFindString(String[] words, int from, int to, String s) {
+        if (to <= from) {
+            return -1;
         }
-        int x = 0;
-        int y = matrix[0].length - 1;
-        while (x < matrix.length && y >= 0) {
-            if (matrix[x][y] == target) {
-                return true;
-            } else if (matrix[x][y] > target) {
-                y--;
-            } else {
-                x++;
-            }
+        if (to - from == 1) {
+            return s.equals(words[from]) ? from : -1;
         }
-        return false;
+        int index = (from + to) / 2;
+        while (index < words.length && "".equals(words[index])) {
+            index++;
+        }
+        if (index == words.length) {
+            return binaryFindString(words, from, (from + to) / 2, s);
+        }
+        if (s.equals(words[index])) {
+            return index;
+        }
+        if (words[index].compareTo(s) > 0) {
+            return binaryFindString(words, from, (from + to) / 2, s);
+        } else {
+            return binaryFindString(words, index, to, s);
+        }
     }
 }
