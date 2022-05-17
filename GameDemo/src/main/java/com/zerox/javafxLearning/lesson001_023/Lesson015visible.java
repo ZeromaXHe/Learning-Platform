@@ -89,10 +89,10 @@ public class Lesson015visible extends Application {
             b7.setText("b3.setOpacity(" + opacityValue + ")");
         });
     }
-}
 
-class Print {
-    Print(HBox hBox) {
-        System.out.println("当前HBox里子组件数量=" + hBox.getChildren().size());
+    class Print {
+        Print(HBox hBox) {
+            System.out.println("当前HBox里子组件数量=" + hBox.getChildren().size());
+        }
     }
 }

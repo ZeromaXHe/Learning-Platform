@@ -161,106 +161,105 @@ public class Lesson051_053Binding extends Application {
 
         bu2.setOnAction(event -> data.setName("B"));
     }
-}
 
-class Student {
-    private String name;
-    private int age;
+    class Student {
+        private String name;
+        private int age;
 
-    public PropertyChangeSupport psc = new PropertyChangeSupport(this);
+        public PropertyChangeSupport psc = new PropertyChangeSupport(this);
 
-    public Student(String name, int age) {
-        this.name = name;
-        this.age = age;
-    }
-
-    public Student() {
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        String oldValue = this.name;
-        this.name = name;
-        psc.firePropertyChange("setName_pro", oldValue, this.name);
-    }
-
-    public int getAge() {
-        return age;
-    }
-
-    public void setAge(int age) {
-        int oldValue = this.age;
-        this.age = age;
-        psc.firePropertyChange("setAge_pro", oldValue, this.age);
-    }
-}
-
-class Data {
-    private SimpleIntegerProperty age = new SimpleIntegerProperty(this, "age");
-    private SimpleStringProperty name = new SimpleStringProperty(this, "name");
-
-    public Data(String name, int age) {
-        this.age.set(age);
-        this.name.set(name);
-    }
-
-    public int getAge() {
-        return age.get();
-    }
-
-    public SimpleIntegerProperty ageProperty() {
-        return age;
-    }
-
-    public void setAge(int age) {
-        this.age.set(age);
-    }
-
-    public String getName() {
-        return name.get();
-    }
-
-    public SimpleStringProperty nameProperty() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name.set(name);
-    }
-}
-
-
-class Data2 {
-    private String name;
-    private SimpleStringProperty nameProp = null;
-
-    public Data2(String name) {
-        this.name = name;
-    }
-
-    public StringProperty nameProperty() {
-        if (nameProp == null) {
-            nameProp = new SimpleStringProperty(this, "name", name);
-        }
-        return nameProp;
-    }
-
-    public String getName() {
-        if (nameProp == null) {
-            return this.name;
-        } else {
-            return this.nameProp.get();
-        }
-    }
-
-    public void setName(String name) {
-        if (nameProp == null) {
+        public Student(String name, int age) {
             this.name = name;
-        } else {
-            this.nameProp.set(name);
+            this.age = age;
+        }
+
+        public Student() {
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            String oldValue = this.name;
+            this.name = name;
+            psc.firePropertyChange("setName_pro", oldValue, this.name);
+        }
+
+        public int getAge() {
+            return age;
+        }
+
+        public void setAge(int age) {
+            int oldValue = this.age;
+            this.age = age;
+            psc.firePropertyChange("setAge_pro", oldValue, this.age);
+        }
+    }
+
+    class Data {
+        private SimpleIntegerProperty age = new SimpleIntegerProperty(this, "age");
+        private SimpleStringProperty name = new SimpleStringProperty(this, "name");
+
+        public Data(String name, int age) {
+            this.age.set(age);
+            this.name.set(name);
+        }
+
+        public int getAge() {
+            return age.get();
+        }
+
+        public SimpleIntegerProperty ageProperty() {
+            return age;
+        }
+
+        public void setAge(int age) {
+            this.age.set(age);
+        }
+
+        public String getName() {
+            return name.get();
+        }
+
+        public SimpleStringProperty nameProperty() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name.set(name);
+        }
+    }
+
+    class Data2 {
+        private String name;
+        private SimpleStringProperty nameProp = null;
+
+        public Data2(String name) {
+            this.name = name;
+        }
+
+        public StringProperty nameProperty() {
+            if (nameProp == null) {
+                nameProp = new SimpleStringProperty(this, "name", name);
+            }
+            return nameProp;
+        }
+
+        public String getName() {
+            if (nameProp == null) {
+                return this.name;
+            } else {
+                return this.nameProp.get();
+            }
+        }
+
+        public void setName(String name) {
+            if (nameProp == null) {
+                this.name = name;
+            } else {
+                this.nameProp.set(name);
+            }
         }
     }
 }

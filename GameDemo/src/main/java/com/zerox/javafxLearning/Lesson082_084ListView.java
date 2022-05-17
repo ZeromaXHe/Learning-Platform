@@ -123,27 +123,28 @@ public class Lesson082_084ListView extends Application {
             obsList.set(event.getIndex(), event.getNewValue());
         });
     }
-}
 
-class Data {
-    private String name;
+    class Data {
+        private String name;
 
-    Data(String name) {
-        this.name = name;
+        Data(String name) {
+            this.name = name;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public String toString() {
+            return "Data{" +
+                    "name='" + name + '\'' +
+                    '}';
+        }
     }
 
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    @Override
-    public String toString() {
-        return "Data{" +
-                "name='" + name + '\'' +
-                '}';
-    }
 }

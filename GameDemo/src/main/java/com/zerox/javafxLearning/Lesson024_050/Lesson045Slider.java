@@ -83,34 +83,34 @@ public class Lesson045Slider extends Application {
         primaryStage.setHeight(800);
         primaryStage.show();
     }
-}
 
-/**
- * 多线程递增进度条
- */
-class MyScheduledService extends ScheduledService<Integer> {
-    int i = 0;
-    Slider s;
+    /**
+     * 多线程递增进度条
+     */
+    class MyScheduledService extends ScheduledService<Integer> {
+        int i = 0;
+        Slider s;
 
-    public MyScheduledService(Slider s) {
-        this.s = s;
-    }
+        public MyScheduledService(Slider s) {
+            this.s = s;
+        }
 
-    @Override
-    protected Task<Integer> createTask() {
-        Task task = new Task<Integer>() {
-            @Override
-            protected Integer call() throws Exception {
-                return i += 1;
-            }
+        @Override
+        protected Task<Integer> createTask() {
+            Task task = new Task<Integer>() {
+                @Override
+                protected Integer call() throws Exception {
+                    return i += 1;
+                }
 
-            /// 注释后会调用父类方法修改MyScheduledService实例的value
+                /// 注释后会调用父类方法修改MyScheduledService实例的value
 //            @Override
 //            protected void updateValue(Integer value) {
 ////                super.updateValue(value);
 //                s.setValue(value);
 //            }
-        };
-        return task;
+            };
+            return task;
+        }
     }
 }

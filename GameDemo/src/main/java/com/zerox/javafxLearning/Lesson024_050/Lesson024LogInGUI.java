@@ -98,23 +98,24 @@ public class Lesson024LogInGUI extends Application {
             }
         });
     }
-}
 
-class MyWindow {
-    private final Stage stage = new Stage();
+    class MyWindow {
+        private final Stage stage = new Stage();
 
-    public MyWindow(String name, String pwd) {
-        Text text = new Text("用户名：" + name + " 密码：" + pwd);
+        public MyWindow(String name, String pwd) {
+            Text text = new Text("用户名：" + name + " 密码：" + pwd);
 
-        BorderPane bor = new BorderPane();
-        bor.setStyle("-fx-background-color: #FFC0CB");
-        bor.setCenter(text);
+            BorderPane bor = new BorderPane();
+            bor.setStyle("-fx-background-color: #FFC0CB");
+            bor.setCenter(text);
 
-        Scene scene = new Scene(bor);
-        stage.setTitle("登陆成功");
-        stage.setScene(scene);
-        stage.setWidth(500);
-        stage.setHeight(500);
-        stage.show();
+            Scene scene = new Scene(bor);
+            stage.setTitle("登陆成功");
+            stage.setScene(scene);
+            stage.setWidth(500);
+            stage.setHeight(500);
+            stage.show();
+        }
     }
+
 }

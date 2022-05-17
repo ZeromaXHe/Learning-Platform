@@ -83,53 +83,53 @@ public class Lesson022DialogPane extends Application {
         primaryStage.setHeight(800);
         primaryStage.show();
     }
-}
 
-class MyScheduledService extends ScheduledService {
-    private int i = 0;
+    class MyScheduledService extends ScheduledService {
+        private int i = 0;
 
-    private DialogPane dialogPane;
-    private Stage stage;
+        private DialogPane dialogPane;
+        private Stage stage;
 
-    public MyScheduledService(DialogPane dialogPane, Stage stage) {
-        this.dialogPane = dialogPane;
-        this.stage = stage;
-    }
+        public MyScheduledService(DialogPane dialogPane, Stage stage) {
+            this.dialogPane = dialogPane;
+            this.stage = stage;
+        }
 
-    @Override
-    protected Task createTask() {
-        return new Task<Integer>() {
-            /**
-             * 必须实现的
-             * @return
-             * @throws Exception
-             */
-            @Override
-            protected Integer call() throws Exception {
-                // call Thread-5 (数字递增)
-                System.out.println("call " + Thread.currentThread().getName());
-                return i++;
-            }
-
-
-            /**
-             * 用来修改UI线程上的值
-             * @param value
-             */
-            @Override
-            protected void updateValue(Integer value) {
-                // updateValue JavaFX Application Thread
-                System.out.println("updateValue " + Thread.currentThread().getName());
-                System.out.println("updateValue的值：" + value);
-
-                if (value <= 10) {
-                    dialogPane.setContentText(String.valueOf(value));
-                } else {
-                    stage.close();
-                    // 必须使用类名加this来取消外部类的任务，直接使用this的话是Task的
-                    MyScheduledService.this.cancel();
+        @Override
+        protected Task createTask() {
+            return new Task<Integer>() {
+                /**
+                 * 必须实现的
+                 * @return
+                 * @throws Exception
+                 */
+                @Override
+                protected Integer call() throws Exception {
+                    // call Thread-5 (数字递增)
+                    System.out.println("call " + Thread.currentThread().getName());
+                    return i++;
                 }
-            }
-        };
+
+
+                /**
+                 * 用来修改UI线程上的值
+                 * @param value
+                 */
+                @Override
+                protected void updateValue(Integer value) {
+                    // updateValue JavaFX Application Thread
+                    System.out.println("updateValue " + Thread.currentThread().getName());
+                    System.out.println("updateValue的值：" + value);
+
+                    if (value <= 10) {
+                        dialogPane.setContentText(String.valueOf(value));
+                    } else {
+                        stage.close();
+                        // 必须使用类名加this来取消外部类的任务，直接使用this的话是Task的
+                        MyScheduledService.this.cancel();
+                    }
+                }
+            };
+        }
     }
 }

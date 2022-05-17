@@ -23,22 +23,23 @@ public class Lesson063BindingCustomization {
         System.out.println("myib = " + myib.get());
         System.out.println("sip = " + sip.get());
     }
-}
 
-class MyIntegerBinding extends IntegerBinding {
-    private SimpleIntegerProperty x = new SimpleIntegerProperty(10);
+    static class MyIntegerBinding extends IntegerBinding {
+        private SimpleIntegerProperty x = new SimpleIntegerProperty(10);
 
-    public MyIntegerBinding(int value) {
-        this.bind(x);
-        x.set(value);
+        public MyIntegerBinding(int value) {
+            this.bind(x);
+            x.set(value);
+        }
+
+        @Override
+        protected int computeValue() {
+            return x.get() * 2;
+        }
+
+        public void setX(int x) {
+            this.x.set(x);
+        }
     }
 
-    @Override
-    protected int computeValue() {
-        return x.get() * 2;
-    }
-
-    public void setX(int x) {
-        this.x.set(x);
-    }
 }

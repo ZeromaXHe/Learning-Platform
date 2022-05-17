@@ -120,41 +120,42 @@ public class Lesson081Dragboard extends Application {
         dataPane.getChildren().addAll(bu, t1, t2, iv);
         return dataPane;
     }
-}
 
-class Person implements Serializable {
-    private static final long serialVersionUID = 5235074556290483455L;
-    private String name;
-    private String age;
-    private String photo;
+    class Person implements Serializable {
+        private static final long serialVersionUID = 5235074556290483455L;
+        private String name;
+        private String age;
+        private String photo;
 
-    public Person(String name, String age, String photo) {
-        this.name = name;
-        this.age = age;
-        this.photo = photo;
+        public Person(String name, String age, String photo) {
+            this.name = name;
+            this.age = age;
+            this.photo = photo;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public String getAge() {
+            return age;
+        }
+
+        public void setAge(String age) {
+            this.age = age;
+        }
+
+        public String getPhoto() {
+            return photo;
+        }
+
+        public void setPhoto(String photo) {
+            this.photo = photo;
+        }
     }
 
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getAge() {
-        return age;
-    }
-
-    public void setAge(String age) {
-        this.age = age;
-    }
-
-    public String getPhoto() {
-        return photo;
-    }
-
-    public void setPhoto(String photo) {
-        this.photo = photo;
-    }
 }

@@ -1,6 +1,9 @@
 package com.zerox.javafxLearning.Lesson024_050;
 
 import javafx.application.Application;
+import javafx.beans.property.SimpleDoubleProperty;
+import javafx.beans.property.SimpleIntegerProperty;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.Scene;
@@ -92,29 +95,69 @@ public class Lesson048Spinner extends Application {
         primaryStage.setHeight(800);
         primaryStage.show();
     }
-}
 
-class SVF extends SpinnerValueFactory<Student> {
-    private ObservableList<Student> list;
-    private int index = 0;
+    class SVF extends SpinnerValueFactory<Student> {
+        private ObservableList<Student> list;
+        private int index = 0;
 
-    public SVF(ObservableList<Student> list) {
-        this.list = list;
+        public SVF(ObservableList<Student> list) {
+            this.list = list;
+        }
+
+        @Override
+        public void decrement(int steps) {
+            System.out.println("decrement = " + steps);
+            index = (list.size() + index - steps) % list.size();
+            System.out.println("index = " + index);
+            this.setValue(list.get(index));
+        }
+
+        @Override
+        public void increment(int steps) {
+            System.out.println("increment = " + steps);
+            index = (index + steps) % list.size();
+            System.out.println("index = " + index);
+            this.setValue(list.get(index));
+        }
     }
 
-    @Override
-    public void decrement(int steps) {
-        System.out.println("decrement = " + steps);
-        index = (list.size() + index - steps) % list.size();
-        System.out.println("index = " + index);
-        this.setValue(list.get(index));
-    }
+    class Student {
+        private SimpleStringProperty name = new SimpleStringProperty();
+        private SimpleIntegerProperty age = new SimpleIntegerProperty();
+        private SimpleDoubleProperty score = new SimpleDoubleProperty();
 
-    @Override
-    public void increment(int steps) {
-        System.out.println("increment = " + steps);
-        index = (index + steps) % list.size();
-        System.out.println("index = " + index);
-        this.setValue(list.get(index));
+        public Student(String name, int age, double score) {
+            this.name.setValue(name);
+            this.age.setValue(age);
+            this.score.setValue(score);
+        }
+
+        public String getName() {
+            return name.getValue();
+        }
+
+        public void setName(String name) {
+            this.name.setValue(name);
+        }
+
+        public int getAge() {
+            return age.getValue();
+        }
+
+        public void setAge(int age) {
+            this.age.setValue(age);
+        }
+
+        public double getScore() {
+            return score.getValue();
+        }
+
+        public void setScore(double score) {
+            this.score.setValue(score);
+        }
+
+        public SimpleStringProperty getNameProperty() {
+            return name;
+        }
     }
 }

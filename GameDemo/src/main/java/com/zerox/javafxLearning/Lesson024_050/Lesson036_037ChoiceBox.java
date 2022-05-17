@@ -149,44 +149,45 @@ public class Lesson036_037ChoiceBox extends Application {
 
 
     }
-}
 
-class Student {
-    private SimpleStringProperty name = new SimpleStringProperty();
-    private SimpleIntegerProperty age = new SimpleIntegerProperty();
-    private SimpleDoubleProperty score = new SimpleDoubleProperty();
+    class Student {
+        private SimpleStringProperty name = new SimpleStringProperty();
+        private SimpleIntegerProperty age = new SimpleIntegerProperty();
+        private SimpleDoubleProperty score = new SimpleDoubleProperty();
 
-    public Student(String name, int age, double score) {
-        this.name.setValue(name);
-        this.age.setValue(age);
-        this.score.setValue(score);
+        public Student(String name, int age, double score) {
+            this.name.setValue(name);
+            this.age.setValue(age);
+            this.score.setValue(score);
+        }
+
+        public String getName() {
+            return name.getValue();
+        }
+
+        public void setName(String name) {
+            this.name.setValue(name);
+        }
+
+        public int getAge() {
+            return age.getValue();
+        }
+
+        public void setAge(int age) {
+            this.age.setValue(age);
+        }
+
+        public double getScore() {
+            return score.getValue();
+        }
+
+        public void setScore(double score) {
+            this.score.setValue(score);
+        }
+
+        public SimpleStringProperty getNameProperty() {
+            return name;
+        }
     }
 
-    public String getName() {
-        return name.getValue();
-    }
-
-    public void setName(String name) {
-        this.name.setValue(name);
-    }
-
-    public int getAge() {
-        return age.getValue();
-    }
-
-    public void setAge(int age) {
-        this.age.setValue(age);
-    }
-
-    public double getScore() {
-        return score.getValue();
-    }
-
-    public void setScore(double score) {
-        this.score.setValue(score);
-    }
-
-    public SimpleStringProperty getNameProperty() {
-        return name;
-    }
 }

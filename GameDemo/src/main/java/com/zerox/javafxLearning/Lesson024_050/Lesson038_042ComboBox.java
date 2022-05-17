@@ -1,6 +1,9 @@
 package com.zerox.javafxLearning.Lesson024_050;
 
 import javafx.application.Application;
+import javafx.beans.property.SimpleDoubleProperty;
+import javafx.beans.property.SimpleIntegerProperty;
+import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.geometry.Pos;
@@ -160,45 +163,85 @@ public class Lesson038_042ComboBox extends Application {
             }
         });
     }
-}
 
-class MyListCell<T> extends ListCell<T> {
-    @Override
-    protected void updateItem(T item, boolean empty) {
-        super.updateItem(item, empty);
-
-        HBox box = new HBox(10);
-        box.setAlignment(Pos.CENTER);
-        box.setMaxWidth(150);
-        box.setMaxHeight(150);
-        box.setStyle("-fx-background-color: #FF82AB");
-        box.getChildren().addAll(new Button("button1"), new Button("button2"));
-
-        this.setStyle("-fx-background-color: #ffff55");
-        this.setPrefWidth(200);
-        this.setPrefHeight(200);
-        this.setAlignment(Pos.CENTER);
-        this.setContentDisplay(ContentDisplay.CENTER);
-        this.setGraphic(box);
-    }
-}
-
-class My_ListCell<T> extends ListCell<String> {
-    @Override
-    protected void updateItem(String item, boolean empty) {
-        super.updateItem(item, empty);
-        if (!empty) {
-            System.out.println("empty = " + empty + " item = " + item);
+    class MyListCell<T> extends ListCell<T> {
+        @Override
+        protected void updateItem(T item, boolean empty) {
+            super.updateItem(item, empty);
 
             HBox box = new HBox(10);
             box.setAlignment(Pos.CENTER);
+            box.setMaxWidth(150);
+            box.setMaxHeight(150);
             box.setStyle("-fx-background-color: #FF82AB");
-            box.getChildren().addAll(new Button(item), new Button(item));
+            box.getChildren().addAll(new Button("button1"), new Button("button2"));
 
             this.setStyle("-fx-background-color: #ffff55");
+            this.setPrefWidth(200);
+            this.setPrefHeight(200);
             this.setAlignment(Pos.CENTER);
             this.setContentDisplay(ContentDisplay.CENTER);
             this.setGraphic(box);
+        }
+    }
+
+    class My_ListCell<T> extends ListCell<String> {
+        @Override
+        protected void updateItem(String item, boolean empty) {
+            super.updateItem(item, empty);
+            if (!empty) {
+                System.out.println("empty = " + empty + " item = " + item);
+
+                HBox box = new HBox(10);
+                box.setAlignment(Pos.CENTER);
+                box.setStyle("-fx-background-color: #FF82AB");
+                box.getChildren().addAll(new Button(item), new Button(item));
+
+                this.setStyle("-fx-background-color: #ffff55");
+                this.setAlignment(Pos.CENTER);
+                this.setContentDisplay(ContentDisplay.CENTER);
+                this.setGraphic(box);
+            }
+        }
+    }
+
+    class Student {
+        private SimpleStringProperty name = new SimpleStringProperty();
+        private SimpleIntegerProperty age = new SimpleIntegerProperty();
+        private SimpleDoubleProperty score = new SimpleDoubleProperty();
+
+        public Student(String name, int age, double score) {
+            this.name.setValue(name);
+            this.age.setValue(age);
+            this.score.setValue(score);
+        }
+
+        public String getName() {
+            return name.getValue();
+        }
+
+        public void setName(String name) {
+            this.name.setValue(name);
+        }
+
+        public int getAge() {
+            return age.getValue();
+        }
+
+        public void setAge(int age) {
+            this.age.setValue(age);
+        }
+
+        public double getScore() {
+            return score.getValue();
+        }
+
+        public void setScore(double score) {
+            this.score.setValue(score);
+        }
+
+        public SimpleStringProperty getNameProperty() {
+            return name;
         }
     }
 }

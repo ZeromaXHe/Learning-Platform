@@ -32,18 +32,19 @@ public class Lesson054ChangeListener_InvalidationListener {
         sip.removeListener(inva);
         sip.set(4);
     }
-}
 
-class Inva implements InvalidationListener {
-    @Override
-    public void invalidated(Observable observable) {
-        System.out.println("失效监听");
+    static class Inva implements InvalidationListener {
+        @Override
+        public void invalidated(Observable observable) {
+            System.out.println("失效监听");
+        }
     }
-}
 
-class Change implements ChangeListener<Number> {
-    @Override
-    public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
-        System.out.println("更改监听");
+    static class Change implements ChangeListener<Number> {
+        @Override
+        public void changed(ObservableValue<? extends Number> observable, Number oldValue, Number newValue) {
+            System.out.println("更改监听");
+        }
     }
+
 }
