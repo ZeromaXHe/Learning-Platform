@@ -42,7 +42,7 @@ public class Lesson046ProgressBar extends Application {
         pb.progressProperty().addListener((o, ov, nv) -> System.out.println(nv));
 
         AnchorPane.setTopAnchor(pb, 100.0);
-        an.getChildren().addAll(pb);
+        an.getChildren().addAll(pb, pi);
 
         Scene scene = new Scene(an);
         primaryStage.setScene(scene);
