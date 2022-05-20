@@ -1,0 +1,10 @@
+.stacked-bar-chart {
+    -fx-category-gap: 10px;
+}
+
+.chart-bar.default-color0 {
+    -fx-bar-fill: blue;
+}
+.chart-bar.default-color1 {
+    -fx-bar-fill: #90EE90;
+}

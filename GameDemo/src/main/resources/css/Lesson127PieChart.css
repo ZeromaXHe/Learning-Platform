@@ -1,0 +1,16 @@
+.chart-pie.data0 {
+    -fx-pie-color: #ff0000;
+    -fx-background-image: url(../icon/icon.jpeg);
+}
+
+.chart {
+    -fx-clockwise: false;
+    -fx-pie-label-visible: true;
+    -fx-label-line-length: 10;
+    -fx-start-angle: 90;
+}
+
+.chart-legend-item-symbol {
+    -fx-pref-width: 100;
+    -fx-pref-height: 30;
+}

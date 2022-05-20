@@ -1,0 +1,5 @@
+.chart-symbol.default-color0 {
+    -fx-background-color: red;
+    /* 以下 SVG 原理，可以参考： https://www.w3.org/TR/SVG/paths.html */
+    -fx-shape: "M0, 50 Q50, 0, 100, 50 T200, 50";
+}
