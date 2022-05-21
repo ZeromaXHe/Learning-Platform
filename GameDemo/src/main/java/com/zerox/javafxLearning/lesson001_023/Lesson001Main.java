@@ -88,10 +88,10 @@ public class Lesson001Main extends Application {
         // 初始坐标
         primaryStage.setX(100);
         primaryStage.setY(100);
-        primaryStage.xProperty().addListener((o, nv, ov) -> {
+        primaryStage.xProperty().addListener((o, ov, nv) -> {
             System.out.println("x coordinate: " + nv);
         });
-        primaryStage.yProperty().addListener((o, nv, ov) -> {
+        primaryStage.yProperty().addListener((o, ov, nv) -> {
             System.out.println("y coordinate: " + nv);
         });
 
