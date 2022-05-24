@@ -3,27 +3,44 @@ package com.zerox.javafxLearning;
 import javafx.application.Application;
 import javafx.beans.InvalidationListener;
 import javafx.beans.Observable;
+import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.ObservableList;
+import javafx.event.EventHandler;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.control.SelectionMode;
+import javafx.scene.control.TextField;
 import javafx.scene.control.TreeItem;
+import javafx.scene.control.TreeTableCell;
 import javafx.scene.control.TreeTableColumn;
 import javafx.scene.control.TreeTablePosition;
 import javafx.scene.control.TreeTableView;
+import javafx.scene.control.cell.CheckBoxTreeTableCell;
+import javafx.scene.control.cell.ChoiceBoxTreeTableCell;
+import javafx.scene.control.cell.ComboBoxTreeTableCell;
+import javafx.scene.control.cell.ProgressBarTreeTableCell;
+import javafx.scene.control.cell.TextFieldTreeTableCell;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 
 /**
  * @Author: zhuxi
  * @Time: 2022/5/24 14:51
- * @Description:
+ * @Description: 106 ~ 108 课
+ * 106 课：TreeTableView 基本使用
+ * 107 课：五种内置 TreeTableCell
+ * 108 课：自定义 TreeTableCell
  * @ModifiedBy: zhuxi
  */
-public class Lesson106TreeTableView extends Application {
+public class Lesson106_108TreeTableView extends Application {
     public static void main(String[] args) {
         launch(args);
     }
@@ -53,7 +70,7 @@ public class Lesson106TreeTableView extends Application {
         ti2.setExpanded(true);
 
         TreeTableColumn<Data, String> name = new TreeTableColumn<>("姓名");
-        TreeTableColumn<Data, Number> age = new TreeTableColumn<>("年龄");
+        TreeTableColumn<Data, Double> age = new TreeTableColumn<>("年龄");
         TreeTableColumn<Data, Boolean> bool = new TreeTableColumn<>("布尔");
 
         ttv.getColumns().addAll(name, age, bool);
@@ -61,9 +78,62 @@ public class Lesson106TreeTableView extends Application {
         // 还是内部类就会报错
 //        name.setCellValueFactory(new TreeItemPropertyValueFactory<>("name"));
         name.setCellValueFactory(param -> param.getValue().getValue().nameProperty());
-        // 想用 TreeTableColumn<Data, Integer> age 的话，这里使用 param.getValue().getValue().ageProperty()
-        age.setCellValueFactory(param -> param.getValue().getValue().ageProperty());
+        // 想用 TreeTableColumn<Data, Integer> age 的话，这里使用 param.getValue().getValue().ageProperty().asObject()
+        age.setCellValueFactory(param -> param.getValue().getValue().ageProperty().divide(25.0).asObject());
         bool.setCellValueFactory(param -> param.getValue().getValue().boolProperty());
+
+        ttv.setEditable(true);
+        name.setCellFactory(TextFieldTreeTableCell.forTreeTableColumn());
+        name.setCellFactory(ChoiceBoxTreeTableCell.forTreeTableColumn("A", "B"));
+        name.setCellFactory(ComboBoxTreeTableCell.forTreeTableColumn("A", "B"));
+        bool.setCellFactory(CheckBoxTreeTableCell.forTreeTableColumn(new TreeTableColumn<>()));
+        age.setCellFactory(ProgressBarTreeTableCell.forTreeTableColumn());
+
+        name.setCellFactory(param -> {
+            TreeTableCell<Data, String> tt_cell = new TreeTableCell<Data, String>() {
+                @Override
+                protected void updateItem(String item, boolean empty) {
+                    super.updateItem(item, empty);
+
+                    if (!empty) {
+                        HBox hBox = new HBox();
+                        Label label = new Label(item);
+                        hBox.getChildren().add(label);
+                        this.setGraphic(hBox);
+                    } else {
+                        this.setGraphic(null);
+                    }
+                }
+
+                @Override
+                public void startEdit() {
+                    super.startEdit();
+
+                    HBox hBox = new HBox();
+                    TextField tf = new TextField(this.getTreeTableRow().getItem().getName());
+                    hBox.getChildren().add(tf);
+                    this.setGraphic(hBox);
+
+                    tf.requestFocus();
+                    tf.setOnKeyPressed(event -> {
+                        if (KeyCode.ENTER == event.getCode()) {
+                            commitEdit(tf.getText());
+                        }
+                    });
+                }
+
+                @Override
+                public void cancelEdit() {
+                    super.cancelEdit();
+
+                    HBox hBox = new HBox();
+                    Label label = new Label(this.getTreeTableRow().getItem().getName());
+                    hBox.getChildren().add(label);
+                    this.setGraphic(hBox);
+                }
+            };
+            return tt_cell;
+        });
 
         Button bu = new Button("button");
         AnchorPane an = new AnchorPane();
@@ -98,11 +168,12 @@ public class Lesson106TreeTableView extends Application {
     }
 
     class Data {
+        // 只读数据可以使用 ReadOnlyStringWrapper
         private SimpleStringProperty name = new SimpleStringProperty();
-        private SimpleIntegerProperty age = new SimpleIntegerProperty();
+        private SimpleDoubleProperty age = new SimpleDoubleProperty();
         private SimpleBooleanProperty bool = new SimpleBooleanProperty();
 
-        public Data(String name, int age, boolean bool) {
+        public Data(String name, double age, boolean bool) {
             this.name.set(name);
             this.age.set(age);
             this.bool.set(bool);
@@ -120,15 +191,15 @@ public class Lesson106TreeTableView extends Application {
             this.name.set(name);
         }
 
-        public int getAge() {
+        public double getAge() {
             return age.get();
         }
 
-        public SimpleIntegerProperty ageProperty() {
+        public SimpleDoubleProperty ageProperty() {
             return age;
         }
 
-        public void setAge(int age) {
+        public void setAge(double age) {
             this.age.set(age);
         }
 
