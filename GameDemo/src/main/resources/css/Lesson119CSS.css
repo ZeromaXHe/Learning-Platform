@@ -1,0 +1,65 @@
+/* id 选择器 */
+#root {
+    -fx-background-color: linear-gradient(to bottom right, darkcyan, darkgoldenrod);
+    -fx-border-color: #CD0000;
+    -fx-border-width: 10 5 0 20;
+}
+
+#fxml_vBox {
+    -fx-border-width: 10;
+    -fx-border-color: blue;
+}
+
+#fxml_button {
+    -fx-background-radius: 10;
+}
+
+#button {
+    -fx-background-radius: 3;
+}
+
+/* 伪类选择器 */
+#button:hover {
+    -fx-background-color: orange;
+}
+
+#button:focused {
+    -fx-border-width: 3;
+    -fx-border-color: darkorange;
+}
+
+#button:pressed {
+    -fx-background-color: darkred;
+}
+
+#fxml_listView {
+    -fx-background-color: pink;
+    -fx-border-width: 5;
+    -fx-border-color: lightgreen;
+}
+
+/* 空格不可忽略 */
+#fxml_listView .list-cell:odd {
+    -fx-background-color: cyan;
+}
+#fxml_listView .list-cell:even {
+    -fx-background-color: purple;
+}
+
+/* 类选择器 */
+.label {
+    -fx-font-size: 20;
+    -fx-text-fill: linear-gradient(to bottom right, blue, red)
+}
+
+.text-field {
+    -fx-background-color: #ffffff00;
+    -fx-border-width: 0 0 1 0;
+    -fx-border-color: grey;
+    -fx-padding: 0;
+}
+
+/* 自定义选择器 */
+.my_css {
+    -fx-background-color: yellow;
+}

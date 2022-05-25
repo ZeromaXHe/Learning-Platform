@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import com.zerox.javafxLearning.Lesson115Person?>
+<?import java.util.ArrayList?>
+<ArrayList>
+    <Lesson115Person name="test1" age="10"/>
+    <Lesson115Person name="test2" age="20"/>
+    <Lesson115Person name="test3" age="30"/>
+</ArrayList>

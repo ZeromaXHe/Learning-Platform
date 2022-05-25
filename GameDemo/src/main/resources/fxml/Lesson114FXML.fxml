@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.collections.FXCollections?>
+<?import java.lang.String?>
+<?import javafx.scene.control.ComboBox?>
+<AnchorPane fx:controller="com.zerox.javafxLearning.Lesson114FXMLController" xmlns:fx="http://javafx.com/fxml/1">
+    <Label AnchorPane.topAnchor="100" AnchorPane.leftAnchor="100" text="this is a label"/>
+    <Button fx:id="button" AnchorPane.topAnchor="200" AnchorPane.leftAnchor="100" text="this is a button" onAction="#action"/>
+    <ImageView AnchorPane.topAnchor="300" AnchorPane.leftAnchor="100" fitWidth="400" preserveRatio="true">
+        <!-- 相对路径需要加 @ -->
+        <Image url="@/pic/picTest.jpeg"/>
+    </ImageView>
+    <BorderPane prefWidth="300" prefHeight="200" style="-fx-background-color: #FFFF55" AnchorPane.topAnchor="100" AnchorPane.leftAnchor="300">
+        <left>
+            <ListView fx:id="listView" prefWidth="200">
+                <items>
+                    <FXCollections fx:factory="observableArrayList">
+                        <String fx:value="data1"/>
+                        <String fx:value="data2"/>
+                        <String fx:value="data3"/>
+                        <String fx:value="data4"/>
+                    </FXCollections>
+                </items>
+            </ListView>
+        </left>
+        <bottom>
+            <ComboBox prefHeight="50">
+                <items>
+                    <FXCollections fx:factory="observableArrayList">
+                        <String fx:value="data1"/>
+                        <String fx:value="data2"/>
+                        <String fx:value="data3"/>
+                        <String fx:value="data4"/>
+                    </FXCollections>
+                </items>
+            </ComboBox>
+        </bottom>
+    </BorderPane>
+</AnchorPane>

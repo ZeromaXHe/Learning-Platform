@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.control.RadioButton?>
+<?import javafx.scene.control.ToggleGroup?>
+<?import javafx.geometry.Insets?>
+<?import javafx.geometry.Pos?>
+<AnchorPane xmlns:fx="http://javafx.com/fxml/1">
+    <fx:define>
+        <ToggleGroup fx:id="group"></ToggleGroup>
+        <Insets fx:id="margin" top="10" left="10" bottom="10" right="10"></Insets>
+        <Button fx:id="bu" text="button"/>
+    </fx:define>
+
+    <HBox spacing="10" prefWidth="800" prefHeight="300" alignment="CENTER">
+<!--        <alignment><Pos fx:constant="CENTER"/></alignment>-->
+        <RadioButton text="A" toggleGroup="$group"/>
+        <RadioButton text="B" toggleGroup="$group"/>
+        <RadioButton text="C" toggleGroup="$group"/>
+        <Button text="hello" HBox.margin="$margin"/>
+        <Button text="world" HBox.margin="$margin"/>
+        <fx:reference source="bu"/>
+        <!-- 引入其他 FXML 文件 -->
+        <fx:include source="Lesson116FXML2.fxml"/>
+    </HBox>
+
+    <Button fx:id="b1" AnchorPane.topAnchor="300" text="button1" prefWidth="200"/>
+    <!-- 绑定 b1 的宽 -->
+    <Button AnchorPane.topAnchor="400" text="button2" prefWidth="${b1.width}"/>
+</AnchorPane>
