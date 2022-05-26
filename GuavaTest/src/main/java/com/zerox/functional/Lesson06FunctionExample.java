@@ -14,7 +14,7 @@ import java.net.ServerSocket;
  * @Description: 学习 汪文君Google Guava 第06讲
  * @Modified By: ZeromaXHe
  */
-public class FunctionExample {
+public class Lesson06FunctionExample {
     public static void main(String[] args) throws IOException {
         Function<String, Integer> function = new Function<String, Integer>() {
 

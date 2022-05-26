@@ -9,11 +9,11 @@ import java.util.concurrent.TimeUnit;
 /**
  * @Author: ZeromaXHe
  * @Time: 2021/6/20 14:53
- * @Description: 学习 汪文君Google Guava 第07讲，对比{@link ElapsedExample}
+ * @Description: 学习 汪文君Google Guava 第07讲，对比{@link Lesson07ElapsedExample}
  * @Modified By: ZeromaXHe
  */
-public class StopWatchExample {
-    private final static Logger LOGGER = LoggerFactory.getLogger(StopWatchExample.class);
+public class Lesson07StopWatchExample {
+    private final static Logger LOGGER = LoggerFactory.getLogger(Lesson07StopWatchExample.class);
 
     public static void main(String[] args) throws InterruptedException {
         process("3463542353");

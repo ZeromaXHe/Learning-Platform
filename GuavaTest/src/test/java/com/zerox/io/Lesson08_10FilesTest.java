@@ -26,7 +26,7 @@ import java.util.List;
  * @Description: 学习 汪文君Google Guava 第08~10讲
  * @Modified By: ZeromaXHe
  */
-public class FilesTest {
+public class Lesson08_10FilesTest {
     private final String SOURCE_FILE = "./src/test/resources/io/source.txt";
     private final String TARGET_FILE = "./src/test/resources/io/target.txt";
 

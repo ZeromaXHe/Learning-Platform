@@ -9,7 +9,7 @@ import org.junit.Test;
  * @Description:
  * @Modified By: ZeromaXHe
  */
-public class CharSinkTest {
+public class Lesson11CharSinkTest {
     /**
      * CharSource --> Reader
      * CharSink   --> Writer

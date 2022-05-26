@@ -15,7 +15,7 @@ import java.io.IOException;
  * @Description:
  * @Modified By: ZeromaXHe
  */
-public class CharSourceTest {
+public class Lesson11CharSourceTest {
     @Test
     public void testCharSourceWrap() throws IOException {
         CharSource charSource = CharSource.wrap("i am the CharSource");

@@ -16,7 +16,7 @@ import java.nio.charset.Charset;
  * @Description: 学习 汪文君Google Guava 第05讲
  * @Modified By: ZeromaXHe
  */
-public class StringsTest {
+public class Lesson05StringsTest {
     @Test
     public void testStringsMethod() {
         Assert.assertThat(Strings.emptyToNull(""), IsNull.nullValue());

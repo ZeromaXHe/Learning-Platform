@@ -16,7 +16,7 @@ import java.util.Objects;
  * @Description: 学习 汪文君Google Guava 第03讲
  * @Modified By: ZeromaXHe
  */
-public class PreconditionsTest {
+public class Lesson03PreconditionsTest {
     @Test(expected = NullPointerException.class)
     public void testCheckNotNull() {
         checkNotNull(null);

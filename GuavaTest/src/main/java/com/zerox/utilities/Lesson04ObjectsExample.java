@@ -12,7 +12,7 @@ import java.util.Calendar;
  * @Description: 学习 汪文君Google Guava 第04讲
  * @Modified By: ZeromaXHe
  */
-public class ObjectsExample {
+public class Lesson04ObjectsExample {
     public static void main(String[] args) {
         final Guava guava = new Guava("Google", "23.0", Calendar.getInstance());
         System.out.println(guava);

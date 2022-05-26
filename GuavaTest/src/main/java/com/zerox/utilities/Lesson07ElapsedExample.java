@@ -8,7 +8,7 @@ import java.util.concurrent.TimeUnit;
  * @Description: 学习 汪文君Google Guava 第07讲
  * @Modified By: ZeromaXHe
  */
-public class ElapsedExample {
+public class Lesson07ElapsedExample {
     public static void main(String[] args) throws InterruptedException {
         process("3463542353");
     }

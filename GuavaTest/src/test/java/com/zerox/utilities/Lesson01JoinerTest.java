@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
  * @Description: 学习 汪文君Google Guava 第01讲
  * @Modified By: ZeromaXHe
  */
-public class JoinerTest {
+public class Lesson01JoinerTest {
     private final List<String> stringList = Arrays.asList(
             "Google", "Guava", "Java"
     );
@@ -33,7 +33,7 @@ public class JoinerTest {
 
     private final Map<String, String> stringMap = ImmutableMap.of("Hello", "Guava", "Java", "Scala");
 
-    private final String targetFileName = ".\\src\\main\\java\\com\\zerox\\utilities\\JoinerTest.txt";
+    private final String targetFileName = ".\\src\\main\\java\\com\\zerox\\utilities\\Lesson01JoinerTest.txt";
 
     @Test
     public void testJoinOnJoin() {

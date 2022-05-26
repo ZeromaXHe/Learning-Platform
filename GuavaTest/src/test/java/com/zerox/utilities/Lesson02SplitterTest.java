@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
  * @Description: 学习 汪文君Google Guava 第02讲
  * @Modified By: ZeromaXHe
  */
-public class SplitterTest {
+public class Lesson02SplitterTest {
     @Test
     public void testSplitOnSplit() {
         List<String> result = Splitter.on("|").splitToList("hello|world");
