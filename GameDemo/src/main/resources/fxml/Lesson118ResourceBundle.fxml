@@ -3,7 +3,7 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.control.TextField?>
-<AnchorPane fx:controller="com.zerox.javafxLearning.Lesson118ResourceBundleController" xmlns:fx="http://javafx.com/fxml/1">
+<AnchorPane fx:controller="com.zerox.javafxLearning.lesson112_121FXML.Lesson118ResourceBundleController" xmlns:fx="http://javafx.com/fxml/1">
     <HBox spacing="20">
         <Button text="%button.text"/>
         <TextField text="%textfield.text"/>

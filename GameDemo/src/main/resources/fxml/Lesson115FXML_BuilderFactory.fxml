@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?import com.zerox.javafxLearning.Lesson115Person?>
+<?import com.zerox.javafxLearning.lesson112_121FXML.Lesson115Person?>
 <?import java.util.ArrayList?>
 <ArrayList>
     <Lesson115Person name="test1" age="10"/>

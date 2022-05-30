@@ -2,7 +2,7 @@
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
-<AnchorPane fx:controller="com.zerox.javafxLearning.Lesson112_113FXMLController" xmlns:fx="http://javafx.com/fxml/1">
+<AnchorPane fx:controller="com.zerox.javafxLearning.lesson112_121FXML.Lesson112_113FXMLController" xmlns:fx="http://javafx.com/fxml/1">
     <Label fx:id="fxLbl" text="this is Label"/>
     <Button fx:id="fxBtn" text="fxmlButton" prefWidth="100" prefHeight="100" onAction="#action">
         <AnchorPane.leftAnchor>100</AnchorPane.leftAnchor>
