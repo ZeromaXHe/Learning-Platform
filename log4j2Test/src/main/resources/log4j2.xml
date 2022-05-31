@@ -2,7 +2,7 @@
 <Configuration status="WARN">
 
 	<Properties>
-		<Property  name="LOG_HOME">D:/logs/log4j2Test</Property >
+		<Property  name="LOG_HOME">D:/logs/com.zerox.personalTest.log4j2Test</Property >
 		<!-- <Property  name="LOG_HOME">G:\Alex_tool\apache-tomcat-8.0.39\logs</Property > -->
    </Properties>
 	<appenders>
