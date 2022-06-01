@@ -6,7 +6,7 @@ import org.apache.logging.log4j.Logger;
 /**
  * @Author: zhuxi
  * @Time: 2021/6/16 18:23
- * @Description:
+ * @Description: 测试前需要把 resources/personal 文件夹下对应的 log4j2.xml 移到 resources 目录下
  * @Modified By: zhuxi
  */
 public class Log4j2Manager {
@@ -38,7 +38,7 @@ public class Log4j2Manager {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            System.out.println("test~ "+i);
+            System.out.println("test~ " + i);
             ADIDLOGGER.info("test~");
             BINDINGLOGGER.info("test~");
             TAGSLOGGER.info("test~");

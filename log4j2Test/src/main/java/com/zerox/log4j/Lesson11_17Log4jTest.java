@@ -10,7 +10,7 @@ import java.io.File;
 /**
  * @Author: zhuxi
  * @Time: 2022/5/31 11:55
- * @Description:
+ * @Description: 需要在 pom.xml 中将 log4j 的依赖排在 slf4j 相关依赖（尤其是 log4j 桥接器）前面，这样才是走的 log4j 本身的代码。
  * @ModifiedBy: zhuxi
  */
 public class Lesson11_17Log4jTest {

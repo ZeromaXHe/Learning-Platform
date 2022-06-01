@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<configuration>
+    <!--
+     日志输出格式：
+     %-5level 日志级别
+     %d{yyyy-MM-dd HH:mm:ss.SSS} 日期
+     %c 类的完整名称
+     %M 为方法
+     %L 为行号
+     %thread 线程名称
+     %m 或 %msg 为信息
+     %n 换行
+    -->
+    <property name="pattern" value="[%-5level] %d{yyyy-MM-dd HH:mm:ss.SSS} %c %M %L [%thread] %m%n"/>
+    <!-- 控制台日志输出的 appender -->
+    <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+        <!-- XML 中的各个属性对应的就是相应类的属性,有对应 setter -->
+        <!-- 控制输出流对象 默认 System.out -->
+        <target>System.err</target>
+        <!-- 日志消息格式配置 -->
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>${pattern}</pattern>
+        </encoder>
+    </appender>
+
+    <!-- 定义日志文件保存路径属性：/logs 在 windows10 系统对应就是在 C:/logs 下，无须提前建立文件夹-->
+    <property name="log_dir" value="/logs"/>
+    <!-- 日志文件输出的 appender -->
+    <appender name="file" class="ch.qos.logback.core.FileAppender">
+        <!-- 日志文件保存路径 -->
+        <file>${log_dir}/logback.log</file>
+        <!-- 日志消息格式配置 -->
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>${pattern}</pattern>
+        </encoder>
+    </appender>
+    <!-- html 格式日志文件输出的 appender -->
+    <appender name="html" class="ch.qos.logback.core.FileAppender">
+        <!-- 日志文件保存路径 -->
+        <file>${log_dir}/logback.html</file>
+        <!-- 日志消息格式配置 -->
+        <encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
+            <layout class="ch.qos.logback.classic.html.HTMLLayout">
+                <!-- html 不需要空格、换行和符号来排版 -->
+                <pattern>%-5level%d{yyyy-MM-dd HH:mm:ss.SSS}%c%M%L%thread%m</pattern>
+            </layout>
+        </encoder>
+    </appender>
+    <!-- 日志拆分和归档压缩的 appender -->
+    <appender name="roll" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <!-- 日志文件保存路径 -->
+        <file>${log_dir}/logback_roll.log</file>
+        <!-- 日志消息格式配置 -->
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>${pattern}</pattern>
+        </encoder>
+        <!-- 指定拆分规则 -->
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- 按照时间和压缩格式声明拆分的文件名 -->
+            <fileNamePattern>${log_dir}/rolling.%d{yyyy-MM-dd-HH-mm-ss}.log%i.gz</fileNamePattern>
+            <!-- 按照文件大小拆分 -->
+            <maxFileSize>1MB</maxFileSize>
+        </rollingPolicy>
+        <!-- 日志级别过滤器 -->
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <!-- 日志过滤级别 -->
+            <level>WARN</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
+    <!-- 异步日志 -->
+    <appender name="async" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="roll"/>
+    </appender>
+
+    <!-- root logger 配置 -->
+    <root level="ALL">
+        <!-- appender-ref 没有启用时，logback 也会生成 appender 对应的日志文件,不过内容是空的 -->
+        <appender-ref ref="console"/>
+        <!--        <appender-ref ref="file"/>-->
+        <!--        <appender-ref ref="html"/>-->
+        <appender-ref ref="async"/>
+    </root>
+
+    <!-- 自定义 Logger 对象：additivity 为是否继承 rootLogger -->
+    <logger name="com.zerox" level="info" additivity="false">
+        <appender-ref ref="console"/>
+    </logger>
+</configuration>

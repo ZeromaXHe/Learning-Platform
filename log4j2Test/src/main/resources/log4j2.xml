@@ -1,458 +1,64 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<Configuration status="WARN">
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+status 日志框架本身输出的日志级别
+monitorInterval 自动加载配置文件的间隔时间，下面配置即不低于 5 秒
+-->
+<Configuration status="debug" monitorInterval="5">
+    <!-- 集中配置属性进行管理，使用时格式为：${name} -->
+    <properties>
+        <property name="LOG_HOME">C:/logs</property>
+    </properties>
 
-	<Properties>
-		<Property  name="LOG_HOME">D:/logs/com.zerox.personalTest.log4j2Test</Property >
-		<!-- <Property  name="LOG_HOME">G:\Alex_tool\apache-tomcat-8.0.39\logs</Property > -->
-   </Properties>
-	<appenders>
-		<Console name="Console" target="SYSTEM_OUT">
-			<PatternLayout
-				pattern="%date{yyyy-MM-dd HH:mm:ss.SSS}|%msg%n" />
-			<Policies>
-				<TimeBasedTriggeringPolicy interval="1"
-					modulate="true" />
-				<SizeBasedTriggeringPolicy size="500 MB" />  
-			</Policies>
-			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}" maxDepth="1">
-					<IfLastModified age="2s" />
-				</Delete>
-			</DefaultRolloverStrategy>
-		</Console>
-		<!-- ad request business 请求日志 -->
-		<RollingRandomAccessFile name="business"
-			fileName="${LOG_HOME}/ADR_ALPHA_BUSINESS_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_BUSINESS_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
-			<PatternLayout
-				pattern="%date{yyyy-MM-dd HH:mm:ss.SSS}|%msg%n" />
-			<Policies>
-				<TimeBasedTriggeringPolicy interval="1"
-					modulate="true" />
-				<!-- <SizeBasedTriggeringPolicy size="500 MB" />   -->
-			</Policies>
-			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}" maxDepth="1">
-                    <IfFileName glob="ADR_ALPHA_BUSINESS_DAILY*.log">
-					    <IfLastModified age="3s" />
-                    </IfFileName>
-				</Delete>
-			</DefaultRolloverStrategy>
-		</RollingRandomAccessFile>
-		<RollingRandomAccessFile name="dis"
-			fileName="${LOG_HOME}/ADR_ALPHA_DIS_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_DIS_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
-			<PatternLayout
-				pattern="%date{yyyy-MM-dd HH:mm:ss.SSS}|%msg%n" />
-			<Policies>
-				<TimeBasedTriggeringPolicy interval="1"
-					modulate="true" />
-				<!-- <SizeBasedTriggeringPolicy size="500 MB" />   -->
-			</Policies>
-			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}" maxDepth="1">
-                    <IfFileName glob="ADR_ALPHA_DIS_DAILY*.log">
-                        <IfLastModified age="4s" />
-                    </IfFileName>
-				</Delete>
-			</DefaultRolloverStrategy>
-		</RollingRandomAccessFile>
-		<RollingRandomAccessFile name="proxy_dis"
-			fileName="${LOG_HOME}/ADR_ALPHA_PROXY_DIS_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_PROXY_DIS_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
-			<PatternLayout
-				pattern="%date{yyyy-MM-dd HH:mm:ss.SSS}|%msg%n" />
-			<Policies>
-				<TimeBasedTriggeringPolicy interval="1"
-					modulate="true" />
-				<!-- <SizeBasedTriggeringPolicy size="500 MB" />   -->
-			</Policies>
-			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}" maxDepth="1">
-                    <IfFileName glob="ADR_ALPHA_PROXY_DIS_DAILY*.log">
-					    <IfLastModified age="5s" />
-                    </IfFileName>
-				</Delete>
-			</DefaultRolloverStrategy>
-		</RollingRandomAccessFile>
-		<RollingRandomAccessFile name="filter"
-			fileName="${LOG_HOME}/ADR_ALPHA_FILT_SERVER_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_FILT_SERVER_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
-			<PatternLayout
-				pattern="%date{yyyy-MM-dd HH:mm:ss.SSS}|%msg%n" />
-			<Policies>
-				<TimeBasedTriggeringPolicy interval="1"
-					modulate="true" />
-				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
-			</Policies>
-			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}" maxDepth="1">
-                    <IfFileName glob="ADR_ALPHA_FILT_SERVER_DAILY*.log">
-					    <IfLastModified age="6s" />
-                    </IfFileName>
-				</Delete>
-			</DefaultRolloverStrategy>
-		</RollingRandomAccessFile>
-		<RollingRandomAccessFile name="prob"
-			fileName="${LOG_HOME}/ADR_ALPHA_PROB_SERVER_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_PROB_SERVER_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
-			<PatternLayout
-				pattern="%date{yyyy-MM-dd HH:mm:ss.SSS}|%msg%n" />
-			<Policies>
-				<TimeBasedTriggeringPolicy interval="1"
-					modulate="true" />
-				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
-			</Policies>
-			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}" maxDepth="1">
-                    <IfFileName glob="ADR_ALPHA_PROB_SERVER_DAILY*.log">
-					    <IfLastModified age="7s" />
-                    </IfFileName>
-				</Delete>
-			</DefaultRolloverStrategy>
-		</RollingRandomAccessFile>
-		<RollingRandomAccessFile name="task_nonad"
-			fileName="${LOG_HOME}/ADR_ALPHA_TASK_NONAD_SERVER_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_TASK_NONAD_SERVER_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
-			<PatternLayout
-				pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n" />
-			<Policies>
-				<TimeBasedTriggeringPolicy interval="1"
-					modulate="true" />
-				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
-			</Policies>
-			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}" maxDepth="1">
-                    <IfFileName glob="ADR_ALPHA_TASK_NONAD_SERVER_DAILY*.log">
-					    <IfLastModified age="8s" />
-                    </IfFileName>
-				</Delete>
-			</DefaultRolloverStrategy>
-		</RollingRandomAccessFile>
-		<RollingRandomAccessFile name="task_ad_id"
-			fileName="${LOG_HOME}/ADR_ALPHA_TASK_AD_ID_SERVER_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_TASK_AD_ID_SERVER_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
-			<PatternLayout
-				pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n" />
-			<Policies>
-				<TimeBasedTriggeringPolicy interval="1"
-					modulate="true" />
-				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
-			</Policies>
-			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}" maxDepth="1">
-                    <IfFileName glob="ADR_ALPHA_TASK_AD_ID_SERVER_DAILY*.log">
-					    <IfLastModified age="9s" />
-                    </IfFileName>
-				</Delete>
-			</DefaultRolloverStrategy>
-		</RollingRandomAccessFile>
-		<RollingRandomAccessFile name="task_binding"
-			fileName="${LOG_HOME}/ADR_ALPHA_TASK_BINDING_SERVER_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_TASK_BINDING_SERVER_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
-			<PatternLayout
-				pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n"/>
-			<Policies>
-				<TimeBasedTriggeringPolicy interval="1"
-					modulate="true" />
-				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
-			</Policies>
-			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}" maxDepth="1">
-                    <IfFileName glob="ADR_ALPHA_TASK_BINDING_SERVER_DAILY*.log">
-					    <IfLastModified age="10s" />
-                    </IfFileName>
-				</Delete>
-			</DefaultRolloverStrategy>
-		</RollingRandomAccessFile>
-		<RollingRandomAccessFile name="task_tags"
-			fileName="${LOG_HOME}/ADR_ALPHA_TASK_TAGS_SERVER_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_TASK_TAGS_SERVER_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
-			<PatternLayout
-				pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n" />
-			<Policies>
-				<TimeBasedTriggeringPolicy interval="1"
-					modulate="true" />
-				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
-			</Policies>
-			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}" maxDepth="1">
-                    <IfFileName glob="ADR_ALPHA_TASK_TAGS_SERVER_DAILY*.log">
-					    <IfLastModified age="11s" />
-                    </IfFileName>
-				</Delete>
-			</DefaultRolloverStrategy>
-		</RollingRandomAccessFile>
-		<RollingRandomAccessFile name="task_ad_content"
-			fileName="${LOG_HOME}/ADR_ALPHA_TASK_AD_CONTENTS_SERVER_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_TASK_AD_CONTENTS_SERVER_DAILY.%d{yyyy-MM-dd-HH-mm-ss}.log">
-			<PatternLayout
-				pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n" />
-			<Policies>
-				<TimeBasedTriggeringPolicy interval="1"
-					modulate="true" />
-				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
-			</Policies>
-			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}" maxDepth="1">
-                    <IfFileName glob="ADR_ALPHA_TASK_AD_CONTENTS_SERVER_DAILY*.log">
-					    <IfLastModified age="2s" />
-                    </IfFileName>
-				</Delete>
-			</DefaultRolloverStrategy>
-		</RollingRandomAccessFile>
-		<!--statistic logs third side need -->
-		<RollingRandomAccessFile name="img_replace"
-			fileName="${LOG_HOME}/rtb_img_replace.log" filePattern="${LOG_HOME}/rtb_img_replace.%d{yyyy-MM-dd-HH-mm-ss}.log">
-			<PatternLayout
-					pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n" />
-			<Policies>
-				<TimeBasedTriggeringPolicy interval="1"
-					modulate="true" />
-				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
-			</Policies>
-			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}" maxDepth="1">
-                    <IfFileName glob="rtb_img_replace*.log">
-					    <IfLastModified age="3s" />
-                    </IfFileName>
-				</Delete>
-			</DefaultRolloverStrategy>
-		</RollingRandomAccessFile>
-		<RollingRandomAccessFile name="adr_self_request"
-			fileName="${LOG_HOME}/AdRecommend_self_request.log" filePattern="${LOG_HOME}/AdRecommend_self_request_%d{yyyy-MM-dd-HH-mm-ss}.log">
-			<PatternLayout
-					pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n" />
-			<Policies>
-				<TimeBasedTriggeringPolicy interval="1"
-					modulate="true" />
-				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
-			</Policies>
-			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}" maxDepth="1">
-                    <IfFileName glob="AdRecommend_self_request*.log">
-					    <IfLastModified age="4s" />
-                    </IfFileName>
-				</Delete>
-			</DefaultRolloverStrategy>
-		</RollingRandomAccessFile>
-		<RollingRandomAccessFile name="lbs"
-			fileName="${LOG_HOME}/ADR_ALPHA_LBS_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_LBS_DAILY_%d{yyyy-MM-dd-HH-mm-ss}.log">
-			<PatternLayout
-					pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n" />
-			<Policies>
-				<TimeBasedTriggeringPolicy interval="1"
-					modulate="true" />
-				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
-			</Policies>
-			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}" maxDepth="1">
-                    <IfFileName glob="ADR_ALPHA_LBS_DAILY*.log">
-					    <IfLastModified age="5s" />
-                    </IfFileName>
-				</Delete>
-			</DefaultRolloverStrategy>
-		</RollingRandomAccessFile>
-				<RollingRandomAccessFile name="orient"
-			fileName="${LOG_HOME}/ADR_ALPHA_ORIENT_DAILY.log" filePattern="${LOG_HOME}/ADR_ALPHA_ORIENT_DAILY_%d{yyyy-MM-dd-HH-mm-ss}.log">
-			<PatternLayout
-					pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n" />
-			<Policies>
-				<TimeBasedTriggeringPolicy interval="1"
-					modulate="true" />
-				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
-			</Policies>
-			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}" maxDepth="1">
-                    <IfFileName glob="ADR_ALPHA_ORIENT_DAILY*.log">
-					    <IfLastModified age="6s" />
-                    </IfFileName>
-				</Delete>
-			</DefaultRolloverStrategy>
-		</RollingRandomAccessFile>
-		<!-- dsp request log -->
-				<RollingRandomAccessFile name="rtb_parallel_select"
-			fileName="${LOG_HOME}/rtb_parallel_select.log" filePattern="${LOG_HOME}/rtb_parallel_select_%d{yyyy-MM-dd-HH-mm-ss}.log">
-			<PatternLayout
-					pattern="%date{yyyy-MM-dd HH:mm:ss} %msg%n" />
-			<Policies>
-				<TimeBasedTriggeringPolicy interval="1"
-					modulate="true" />
-				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
-			</Policies>
-			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}" maxDepth="1">
-                    <IfFileName glob="rtb_parallel_select*.log">
-					    <IfLastModified age="7s" />
-                    </IfFileName>
-				</Delete>
-			</DefaultRolloverStrategy>
-		</RollingRandomAccessFile>
-		<RollingRandomAccessFile name="rtb_adflow"
-			fileName="${LOG_HOME}/rtb_adflow.log" filePattern="${LOG_HOME}/rtb_adflow_%d{yyyy-MM-dd-HH-mm-ss}.log">
-			<PatternLayout
-					pattern="%date{yyyy-MM-dd HH:mm:ss} %msg%n" />
-			<Policies>
-				<TimeBasedTriggeringPolicy interval="1"
-					modulate="true" />
-				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
-			</Policies>
-			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}" maxDepth="1">
-                    <IfFileName glob="rtb_adflow*.log">
-					    <IfLastModified age="8s" />
-                    </IfFileName>
-				</Delete>
-			</DefaultRolloverStrategy>
-		</RollingRandomAccessFile>
-		<RollingRandomAccessFile name="rtb_parallel_adflow"
-			fileName="${LOG_HOME}/rtb_parallel_adflow.log" filePattern="${LOG_HOME}/rtb_parallel_adflow_%d{yyyy-MM-dd-HH-mm-ss}.log">
-			<PatternLayout
-					pattern="%date{yyyy-MM-dd HH:mm:ss} %msg%n" />
-			<Policies>
-				<TimeBasedTriggeringPolicy interval="1"
-					modulate="true" />
-				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
-			</Policies>
-			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}" maxDepth="1">
-                    <IfFileName glob="rtb_parallel_adflow*.log">
-					    <IfLastModified age="9s" />
-                    </IfFileName>
-				</Delete>
-			</DefaultRolloverStrategy>
-		</RollingRandomAccessFile>
-		<RollingRandomAccessFile name="user_tags"
-			fileName="${LOG_HOME}/AdRecommend_user_tag.log" filePattern="${LOG_HOME}/AdRecommend_user_tag_%d{yyyy-MM-dd-HH-mm-ss}.log">
-			<PatternLayout
-					pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n" />
-			<Policies>
-				<TimeBasedTriggeringPolicy interval="1"
-					modulate="true" />
-				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
-			</Policies>
-			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}" maxDepth="1">
-                    <IfFileName glob="AdRecommend_user_tag*.log">
-					    <IfLastModified age="10s" />
-                    </IfFileName>
-				</Delete>
-			</DefaultRolloverStrategy>
-		</RollingRandomAccessFile>
-		<RollingRandomAccessFile name="prob_tracking"
-			fileName="${LOG_HOME}/ADR_PROB_TRACKING.log" filePattern="${LOG_HOME}/ADR_PROB_TRACKING_%d{yyyy-MM-dd-HH-mm-ss}.log">
-			<PatternLayout
-					pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n" />
-			<Policies>
-				<TimeBasedTriggeringPolicy interval="1"
-					modulate="true" />
-				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
-			</Policies>
-			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}" maxDepth="1">
-                    <IfFileName glob="ADR_PROB_TRACKING*.log">
-					    <IfLastModified age="11s" />
-                    </IfFileName>
-				</Delete>
-			</DefaultRolloverStrategy>
-		</RollingRandomAccessFile>
-		<RollingRandomAccessFile name="statistic"
-								 fileName="${LOG_HOME}/ADR_ALPHA_STATISTIC.log" filePattern="${LOG_HOME}/ADR_ALPHA_STATISTIC_%d{yyyy-MM-dd-HH-mm-ss}.log">
-			<PatternLayout
-					pattern="%date{yyyy-MM-dd HH:mm:ss}|%msg%n" />
-			<Policies>
-				<TimeBasedTriggeringPolicy interval="1"
-										   modulate="true" />
-				<!-- <SizeBasedTriggeringPolicy size="400 MB" />  -->
-			</Policies>
-			<DefaultRolloverStrategy>
-				<Delete basePath="${LOG_HOME}" maxDepth="1">
-                    <IfFileName glob="ADR_ALPHA_STATISTIC*.log">
-					    <IfLastModified age="2s" />
-                    </IfFileName>
-				</Delete>
-			</DefaultRolloverStrategy>
-		</RollingRandomAccessFile>
-	</appenders>
-	<loggers>
-        <logger name="org.spring" level="error" additivity="false">  
-            
-            <AppenderRef ref="business" />  
-        </logger>  
-        <logger name="org.springframework" level="error" additivity="false">  
-            
-            <AppenderRef ref="business" />  
-        </logger>  
-        <logger name="org.apache.zookeeper" level="error" additivity="false">  
-             
-            <AppenderRef ref="business" />  
-        </logger>  
-        <logger name="org.apache.thrift" level="error" additivity="false">  
-            
-            <AppenderRef ref="business" />  
-        </logger>  
-
-		<logger name="com.ocean" level="info" additivity="false" > 
-			 <AppenderRef ref="business" />  
-		</logger> 
-		<Logger name="business" level="info" additivity="false">
-			<AppenderRef ref="business" />
-		</Logger>
-		<Logger name="dis" level="info" additivity="false">
-			<AppenderRef ref="dis" />
-		</Logger>
-		<Logger name="proxy_dis" level="info" additivity="false">
-			<AppenderRef ref="proxy_dis" />
-		</Logger>
-		
-		<Logger name="filter" level="info" additivity="false">
-			<AppenderRef ref="filter" />
-		</Logger>
-		<Logger name="prob" level="info" additivity="false">
-			<AppenderRef ref="prob" />
-		</Logger>
-		<Logger name="task_ad_id" level="info" additivity="false">
-			<AppenderRef ref="task_ad_id" />
-		</Logger>
-		<Logger name="task_binding" level="info" additivity="false">
-			<AppenderRef ref="task_binding" />
-		</Logger>
-
-		<Logger name="task_tags" level="info" additivity="false">
-			<AppenderRef ref="task_tags" />
-		</Logger>
-		<Logger name="task_ad_content" level="info" additivity="false">
-			<AppenderRef ref="task_ad_content" />
-		</Logger>
-		<Logger name="task_nonad" level="info" additivity="false">
-			<AppenderRef ref="task_nonad" />
-		</Logger>
-
-		<Logger name="img_replace" level="info" additivity="false">
-			<AppenderRef ref="img_replace" />
-		</Logger>
-		<Logger name="adr_self_request" level="info" additivity="false">
-			<AppenderRef ref="adr_self_request" />
-		</Logger>
-		<Logger name="lbs" level="info" additivity="false">
-			<AppenderRef ref="lbs" />
-		</Logger>
-		<Logger name="orient" level="info" additivity="false">
-			<AppenderRef ref="orient" />
-		</Logger>
-		<Logger name="rtb_parallel_select" level="info" additivity="false">
-			<AppenderRef ref="rtb_parallel_select" />
-		</Logger>
-		<Logger name="rtb_adflow" level="info" additivity="false">
-			<AppenderRef ref="rtb_adflow" />
-		</Logger>
-		<Logger name="rtb_parallel_adflow" level="info" additivity="false">
-			<AppenderRef ref="rtb_parallel_adflow" />
-		</Logger>
-		<Logger name="user_tags" level="info" additivity="false">
-			<AppenderRef ref="user_tags" />
-		</Logger>
-		<Logger name="prob_tracking" level="info" additivity="false">
-			<AppenderRef ref="prob_tracking" />
-		</Logger>
-		<Logger name="statistic" level="info" additivity="false">
-			<AppenderRef ref="statistic" />
-		</Logger>
-		
-		<Root level="info">
-		    <appender-ref ref="business" />
-			<!-- <appender-ref ref="Console" /> -->
-			
-		</Root>
-	</loggers>
+    <!-- 日志处理器 -->
+    <Appenders>
+        <!-- 控制台输出 appender -->
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="[%d{HH:mm:ss.SSS}] [%t] [%-5level] %c{36}:%L --- %m%n"/>
+        </Console>
+        <!-- 日志文件输出 appender -->
+        <File name="file" fileName="${LOG_HOME}/myFile.log">
+            <PatternLayout pattern="[%d{yyyy-MM-dd HH:mm:ss.SSS}] [%-5level] %l %c{36} - %m%n"/>
+        </File>
+        <!-- 异步 Appender，这种异步性能提升不高 -->
+        <Async name="Async">
+            <AppenderRef ref="file"/>
+        </Async>
+        <!-- 使用随机读写流的日志文件输出 appender，性能提高 -->
+        <RandomAccessFile name="accessFile" fileName="${LOG_HOME}/myAccFile.log">
+            <PatternLayout pattern="[%d{yyyy-MM-dd HH:mm:ss.SSS}] [%-5level] %l %c{36} - %m%n"/>
+        </RandomAccessFile>
+        <!-- 按照一定规则拆分的日志文件的 appender -->
+        <RollingFile name="rollingFile" fileName="${LOG_HOME}/myRollingFile.log"
+                     filePattern="${LOG_HOME}/$${date:yyyy-MM-dd}/myRollingFile-%d{yyyy-MM-dd-HH-mm}-%i.log">
+            <!-- 日志级别过滤器 -->
+            <ThresholdFilter level="debug" onMatch="ACCEPT" onMismatch="DENY"/>
+            <PatternLayout pattern="[%d{yyyy-MM-dd HH:mm:ss.SSS}] [%-5level] %l %c{36} - %msg%n"/>
+            <Policies>
+                <!-- 系统启动时，触发拆分规则，生成一个新的日志文件 -->
+                <OnStartupTriggeringPolicy/>
+                <!-- 按照时间节点拆分 -->
+                <SizeBasedTriggeringPolicy size="1MB"/>
+                <!-- 按照时间节点拆分，规则根据 filePattern 定义的 -->
+                <TimeBasedTriggeringPolicy/>
+            </Policies>
+            <!-- 在同一个目录下，文件的个数限定，超过会对最旧的进行覆盖 -->
+            <DefaultRolloverStrategy max="30"/>
+        </RollingFile>
+    </Appenders>
+    <Loggers>
+        <!--
+         自定义异步 Logger
+         includeLocation 日志记录的行号信息（如果不关闭，会对性能造成严重负面影响，比同步日志还慢）
+         -->
+        <AsyncLogger name="com.zerox" level="trace" includeLocation="false" additivity="false">
+            <AppenderRef ref="Console"/>
+            <!-- 异步 Logger 和异步 Appender 不要同时使用，否则性能会和异步 Appender 一致，比较慢 -->
+            <AppenderRef ref="file"/>
+        </AsyncLogger>
+        <!-- level：rootLogger 配置日志级别 -->
+        <Root level="trace">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="Async"/>
+        </Root>
+    </Loggers>
 </Configuration>
