@@ -4,9 +4,9 @@ import org.junit.Assert;
 import org.junit.Test;
 
 /**
- * @Author: zhuxi
- * @Time: 2022/6/14 9:48
- * @Description: 498. 对角线遍历 | 难度：中等 | 标签：数组、矩阵、模拟
+ * @author zhuxi
+ * @apiNote
+ * @implNote 498. 对角线遍历 | 难度：中等 | 标签：数组、矩阵、模拟
  * 给你一个大小为 m x n 的矩阵 mat ，请以对角线遍历的顺序，用一个数组返回这个矩阵中的所有元素。
  * <p>
  * 示例 1：
@@ -27,7 +27,7 @@ import org.junit.Test;
  * 来源：力扣（LeetCode）
  * 链接：https://leetcode.cn/problems/diagonal-traverse
  * 著作权归领扣网络所有。商业转载请联系官方授权，非商业转载请注明出处。
- * @ModifiedBy: zhuxi
+ * @since 2022/6/14 9:48
  */
 public class Solution498 {
     @Test
