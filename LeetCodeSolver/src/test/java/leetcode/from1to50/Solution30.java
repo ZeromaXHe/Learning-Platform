@@ -7,11 +7,13 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
- * @Author: zhuxiaohe
- * @Time: 2021/1/4 16:12
- * @Description: 30.串联所有单词的子串 | 难度：困难 | 标签：哈希表、双指针、字符串
+ * @author zhuxiaohe
+ * @apiNote 30.串联所有单词的子串 | 难度：困难 | 标签：哈希表、双指针、字符串
  * 给定一个字符串 s 和一些长度相同的单词 words。找出 s 中恰好可以由 words 中所有单词串联形成的子串的起始位置。
  * <p>
  * 注意子串要与 words 中的单词完全匹配，中间不能有其他字符，但不需要考虑 words 中单词串联的顺序。
@@ -31,15 +33,43 @@ import java.util.List;
  * words = ["word","good","best","word"]
  * 输出：[]
  * <p>
+ * 示例 3：
+ * 输入：s = "barfoofoobarthefoobarman", words = ["bar","foo","the"]
+ * 输出：[6,9,12]
+ * <p>
+ * 提示：
+ * 1 <= s.length <= 10^4
+ * s 由小写英文字母组成
+ * 1 <= words.length <= 5000
+ * 1 <= words[i].length <= 30
+ * words[i] 由小写英文字母组成
+ * <p>
  * 来源：力扣（LeetCode）
  * 链接：https://leetcode-cn.com/problems/substring-with-concatenation-of-all-words
  * 著作权归领扣网络所有。商业转载请联系官方授权，非商业转载请注明出处。
- * @Modified By: zhuxiaohe
+ * @implNote
+ * @since 2021/1/4 16:12
  */
 public class Solution30 {
+    @Test
+    public void findSubstringTest() {
+        // [0,9]
+        System.out.println(findSubstring("barfoothefoobarman", new String[]{"foo", "bar"}));
+        // []
+        System.out.println(findSubstring("wordgoodgoodgoodbestword", new String[]{"word", "good", "best", "word"}));
+        // [0]
+        System.out.println(findSubstring("wordgoodbestword", new String[]{"word", "good", "best", "word"}));
+        // [8]
+        System.out.println(findSubstring("wordgoodgoodgoodbestword", new String[]{"word", "good", "best", "good"}));
+        // [6,16,17,18,19,20]
+        System.out.println(findSubstring("bcabbcaabbccacacbabccacaababcbb", new String[]{"c", "b", "a", "c", "a", "a", "a", "b", "c"}));
+    }
+
     /**
      * 执行用时： 9 ms , 在所有 Java 提交中击败了 92.17% 的用户
      * 内存消耗： 39.1 MB , 在所有 Java 提交中击败了 65.23% 的用户
+     * <p>
+     * 2021.1 写的
      *
      * @param s
      * @param words
@@ -137,17 +167,34 @@ public class Solution30 {
         return result;
     }
 
-    @Test
-    public void findSubstringTest() {
-        // [0,9]
-        System.out.println(findSubstring("barfoothefoobarman", new String[]{"foo", "bar"}));
-        // []
-        System.out.println(findSubstring("wordgoodgoodgoodbestword", new String[]{"word", "good", "best", "word"}));
-        // [0]
-        System.out.println(findSubstring("wordgoodbestword", new String[]{"word", "good", "best", "word"}));
-        // [8]
-        System.out.println(findSubstring("wordgoodgoodgoodbestword", new String[]{"word", "good", "best", "good"}));
-        // [6,16,17,18,19,20]
-        System.out.println(findSubstring("bcabbcaabbccacacbabccacaababcbb", new String[]{"c", "b", "a", "c", "a", "a", "a", "b", "c"}));
+    /**
+     * 执行用时：131 ms, 在所有 Java 提交中击败了 40.88% 的用户
+     * 内存消耗：42.3 MB, 在所有 Java 提交中击败了 16.28% 的用户
+     * 通过测试用例：177 / 177
+     *
+     * @param s
+     * @param words
+     * @return
+     */
+    public List<Integer> findSubstring_Stream_2022_6(String s, String[] words) {
+        Map<String, Long> map = Arrays.stream(words).collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+        int wordLen = words[0].length();
+        int total = words.length * wordLen;
+        Map<String, Long> temp = new HashMap<>();
+        List<Integer> result = new LinkedList<>();
+        loop:
+        for (int i = 0; i <= s.length() - total; i++) {
+            temp.clear();
+            for (int j = 0; j < words.length; j++) {
+                String testStr = s.substring(i + j * wordLen, i + (j + 1) * wordLen);
+                if (map.containsKey(testStr) && (!temp.containsKey(testStr) || temp.get(testStr) < map.get(testStr))) {
+                    temp.put(testStr, temp.getOrDefault(testStr, 0L) + 1);
+                } else {
+                    continue loop;
+                }
+            }
+            result.add(i);
+        }
+        return result;
     }
 }
