@@ -3,8 +3,9 @@ package com.zerox.smartcontract;
 import com.zerox.smartcontract.entity.Account;
 import com.zerox.smartcontract.entity.Asset;
 import com.zerox.smartcontract.entity.AssetTransHistory;
-import com.zerox.utils.JsonUtils;
+import com.zerox.utils.ChaincodeJsonUtils;
 import org.hyperledger.fabric.contract.Context;
+import org.hyperledger.fabric.contract.ContractInterface;
 import org.hyperledger.fabric.contract.annotation.Contact;
 import org.hyperledger.fabric.contract.annotation.Contract;
 import org.hyperledger.fabric.contract.annotation.Default;
@@ -16,14 +17,12 @@ import org.hyperledger.fabric.shim.ChaincodeStub;
 import org.hyperledger.fabric.shim.ledger.CompositeKey;
 import org.hyperledger.fabric.shim.ledger.KeyValue;
 import org.hyperledger.fabric.shim.ledger.QueryResultsIterator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 
 /**
  * @author zhuxi
@@ -48,14 +47,24 @@ import java.util.Map;
         )
 )
 @Default
-public class AssetContract {
-    private static final Logger logger = LoggerFactory.getLogger(AssetContract.class);
+public class AssetContract implements ContractInterface {
+    private final static Logger LOG = Logger.getLogger(AssetContract.class.getName());
 
     private static final String ASSET_TRANS_HISTORY_KEY = "ast_tx_his";
 
     private void throwChaincodeException(String msg, String payload) {
-        logger.error(msg);
+        LOG.severe(msg);
         throw new ChaincodeException(msg, payload);
+    }
+
+    @Transaction
+    public void testLogText(final Context ctx, String text) {
+        LOG.info(text);
+    }
+
+    @Transaction
+    public void testThrowException(final Context ctx, String msg) {
+        throwChaincodeException(msg, "TEST_THROW_EXCEPTION");
     }
 
     @Transaction
@@ -64,7 +73,7 @@ public class AssetContract {
         String key = getAccountKey(id);
         validateNonExistence(stub, key, "Account");
         Account account = new Account(id, new HashMap<>());
-        stub.putStringState(key, JsonUtils.objectToJson(account));
+        stub.putStringState(key, ChaincodeJsonUtils.objectToJson(account));
         return account;
     }
 
@@ -79,11 +88,11 @@ public class AssetContract {
         validateNonExistence(stub, key, "Asset");
         Map<String, Integer> owners = parseOwners(ownersStr);
         Asset asset = new Asset(id, owners);
-        stub.putStringState(key, JsonUtils.objectToJson(asset));
+        stub.putStringState(key, ChaincodeJsonUtils.objectToJson(asset));
         for (Map.Entry<String, Integer> entry : owners.entrySet()) {
             CompositeKey compKey = stub.createCompositeKey(ASSET_TRANS_HISTORY_KEY, id, "INIT", entry.getKey());
             stub.putStringState(compKey.toString(),
-                    JsonUtils.objectToJson(new AssetTransHistory(id, "INIT", entry.getKey(), entry.getValue(), 0L)));
+                    ChaincodeJsonUtils.objectToJson(new AssetTransHistory(id, "INIT", entry.getKey(), entry.getValue(), 0L)));
         }
         return asset;
     }
@@ -95,7 +104,7 @@ public class AssetContract {
     private void validateNonExistence(ChaincodeStub stub, String key, String type) {
         String assetJson = stub.getStringState(key);
         // 对应 key 已经存在值
-        if (StringUtils.hasLength(assetJson)) {
+        if (assetJson != null && !assetJson.isEmpty()) {
             throwChaincodeException(
                     String.format("%s key %s is already used", type, key),
                     type.toUpperCase() + "_KEY_USED");
@@ -134,24 +143,24 @@ public class AssetContract {
     public Asset queryAsset(final Context ctx, final String id) {
         ChaincodeStub stub = ctx.getStub();
         String assetJson = validateExistenceAndGetValueJson(getAssetKey(id), stub, "Asset");
-        return JsonUtils.jsonToObject(assetJson, Asset.class);
+        return ChaincodeJsonUtils.jsonToObject(assetJson, Asset.class);
     }
 
     @Transaction
-    public List<AssetTransHistory> queryAssetTransHistory(final Context ctx, final String key) {
+    public String queryAssetTransHistory(final Context ctx, final String key) {
         ChaincodeStub stub = ctx.getStub();
         QueryResultsIterator<KeyValue> result = stub.getStateByPartialCompositeKey(ASSET_TRANS_HISTORY_KEY, key);
         List<AssetTransHistory> list = new ArrayList<>();
         for (KeyValue kv : result) {
-            list.add(JsonUtils.jsonToObject(kv.getStringValue(), AssetTransHistory.class));
+            list.add(ChaincodeJsonUtils.jsonToObject(kv.getStringValue(), AssetTransHistory.class));
         }
-        return list;
+        return ChaincodeJsonUtils.objectToJson(list);
     }
 
     private String validateExistenceAndGetValueJson(String key, ChaincodeStub stub, String valueType) {
         String assetJson = stub.getStringState(key);
         // 没找到对应值
-        if (!StringUtils.hasLength(assetJson)) {
+        if (assetJson == null || assetJson.isEmpty()) {
             throwChaincodeException(
                     String.format("%s %s does not exist", valueType, key),
                     valueType.toUpperCase() + "_NOT_FOUND");
@@ -168,7 +177,7 @@ public class AssetContract {
         ChaincodeStub stub = ctx.getStub();
         String key = getAssetKey(id);
         String assetJson = validateExistenceAndGetValueJson(key, stub, "Asset");
-        Asset asset = JsonUtils.jsonToObject(assetJson, Asset.class);
+        Asset asset = ChaincodeJsonUtils.jsonToObject(assetJson, Asset.class);
         assert asset != null;
         Map<String, Integer> owners = asset.getOwners();
         int fromShare = validateAndGetFromShare(key, from, share, owners);
@@ -179,12 +188,12 @@ public class AssetContract {
         }
         owners.put(to, owners.getOrDefault(to, 0) + share);
 
-        stub.putStringState(key, JsonUtils.objectToJson(asset));
+        stub.putStringState(key, ChaincodeJsonUtils.objectToJson(asset));
 
         // 资产交易历史
         CompositeKey compositeKey = stub.createCompositeKey(ASSET_TRANS_HISTORY_KEY, id, from, to);
         stub.putStringState(compositeKey.toString(),
-                JsonUtils.objectToJson(new AssetTransHistory(id, from, to, share, cost)));
+                ChaincodeJsonUtils.objectToJson(new AssetTransHistory(id, from, to, share, cost)));
 
         return asset;
     }
