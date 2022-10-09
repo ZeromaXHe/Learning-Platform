@@ -12,10 +12,10 @@ import java.util.Map;
  */
 public class AssetDO {
     private String id;
-    private Map<String, Integer> ownerShares;
+    private Map<String, Integer> owners;
 
     public AssetBO toAssetBO() {
-        return new AssetBO(id, ownerShares);
+        return new AssetBO(id, owners);
     }
 
     public String getId() {
@@ -26,11 +26,11 @@ public class AssetDO {
         this.id = id;
     }
 
-    public Map<String, Integer> getOwnerShares() {
-        return ownerShares;
+    public Map<String, Integer> getOwners() {
+        return owners;
     }
 
-    public void setOwnerShares(Map<String, Integer> ownerShares) {
-        this.ownerShares = ownerShares;
+    public void setOwners(Map<String, Integer> owners) {
+        this.owners = owners;
     }
 }
