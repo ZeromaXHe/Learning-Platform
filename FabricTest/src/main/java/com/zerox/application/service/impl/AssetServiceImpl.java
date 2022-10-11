@@ -28,7 +28,16 @@ public class AssetServiceImpl implements AssetService {
     }
 
     @Override
-    public void createAssert(AssetBO asset) {
+    public AssetBO createAssert(String id, String owners) {
+        AssetDO domain = assetDao.createAssert(id, owners);
+        if (domain == null) return null;
+        return domain.toAssetBO();
+    }
 
+    @Override
+    public AssetBO changeAssetOwner(String id, String from, String to, String share, String cost) {
+        AssetDO domain = assetDao.changeAssetOwner(id, from, to, share, cost);
+        if (domain == null) return null;
+        return domain.toAssetBO();
     }
 }

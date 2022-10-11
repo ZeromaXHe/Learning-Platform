@@ -30,4 +30,21 @@ public class AssetController {
         AssetBO bo = assetService.queryAssert(id);
         return JsonUtils.objectToJson(bo);
     }
+
+    @RequestMapping("/create")
+    public String queryAsset(@RequestParam("id") String id,
+                             @RequestParam("owners") String owners) {
+        AssetBO bo = assetService.createAssert(id, owners);
+        return JsonUtils.objectToJson(bo);
+    }
+
+    @RequestMapping("/changeOwner")
+    public String queryAsset(@RequestParam("id") String id,
+                             @RequestParam("from") String from,
+                             @RequestParam("to") String to,
+                             @RequestParam("share") String share,
+                             @RequestParam("cost") String cost) {
+        AssetBO bo = assetService.changeAssetOwner(id, from, to, share, cost);
+        return JsonUtils.objectToJson(bo);
+    }
 }

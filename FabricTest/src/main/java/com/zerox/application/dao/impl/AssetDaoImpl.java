@@ -46,7 +46,7 @@ public class AssetDaoImpl implements AssetDao {
     }
 
     private volatile Gateway.Builder builder;
-    private final static String CONTRACT_NAME = "assetcontract";
+    private final static String CHAINCODE_NAME = "my_chaincode";
     private final static String ORG1_CA_PATH = "/home/zeromax/fabric/fabric-samples/test-network/" +
             "organizations/peerOrganizations/org1.example.com/ca/ca.org1.example.com-cert.pem";
 
@@ -196,8 +196,7 @@ public class AssetDaoImpl implements AssetDao {
         }
     }
 
-    @Override
-    public AssetDO queryAsset(String id) {
+    private <T> T contractSubmitTransaction(Class<T> tClass, String contractName, String method, String... params) {
         doubleCheckBuilderSingletonInit();
         // Connect to gateway using application specified parameters
         try (Gateway gateway = builder.connect()) {
@@ -206,18 +205,33 @@ public class AssetDaoImpl implements AssetDao {
             Network network = gateway.getNetwork("mychannel");
 
             // Get addressability to commercial paper contract
-            Contract contract = network.getContract(CONTRACT_NAME);
+            Contract contract = network.getContract(CHAINCODE_NAME, contractName);
 
             // Buy commercial paper
-            byte[] response = contract.submitTransaction("queryAsset", id);
+            byte[] response = contract.submitTransaction(method, params);
 
             // Process response
             String json = new String(response);
-            logger.info("queryAsset resp json: {}", json);
-            return JsonUtils.jsonToObject(json, AssetDO.class);
+            logger.info(method + " resp json: {}", json);
+            return JsonUtils.jsonToObject(json, tClass);
         } catch (ContractException | InterruptedException | TimeoutException e) {
-            logger.error("queryAsset error", e);
+            logger.error(method + " error", e);
             return null;
         }
+    }
+
+    @Override
+    public AssetDO queryAsset(String id) {
+        return contractSubmitTransaction(AssetDO.class, "queryAsset", id);
+    }
+
+    @Override
+    public AssetDO createAssert(String id, String owners) {
+        return contractSubmitTransaction(AssetDO.class, "createAssert", id, owners);
+    }
+
+    @Override
+    public AssetDO changeAssetOwner(String id, String from, String to, String share, String cost) {
+        return contractSubmitTransaction(AssetDO.class, "changeAssetOwner", id, from, to, share, cost);
     }
 }

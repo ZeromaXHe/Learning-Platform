@@ -10,4 +10,8 @@ import com.zerox.application.entity.domain.AssetDO;
  */
 public interface AssetDao {
     AssetDO queryAsset(String id);
+
+    AssetDO createAssert(String id, String owners);
+
+    AssetDO changeAssetOwner(String id, String from, String to, String share, String cost);
 }

@@ -11,5 +11,7 @@ import com.zerox.application.entity.business.AssetBO;
 public interface AssetService {
     AssetBO queryAssert(String id);
 
-    void createAssert(AssetBO asset);
+    AssetBO createAssert(String id, String owners);
+
+    AssetBO changeAssetOwner(String id, String from, String to, String share, String cost);
 }
