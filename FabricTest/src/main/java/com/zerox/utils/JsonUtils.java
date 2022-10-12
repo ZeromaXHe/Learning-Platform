@@ -1,9 +1,12 @@
 package com.zerox.utils;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.List;
 
 /**
  * @author zhuxi
@@ -22,6 +25,16 @@ public class JsonUtils {
             return mapper.readValue(json, objectClass);
         } catch (JsonProcessingException e) {
             logger.error("JsonUtils.jsonToObject failed|{}|{}", json, objectClass.getSimpleName());
+            return null;
+        }
+    }
+
+    public static <T> List<T> jsonToList(String json, Class<T> elementClass) {
+        try {
+            JavaType type = mapper.getTypeFactory().constructParametricType(List.class, elementClass);
+            return mapper.readValue(json, type);
+        } catch (JsonProcessingException e) {
+            logger.error("JsonUtils.jsonToList failed|{}|{}", json, elementClass.getSimpleName());
             return null;
         }
     }

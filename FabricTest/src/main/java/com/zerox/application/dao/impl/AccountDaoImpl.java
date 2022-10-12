@@ -1,0 +1,68 @@
+package com.zerox.application.dao.impl;
+
+import com.zerox.application.dao.AccountDao;
+import com.zerox.application.dao.FabricManager;
+import com.zerox.application.entity.domain.AccountBonusHistoryDO;
+import com.zerox.application.entity.domain.AccountDO;
+import com.zerox.application.entity.domain.AccountMoneyHistoryDO;
+import com.zerox.application.entity.domain.AccountMoneyTransHistoryDO;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+/**
+ * @author ZeromaXHe
+ * @apiNote
+ * @implNote
+ * @since 2022/10/12 17:11
+ */
+@Repository
+public class AccountDaoImpl implements AccountDao {
+    private final FabricManager fabricManager;
+
+    public AccountDaoImpl(FabricManager fabricManager) {
+        this.fabricManager = fabricManager;
+    }
+
+    @Override
+    public AccountDO createAccount(String id) {
+        return fabricManager.contractSubmitTransactionAndGetObject(
+                AccountDO.class, "createAccount", id);
+    }
+
+    @Override
+    public AccountDO changeAccountMoney(String id, String money, String reason) {
+        return fabricManager.contractSubmitTransactionAndGetObject(
+                AccountDO.class, "changeAccountMoney", id, money, reason);
+    }
+
+    @Override
+    public List<AccountMoneyHistoryDO> queryAccountMoneyHistory(String id) {
+        return fabricManager.contractSubmitTransactionAndGetList(
+                AccountMoneyHistoryDO.class, "queryAccountMoneyHistory", id);
+    }
+
+    @Override
+    public AccountMoneyTransHistoryDO transferAccountMoney(String from, String to, String money) {
+        return fabricManager.contractSubmitTransactionAndGetObject(
+                AccountMoneyTransHistoryDO.class, "changeAccountMoney", from, to, money);
+    }
+
+    @Override
+    public List<AccountMoneyTransHistoryDO> queryAccountMoneyTransFromHistory(String id) {
+        return fabricManager.contractSubmitTransactionAndGetList(
+                AccountMoneyTransHistoryDO.class, "queryAccountMoneyTransFromHistory", id);
+    }
+
+    @Override
+    public List<AccountBonusHistoryDO> queryAccountBonusHistory(String id) {
+        return fabricManager.contractSubmitTransactionAndGetList(
+                AccountBonusHistoryDO.class, "queryAccountBonusHistory", id);
+    }
+
+    @Override
+    public List<AccountBonusHistoryDO> queryAccountBonusFromAssetHistory(String accountId, String assetId) {
+        return fabricManager.contractSubmitTransactionAndGetList(
+                AccountBonusHistoryDO.class, "queryAccountBonusFromAssetHistory", accountId, assetId);
+    }
+}
