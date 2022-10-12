@@ -1,9 +1,11 @@
 package com.zerox.smartcontract;
 
+import com.zerox.constant.ContractConstants;
 import com.zerox.smartcontract.entity.Account;
 import com.zerox.smartcontract.entity.Asset;
 import com.zerox.smartcontract.entity.AssetTransHistory;
 import com.zerox.utils.ChaincodeJsonUtils;
+import com.zerox.utils.ContractUtils;
 import org.hyperledger.fabric.contract.Context;
 import org.hyperledger.fabric.contract.ContractInterface;
 import org.hyperledger.fabric.contract.annotation.Contact;
@@ -50,13 +52,6 @@ import java.util.logging.Logger;
 public class AssetContract implements ContractInterface {
     private final static Logger LOG = Logger.getLogger(AssetContract.class.getName());
 
-    private static final String ASSET_TRANS_HISTORY_KEY = "ast_tx_his";
-
-    private void throwChaincodeException(String msg, String payload) {
-        LOG.severe(msg);
-        throw new ChaincodeException(msg, payload);
-    }
-
     @Transaction
     public void testLogText(final Context ctx, String text) {
         LOG.info(text);
@@ -64,51 +59,30 @@ public class AssetContract implements ContractInterface {
 
     @Transaction
     public void testThrowException(final Context ctx, String msg) {
-        throwChaincodeException(msg, "TEST_THROW_EXCEPTION");
-    }
-
-    @Transaction
-    public Account createAccount(final Context ctx, final String id) {
-        ChaincodeStub stub = ctx.getStub();
-        String key = getAccountKey(id);
-        validateNonExistence(stub, key, "Account");
-        Account account = new Account(id, new HashMap<>());
-        stub.putStringState(key, ChaincodeJsonUtils.objectToJson(account));
-        return account;
-    }
-
-    private String getAccountKey(String id) {
-        return "account_" + id;
+        ContractUtils.throwChaincodeException(LOG, msg, "TEST_THROW_EXCEPTION");
     }
 
     @Transaction
     public Asset createAsset(final Context ctx, final String id, final String ownersStr) {
         ChaincodeStub stub = ctx.getStub();
         String key = getAssetKey(id);
-        validateNonExistence(stub, key, "Asset");
+        ContractUtils.validateNonExistence(LOG, stub, key, "Asset");
         Map<String, Integer> owners = parseOwners(ownersStr);
         Asset asset = new Asset(id, owners);
         stub.putStringState(key, ChaincodeJsonUtils.objectToJson(asset));
+        long timestamp = System.currentTimeMillis();
         for (Map.Entry<String, Integer> entry : owners.entrySet()) {
-            CompositeKey compKey = stub.createCompositeKey(ASSET_TRANS_HISTORY_KEY, id, "INIT", entry.getKey());
-            stub.putStringState(compKey.toString(),
-                    ChaincodeJsonUtils.objectToJson(new AssetTransHistory(id, "INIT", entry.getKey(), entry.getValue(), 0L)));
+            CompositeKey compKey = stub.createCompositeKey(ContractConstants.ASSET_TRANS_HISTORY_KEY,
+                    id, "INIT", entry.getKey(), String.valueOf(timestamp));
+            stub.putStringState(compKey.toString(), ChaincodeJsonUtils.objectToJson(
+                    new AssetTransHistory(id, "INIT", entry.getKey(), entry.getValue(),
+                            0L, timestamp)));
         }
         return asset;
     }
 
     private String getAssetKey(String id) {
         return "asset_" + id;
-    }
-
-    private void validateNonExistence(ChaincodeStub stub, String key, String type) {
-        String assetJson = stub.getStringState(key);
-        // 对应 key 已经存在值
-        if (assetJson != null && !assetJson.isEmpty()) {
-            throwChaincodeException(
-                    String.format("%s key %s is already used", type, key),
-                    type.toUpperCase() + "_KEY_USED");
-        }
     }
 
     private Map<String, Integer> parseOwners(String ownersStr) {
@@ -124,17 +98,17 @@ public class AssetContract implements ContractInterface {
             }
         } catch (Exception e) {
             // 解析失败
-            throwChaincodeException(
+            ContractUtils.throwChaincodeException(LOG,
                     String.format("can not parse ownersStr %s", ownersStr),
                     "OWNERS_STR_PARSE_FAIL");
         }
         // 没有 owner
         if (owners.isEmpty()) {
-            throwChaincodeException("no owner", "NO_OWNER_ERROR");
+            ContractUtils.throwChaincodeException(LOG, "no owner", "NO_OWNER_ERROR");
         }
         // 所有者收益占比和应该为 10000
         if (sum != 0) {
-            throwChaincodeException("sum of shares is not 10000", "SHARE_SUM_NOT_10000");
+            ContractUtils.throwChaincodeException(LOG, "sum of shares is not 10000", "SHARE_SUM_NOT_10000");
         }
         return owners;
     }
@@ -142,30 +116,20 @@ public class AssetContract implements ContractInterface {
     @Transaction
     public Asset queryAsset(final Context ctx, final String id) {
         ChaincodeStub stub = ctx.getStub();
-        String assetJson = validateExistenceAndGetValueJson(getAssetKey(id), stub, "Asset");
+        String assetJson = ContractUtils.validateExistenceAndGetValueJson(LOG, stub, getAssetKey(id), "Asset");
         return ChaincodeJsonUtils.jsonToObject(assetJson, Asset.class);
     }
 
     @Transaction
-    public String queryAssetTransHistory(final Context ctx, final String key) {
+    public String queryAssetTransHistory(final Context ctx, final String id) {
         ChaincodeStub stub = ctx.getStub();
-        QueryResultsIterator<KeyValue> result = stub.getStateByPartialCompositeKey(ASSET_TRANS_HISTORY_KEY, key);
+        QueryResultsIterator<KeyValue> result =
+                stub.getStateByPartialCompositeKey(ContractConstants.ASSET_TRANS_HISTORY_KEY, id);
         List<AssetTransHistory> list = new ArrayList<>();
         for (KeyValue kv : result) {
             list.add(ChaincodeJsonUtils.jsonToObject(kv.getStringValue(), AssetTransHistory.class));
         }
         return ChaincodeJsonUtils.objectToJson(list);
-    }
-
-    private String validateExistenceAndGetValueJson(String key, ChaincodeStub stub, String valueType) {
-        String assetJson = stub.getStringState(key);
-        // 没找到对应值
-        if (assetJson == null || assetJson.isEmpty()) {
-            throwChaincodeException(
-                    String.format("%s %s does not exist", valueType, key),
-                    valueType.toUpperCase() + "_NOT_FOUND");
-        }
-        return assetJson;
     }
 
     @Transaction
@@ -176,7 +140,7 @@ public class AssetContract implements ContractInterface {
         long cost = parseCost(costStr);
         ChaincodeStub stub = ctx.getStub();
         String key = getAssetKey(id);
-        String assetJson = validateExistenceAndGetValueJson(key, stub, "Asset");
+        String assetJson = ContractUtils.validateExistenceAndGetValueJson(LOG, stub, key, "Asset");
         Asset asset = ChaincodeJsonUtils.jsonToObject(assetJson, Asset.class);
         assert asset != null;
         Map<String, Integer> owners = asset.getOwners();
@@ -191,9 +155,11 @@ public class AssetContract implements ContractInterface {
         stub.putStringState(key, ChaincodeJsonUtils.objectToJson(asset));
 
         // 资产交易历史
-        CompositeKey compositeKey = stub.createCompositeKey(ASSET_TRANS_HISTORY_KEY, id, from, to);
+        long timestamp = System.currentTimeMillis();
+        CompositeKey compositeKey = stub.createCompositeKey(
+                ContractConstants.ASSET_TRANS_HISTORY_KEY, id, from, to, String.valueOf(timestamp));
         stub.putStringState(compositeKey.toString(),
-                ChaincodeJsonUtils.objectToJson(new AssetTransHistory(id, from, to, share, cost)));
+                ChaincodeJsonUtils.objectToJson(new AssetTransHistory(id, from, to, share, cost, timestamp)));
 
         return asset;
     }
@@ -203,7 +169,7 @@ public class AssetContract implements ContractInterface {
             return Integer.parseInt(shares);
         } catch (Exception e) {
             // 解析 share 失败
-            throwChaincodeException(
+            ContractUtils.throwChaincodeException(LOG,
                     String.format("can not parse shares %s", shares),
                     "SHARES_PARSE_FAIL");
         }
@@ -216,7 +182,7 @@ public class AssetContract implements ContractInterface {
             return Long.parseLong(cost);
         } catch (Exception e) {
             // 解析 cost 失败
-            throwChaincodeException(
+            ContractUtils.throwChaincodeException(LOG,
                     String.format("can not parse cost %s", cost),
                     "COST_PARSE_FAIL");
         }
@@ -227,14 +193,14 @@ public class AssetContract implements ContractInterface {
     private int validateAndGetFromShare(String key, String from, int share, Map<String, Integer> owners) {
         // from 不是所有者
         if (!owners.containsKey(from)) {
-            throwChaincodeException(
+            ContractUtils.throwChaincodeException(LOG,
                     String.format("%s is not owner of asset %s", from, key),
                     "FROM_NOT_OWNER");
         }
         // from 拥有的份数不足
         int fromShare = owners.get(from);
         if (fromShare < share) {
-            throwChaincodeException(
+            ContractUtils.throwChaincodeException(LOG,
                     String.format("%s's share of asset %s is less than %d", from, key, share),
                     "FROM_NOT_OWNER");
         }

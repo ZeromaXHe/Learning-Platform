@@ -24,17 +24,21 @@ public class AssetTransHistory {
     private final Integer shares;
     @Property
     private final Long cost;
+    @Property
+    private final Long timestamp;
 
     public AssetTransHistory(@JsonProperty("assetId") final String assetId,
                              @JsonProperty("originOwnerId") final String originOwnerId,
                              @JsonProperty("currentOwnerId") final String currentOwnerId,
                              @JsonProperty("shares") final Integer shares,
-                             @JsonProperty("cost") final Long cost) {
+                             @JsonProperty("cost") final Long cost,
+                             @JsonProperty("timestamp") final Long timestamp) {
         this.assetId = assetId;
         this.originOwnerId = originOwnerId;
         this.currentOwnerId = currentOwnerId;
         this.shares = shares;
         this.cost = cost;
+        this.timestamp = timestamp;
     }
 
     public String getAssetId() {
@@ -57,6 +61,10 @@ public class AssetTransHistory {
         return cost;
     }
 
+    public Long getTimestamp() {
+        return timestamp;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -70,7 +78,8 @@ public class AssetTransHistory {
         if (currentOwnerId != null ? !currentOwnerId.equals(that.currentOwnerId) : that.currentOwnerId != null)
             return false;
         if (shares != null ? !shares.equals(that.shares) : that.shares != null) return false;
-        return cost != null ? cost.equals(that.cost) : that.cost == null;
+        if (cost != null ? !cost.equals(that.cost) : that.cost != null) return false;
+        return timestamp != null ? timestamp.equals(that.timestamp) : that.timestamp == null;
     }
 
     @Override
@@ -80,17 +89,19 @@ public class AssetTransHistory {
         result = 31 * result + (currentOwnerId != null ? currentOwnerId.hashCode() : 0);
         result = 31 * result + (shares != null ? shares.hashCode() : 0);
         result = 31 * result + (cost != null ? cost.hashCode() : 0);
+        result = 31 * result + (timestamp != null ? timestamp.hashCode() : 0);
         return result;
     }
 
     @Override
     public String toString() {
-        return new StringJoiner(", ", AssetTransHistory.class.getSimpleName() + "[", "]")
-                .add("assetId='" + assetId + "'")
-                .add("originOwnerId='" + originOwnerId + "'")
-                .add("currentOwnerId='" + currentOwnerId + "'")
-                .add("shares=" + shares)
-                .add("cost=" + cost)
-                .toString();
+        return "AssetTransHistory{" +
+                "assetId='" + assetId + '\'' +
+                ", originOwnerId='" + originOwnerId + '\'' +
+                ", currentOwnerId='" + currentOwnerId + '\'' +
+                ", shares=" + shares +
+                ", cost=" + cost +
+                ", timestamp=" + timestamp +
+                '}';
     }
 }
