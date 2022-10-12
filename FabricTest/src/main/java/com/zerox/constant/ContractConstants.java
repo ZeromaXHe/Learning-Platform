@@ -7,6 +7,8 @@ package com.zerox.constant;
  * @since 2022/10/12 10:48
  */
 public class ContractConstants {
+    public final static String CHAINCODE_NAME = "my_chaincode";
+
     public static final String ACCOUNT_MONEY_HISTORY_KEY = "acnt_mny_his";
     public static final String ACCOUNT_MONEY_TRANS_HISTORY_KEY = "acnt_mny_tx_his";
     public static final String ACCOUNT_BONUS_HISTORY_KEY = "acnt_bns_his";

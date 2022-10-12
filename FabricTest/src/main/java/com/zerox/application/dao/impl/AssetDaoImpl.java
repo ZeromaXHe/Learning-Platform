@@ -31,6 +31,8 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeoutException;
 
+import static com.zerox.constant.ContractConstants.CHAINCODE_NAME;
+
 /**
  * @author zhuxi
  * @apiNote
@@ -46,7 +48,6 @@ public class AssetDaoImpl implements AssetDao {
     }
 
     private volatile Gateway.Builder builder;
-    private final static String CHAINCODE_NAME = "my_chaincode";
     private final static String ORG1_CA_PATH = "/home/zeromax/fabric/fabric-samples/test-network/" +
             "organizations/peerOrganizations/org1.example.com/ca/ca.org1.example.com-cert.pem";
 

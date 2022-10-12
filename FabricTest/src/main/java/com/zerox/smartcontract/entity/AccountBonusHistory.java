@@ -4,8 +4,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import org.hyperledger.fabric.contract.annotation.DataType;
 import org.hyperledger.fabric.contract.annotation.Property;
 
-import java.util.StringJoiner;
-
 /**
  * @author zhuxi
  * @apiNote
@@ -15,6 +13,8 @@ import java.util.StringJoiner;
 @DataType
 public class AccountBonusHistory {
     @Property
+    private final String accountId;
+    @Property
     private final String assetId;
     @Property
     private final Integer shares;
@@ -23,14 +23,20 @@ public class AccountBonusHistory {
     @Property
     private final Long timestamp;
 
-    public AccountBonusHistory(@JsonProperty("assetId") final String assetId,
+    public AccountBonusHistory(@JsonProperty("accountId") final String accountId,
+                               @JsonProperty("assetId") final String assetId,
                                @JsonProperty("shares") final Integer shares,
                                @JsonProperty("bonus") final Long bonus,
                                @JsonProperty("timestamp") final Long timestamp) {
+        this.accountId = accountId;
         this.assetId = assetId;
         this.shares = shares;
         this.bonus = bonus;
         this.timestamp = timestamp;
+    }
+
+    public String getAccountId() {
+        return accountId;
     }
 
     public String getAssetId() {
@@ -56,6 +62,7 @@ public class AccountBonusHistory {
 
         AccountBonusHistory that = (AccountBonusHistory) o;
 
+        if (accountId != null ? !accountId.equals(that.accountId) : that.accountId != null) return false;
         if (assetId != null ? !assetId.equals(that.assetId) : that.assetId != null) return false;
         if (shares != null ? !shares.equals(that.shares) : that.shares != null) return false;
         if (bonus != null ? !bonus.equals(that.bonus) : that.bonus != null) return false;
@@ -64,7 +71,8 @@ public class AccountBonusHistory {
 
     @Override
     public int hashCode() {
-        int result = assetId != null ? assetId.hashCode() : 0;
+        int result = accountId != null ? accountId.hashCode() : 0;
+        result = 31 * result + (assetId != null ? assetId.hashCode() : 0);
         result = 31 * result + (shares != null ? shares.hashCode() : 0);
         result = 31 * result + (bonus != null ? bonus.hashCode() : 0);
         result = 31 * result + (timestamp != null ? timestamp.hashCode() : 0);
@@ -73,11 +81,12 @@ public class AccountBonusHistory {
 
     @Override
     public String toString() {
-        return new StringJoiner(", ", AccountBonusHistory.class.getSimpleName() + "[", "]")
-                .add("assetId='" + assetId + "'")
-                .add("shares=" + shares)
-                .add("bonus=" + bonus)
-                .add("timestamp=" + timestamp)
-                .toString();
+        return "AccountBonusHistory{" +
+                "accountId='" + accountId + '\'' +
+                ", assetId='" + assetId + '\'' +
+                ", shares=" + shares +
+                ", bonus=" + bonus +
+                ", timestamp=" + timestamp +
+                '}';
     }
 }

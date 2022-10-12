@@ -1,10 +1,9 @@
 package com.zerox.smartcontract;
 
-import com.zerox.constant.ContractConstants;
 import com.zerox.smartcontract.entity.Account;
+import com.zerox.smartcontract.entity.AccountBonusHistory;
 import com.zerox.smartcontract.entity.AccountMoneyHistory;
 import com.zerox.smartcontract.entity.AccountMoneyTransHistory;
-import com.zerox.smartcontract.entity.AssetTransHistory;
 import com.zerox.utils.ChaincodeJsonUtils;
 import com.zerox.utils.ContractUtils;
 import org.hyperledger.fabric.contract.Context;
@@ -15,16 +14,15 @@ import org.hyperledger.fabric.contract.annotation.Default;
 import org.hyperledger.fabric.contract.annotation.Info;
 import org.hyperledger.fabric.contract.annotation.License;
 import org.hyperledger.fabric.contract.annotation.Transaction;
-import org.hyperledger.fabric.shim.ChaincodeException;
 import org.hyperledger.fabric.shim.ChaincodeStub;
 import org.hyperledger.fabric.shim.ledger.CompositeKey;
-import org.hyperledger.fabric.shim.ledger.KeyValue;
-import org.hyperledger.fabric.shim.ledger.QueryResultsIterator;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.logging.Logger;
+
+import static com.zerox.constant.ContractConstants.ACCOUNT_BONUS_HISTORY_KEY;
+import static com.zerox.constant.ContractConstants.ACCOUNT_MONEY_HISTORY_KEY;
+import static com.zerox.constant.ContractConstants.ACCOUNT_MONEY_TRANS_HISTORY_KEY;
 
 /**
  * @author zhuxi
@@ -71,8 +69,7 @@ public class AccountContract implements ContractInterface {
         stub.putStringState(key, ChaincodeJsonUtils.objectToJson(account));
 
         long timestamp = System.currentTimeMillis();
-        CompositeKey compKey = stub.createCompositeKey(
-                ContractConstants.ACCOUNT_MONEY_HISTORY_KEY, id, String.valueOf(timestamp));
+        CompositeKey compKey = stub.createCompositeKey(ACCOUNT_MONEY_HISTORY_KEY, id, String.valueOf(timestamp));
         stub.putStringState(compKey.toString(), ChaincodeJsonUtils.objectToJson(
                 new AccountMoneyHistory(id, 0L, 0L, "INIT", timestamp)));
         return account;
@@ -84,14 +81,7 @@ public class AccountContract implements ContractInterface {
 
     @Transaction
     public String queryAccountMoneyHistory(final Context ctx, final String id) {
-        ChaincodeStub stub = ctx.getStub();
-        QueryResultsIterator<KeyValue> result =
-                stub.getStateByPartialCompositeKey(ContractConstants.ACCOUNT_MONEY_HISTORY_KEY, id);
-        List<AccountMoneyHistory> list = new ArrayList<>();
-        for (KeyValue kv : result) {
-            list.add(ChaincodeJsonUtils.jsonToObject(kv.getStringValue(), AccountMoneyHistory.class));
-        }
-        return ChaincodeJsonUtils.objectToJson(list);
+        return ContractUtils.history(AccountMoneyHistory.class, ctx, ACCOUNT_MONEY_HISTORY_KEY, id);
     }
 
     @Transaction
@@ -106,8 +96,7 @@ public class AccountContract implements ContractInterface {
         stub.putStringState(key, ChaincodeJsonUtils.objectToJson(account));
 
         long timestamp = System.currentTimeMillis();
-        CompositeKey compKey = stub.createCompositeKey(
-                ContractConstants.ACCOUNT_MONEY_HISTORY_KEY, id, String.valueOf(timestamp));
+        CompositeKey compKey = stub.createCompositeKey(ACCOUNT_MONEY_HISTORY_KEY, id, String.valueOf(timestamp));
         stub.putStringState(compKey.toString(), ChaincodeJsonUtils.objectToJson(
                 new AccountMoneyHistory(id, money, moneyAfter, reason, timestamp)));
 
@@ -139,7 +128,7 @@ public class AccountContract implements ContractInterface {
         long money = parseMoney(moneyStr);
         long timestamp = System.currentTimeMillis();
         CompositeKey compKey = stub.createCompositeKey(
-                ContractConstants.ACCOUNT_MONEY_TRANS_HISTORY_KEY, from, to, String.valueOf(timestamp));
+                ACCOUNT_MONEY_TRANS_HISTORY_KEY, from, to, String.valueOf(timestamp));
         AccountMoneyTransHistory history = new AccountMoneyTransHistory(from, to, money, timestamp);
         stub.putStringState(compKey.toString(), ChaincodeJsonUtils.objectToJson(history));
         return history;
@@ -147,13 +136,16 @@ public class AccountContract implements ContractInterface {
 
     @Transaction
     public String queryAccountMoneyTransFromHistory(final Context ctx, final String id) {
-        ChaincodeStub stub = ctx.getStub();
-        QueryResultsIterator<KeyValue> result =
-                stub.getStateByPartialCompositeKey(ContractConstants.ACCOUNT_MONEY_TRANS_HISTORY_KEY, id);
-        List<AccountMoneyTransHistory> list = new ArrayList<>();
-        for (KeyValue kv : result) {
-            list.add(ChaincodeJsonUtils.jsonToObject(kv.getStringValue(), AccountMoneyTransHistory.class));
-        }
-        return ChaincodeJsonUtils.objectToJson(list);
+        return ContractUtils.history(AccountMoneyTransHistory.class, ctx, ACCOUNT_MONEY_TRANS_HISTORY_KEY, id);
+    }
+
+    @Transaction
+    public String queryAccountBonusHistory(final Context ctx, final String id) {
+        return ContractUtils.history(AccountBonusHistory.class, ctx, ACCOUNT_BONUS_HISTORY_KEY, id);
+    }
+
+    @Transaction
+    public String queryAccountBonusFromAssetHistory(final Context ctx, final String accountId, final String assetId) {
+        return ContractUtils.history(AccountBonusHistory.class, ctx, ACCOUNT_BONUS_HISTORY_KEY, accountId, assetId);
     }
 }

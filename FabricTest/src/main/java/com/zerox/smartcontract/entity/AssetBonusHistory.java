@@ -5,7 +5,6 @@ import org.hyperledger.fabric.contract.annotation.DataType;
 import org.hyperledger.fabric.contract.annotation.Property;
 
 import java.util.Map;
-import java.util.StringJoiner;
 
 /**
  * @author zhuxi
@@ -16,30 +15,38 @@ import java.util.StringJoiner;
 @DataType
 public class AssetBonusHistory {
     @Property
+    private final String assetId;
+    @Property
     private final Long bonusSum;
     @Property
-    private final Long timestamp;
-    @Property
     private final Map<String, Long> ownerBonus;
+    @Property
+    private final Long timestamp;
 
-    public AssetBonusHistory(@JsonProperty("bonusSum") final Long bonusSum,
-                             @JsonProperty("timestamp") final Long timestamp,
-                             @JsonProperty("ownerBonus") final Map<String, Long> ownerBonus) {
+    public AssetBonusHistory(@JsonProperty("assetId") final String assetId,
+                             @JsonProperty("bonusSum") final Long bonusSum,
+                             @JsonProperty("ownerBonus") final Map<String, Long> ownerBonus,
+                             @JsonProperty("timestamp") final Long timestamp) {
+        this.assetId = assetId;
         this.bonusSum = bonusSum;
-        this.timestamp = timestamp;
         this.ownerBonus = ownerBonus;
+        this.timestamp = timestamp;
+    }
+
+    public String getAssetId() {
+        return assetId;
     }
 
     public Long getBonusSum() {
         return bonusSum;
     }
 
-    public Long getTimestamp() {
-        return timestamp;
-    }
-
     public Map<String, Long> getOwnerBonus() {
         return ownerBonus;
+    }
+
+    public Long getTimestamp() {
+        return timestamp;
     }
 
     @Override
@@ -49,25 +56,28 @@ public class AssetBonusHistory {
 
         AssetBonusHistory that = (AssetBonusHistory) o;
 
+        if (assetId != null ? !assetId.equals(that.assetId) : that.assetId != null) return false;
         if (bonusSum != null ? !bonusSum.equals(that.bonusSum) : that.bonusSum != null) return false;
-        if (timestamp != null ? !timestamp.equals(that.timestamp) : that.timestamp != null) return false;
-        return ownerBonus != null ? ownerBonus.equals(that.ownerBonus) : that.ownerBonus == null;
+        if (ownerBonus != null ? !ownerBonus.equals(that.ownerBonus) : that.ownerBonus != null) return false;
+        return timestamp != null ? timestamp.equals(that.timestamp) : that.timestamp == null;
     }
 
     @Override
     public int hashCode() {
-        int result = bonusSum != null ? bonusSum.hashCode() : 0;
-        result = 31 * result + (timestamp != null ? timestamp.hashCode() : 0);
+        int result = assetId != null ? assetId.hashCode() : 0;
+        result = 31 * result + (bonusSum != null ? bonusSum.hashCode() : 0);
         result = 31 * result + (ownerBonus != null ? ownerBonus.hashCode() : 0);
+        result = 31 * result + (timestamp != null ? timestamp.hashCode() : 0);
         return result;
     }
 
     @Override
     public String toString() {
-        return new StringJoiner(", ", AssetBonusHistory.class.getSimpleName() + "[", "]")
-                .add("bonusSum=" + bonusSum)
-                .add("timestamp=" + timestamp)
-                .add("ownerBonus=" + ownerBonus)
-                .toString();
+        return "AssetBonusHistory{" +
+                "assetId='" + assetId + '\'' +
+                ", bonusSum=" + bonusSum +
+                ", ownerBonus=" + ownerBonus +
+                ", timestamp=" + timestamp +
+                '}';
     }
 }

@@ -1,8 +1,13 @@
 package com.zerox.utils;
 
+import org.hyperledger.fabric.contract.Context;
 import org.hyperledger.fabric.shim.ChaincodeException;
 import org.hyperledger.fabric.shim.ChaincodeStub;
+import org.hyperledger.fabric.shim.ledger.KeyValue;
+import org.hyperledger.fabric.shim.ledger.QueryResultsIterator;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Logger;
 
 /**
@@ -36,5 +41,15 @@ public class ContractUtils {
                     valueType.toUpperCase() + "_NOT_FOUND");
         }
         return json;
+    }
+
+    public static <T> String history(Class<T> tClass, final Context ctx, final String keyPrefix, final String... params) {
+        ChaincodeStub stub = ctx.getStub();
+        QueryResultsIterator<KeyValue> result = stub.getStateByPartialCompositeKey(keyPrefix, params);
+        List<T> list = new ArrayList<>();
+        for (KeyValue kv : result) {
+            list.add(ChaincodeJsonUtils.jsonToObject(kv.getStringValue(), tClass));
+        }
+        return ChaincodeJsonUtils.objectToJson(list);
     }
 }

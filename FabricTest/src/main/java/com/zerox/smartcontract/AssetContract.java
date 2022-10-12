@@ -1,8 +1,8 @@
 package com.zerox.smartcontract;
 
-import com.zerox.constant.ContractConstants;
-import com.zerox.smartcontract.entity.Account;
+import com.zerox.smartcontract.entity.AccountBonusHistory;
 import com.zerox.smartcontract.entity.Asset;
+import com.zerox.smartcontract.entity.AssetBonusHistory;
 import com.zerox.smartcontract.entity.AssetTransHistory;
 import com.zerox.utils.ChaincodeJsonUtils;
 import com.zerox.utils.ContractUtils;
@@ -14,17 +14,19 @@ import org.hyperledger.fabric.contract.annotation.Default;
 import org.hyperledger.fabric.contract.annotation.Info;
 import org.hyperledger.fabric.contract.annotation.License;
 import org.hyperledger.fabric.contract.annotation.Transaction;
-import org.hyperledger.fabric.shim.ChaincodeException;
 import org.hyperledger.fabric.shim.ChaincodeStub;
 import org.hyperledger.fabric.shim.ledger.CompositeKey;
-import org.hyperledger.fabric.shim.ledger.KeyValue;
-import org.hyperledger.fabric.shim.ledger.QueryResultsIterator;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
+
+import static com.zerox.constant.ContractConstants.ACCOUNT_BONUS_HISTORY_KEY;
+import static com.zerox.constant.ContractConstants.ASSET_BONUS_HISTORY_KEY;
+import static com.zerox.constant.ContractConstants.ASSET_TRANS_HISTORY_KEY;
+import static com.zerox.constant.ContractConstants.CHAINCODE_NAME;
 
 /**
  * @author zhuxi
@@ -72,7 +74,7 @@ public class AssetContract implements ContractInterface {
         stub.putStringState(key, ChaincodeJsonUtils.objectToJson(asset));
         long timestamp = System.currentTimeMillis();
         for (Map.Entry<String, Integer> entry : owners.entrySet()) {
-            CompositeKey compKey = stub.createCompositeKey(ContractConstants.ASSET_TRANS_HISTORY_KEY,
+            CompositeKey compKey = stub.createCompositeKey(ASSET_TRANS_HISTORY_KEY,
                     id, "INIT", entry.getKey(), String.valueOf(timestamp));
             stub.putStringState(compKey.toString(), ChaincodeJsonUtils.objectToJson(
                     new AssetTransHistory(id, "INIT", entry.getKey(), entry.getValue(),
@@ -122,14 +124,7 @@ public class AssetContract implements ContractInterface {
 
     @Transaction
     public String queryAssetTransHistory(final Context ctx, final String id) {
-        ChaincodeStub stub = ctx.getStub();
-        QueryResultsIterator<KeyValue> result =
-                stub.getStateByPartialCompositeKey(ContractConstants.ASSET_TRANS_HISTORY_KEY, id);
-        List<AssetTransHistory> list = new ArrayList<>();
-        for (KeyValue kv : result) {
-            list.add(ChaincodeJsonUtils.jsonToObject(kv.getStringValue(), AssetTransHistory.class));
-        }
-        return ChaincodeJsonUtils.objectToJson(list);
+        return ContractUtils.history(AssetTransHistory.class, ctx, ASSET_TRANS_HISTORY_KEY, id);
     }
 
     @Transaction
@@ -137,7 +132,7 @@ public class AssetContract implements ContractInterface {
                                   final String from, final String to,
                                   final String shareStr, final String costStr) {
         int share = parseShare(shareStr);
-        long cost = parseCost(costStr);
+        long cost = parseLong(costStr);
         ChaincodeStub stub = ctx.getStub();
         String key = getAssetKey(id);
         String assetJson = ContractUtils.validateExistenceAndGetValueJson(LOG, stub, key, "Asset");
@@ -157,7 +152,7 @@ public class AssetContract implements ContractInterface {
         // 资产交易历史
         long timestamp = System.currentTimeMillis();
         CompositeKey compositeKey = stub.createCompositeKey(
-                ContractConstants.ASSET_TRANS_HISTORY_KEY, id, from, to, String.valueOf(timestamp));
+                ASSET_TRANS_HISTORY_KEY, id, from, to, String.valueOf(timestamp));
         stub.putStringState(compositeKey.toString(),
                 ChaincodeJsonUtils.objectToJson(new AssetTransHistory(id, from, to, share, cost, timestamp)));
 
@@ -177,14 +172,14 @@ public class AssetContract implements ContractInterface {
         return 0;
     }
 
-    private long parseCost(String cost) {
+    private long parseLong(String cost) {
         try {
             return Long.parseLong(cost);
         } catch (Exception e) {
-            // 解析 cost 失败
+            // 解析 long 失败
             ContractUtils.throwChaincodeException(LOG,
-                    String.format("can not parse cost %s", cost),
-                    "COST_PARSE_FAIL");
+                    String.format("can not parse long %s", cost),
+                    "LONG_PARSE_FAIL");
         }
         // 走不到这里
         return 0;
@@ -205,5 +200,50 @@ public class AssetContract implements ContractInterface {
                     "FROM_NOT_OWNER");
         }
         return fromShare;
+    }
+
+    @Transaction
+    public Asset bonus(final Context ctx, final String id, final String bonusStr) {
+        long bonus = parseLong(bonusStr);
+        ChaincodeStub stub = ctx.getStub();
+        String key = getAssetKey(id);
+        String assetJson = ContractUtils.validateExistenceAndGetValueJson(LOG, stub, key, "Asset");
+        Asset asset = ChaincodeJsonUtils.jsonToObject(assetJson, Asset.class);
+        assert asset != null;
+        Map<String, Integer> owners = asset.getOwners();
+        Map<String, Long> ownerBonus = new HashMap<>();
+        long timestamp = System.currentTimeMillis();
+        for (Map.Entry<String, Integer> entry : owners.entrySet()) {
+            String accountId = entry.getKey();
+            Integer share = entry.getValue();
+            long accountBonus = (long) (bonus * (share / 10000.0));
+
+            List<String> params = new ArrayList<>();
+            params.add("changeAccountMoney");
+            params.add(accountId);
+            params.add(String.valueOf(accountBonus));
+            params.add("BONUS");
+            // 跨 Contract 调用
+            stub.invokeChaincodeWithStringArgs(CHAINCODE_NAME, params);
+
+            // 账户分红历史
+            CompositeKey acntBnsHisKey = stub.createCompositeKey(
+                    ACCOUNT_BONUS_HISTORY_KEY, accountId, id, String.valueOf(timestamp));
+            stub.putStringState(acntBnsHisKey.toString(),
+                    ChaincodeJsonUtils.objectToJson(new AccountBonusHistory(accountId, id, share, accountBonus, timestamp)));
+        }
+
+        // 资产分红历史
+        CompositeKey compositeKey = stub.createCompositeKey(
+                ASSET_BONUS_HISTORY_KEY, id, String.valueOf(timestamp));
+        stub.putStringState(compositeKey.toString(),
+                ChaincodeJsonUtils.objectToJson(new AssetBonusHistory(id, bonus, ownerBonus, timestamp)));
+
+        return asset;
+    }
+
+    @Transaction
+    public String queryAssetBonusHistory(final Context ctx, final String id) {
+        return ContractUtils.history(AssetBonusHistory.class, ctx, ASSET_BONUS_HISTORY_KEY, id);
     }
 }
