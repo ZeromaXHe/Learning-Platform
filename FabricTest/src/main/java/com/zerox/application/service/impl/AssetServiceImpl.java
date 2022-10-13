@@ -2,9 +2,13 @@ package com.zerox.application.service.impl;
 
 import com.zerox.application.dao.AssetDao;
 import com.zerox.application.entity.business.AssetBO;
+import com.zerox.application.entity.domain.AssetBonusHistoryDO;
 import com.zerox.application.entity.domain.AssetDO;
+import com.zerox.application.entity.domain.AssetTransHistoryDO;
 import com.zerox.application.service.AssetService;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 /**
  * @author zhuxi
@@ -39,5 +43,22 @@ public class AssetServiceImpl implements AssetService {
         AssetDO domain = assetDao.changeAssetOwner(id, from, to, share, cost);
         if (domain == null) return null;
         return domain.toAssetBO();
+    }
+
+    @Override
+    public AssetBO bonus(String id, String bonus) {
+        AssetDO domain = assetDao.bonus(id, bonus);
+        if (domain == null) return null;
+        return domain.toAssetBO();
+    }
+
+    @Override
+    public List<AssetTransHistoryDO> queryAssetTransHistory(String id) {
+        return assetDao.queryAssetTransHistory(id);
+    }
+
+    @Override
+    public List<AssetBonusHistoryDO> queryAssetBonusHistory(String id) {
+        return assetDao.queryAssetBonusHistory(id);
     }
 }
