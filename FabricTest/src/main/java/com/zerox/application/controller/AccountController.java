@@ -30,22 +30,20 @@ public class AccountController {
     }
 
     @RequestMapping("/create")
-    public AccountDO createAccount(@RequestParam("id") String id,
-                                   @RequestParam("timestamp") String timestamp) {
-        return accountService.createAccount(id, timestamp);
+    public AccountDO createAccount(@RequestParam("id") String id) {
+        return accountService.createAccount(id);
     }
 
     @RequestMapping("/query")
-    public AccountDO createAccount(@RequestParam("id") String id) {
+    public AccountDO queryAccount(@RequestParam("id") String id) {
         return accountService.queryAccount(id);
     }
 
     @RequestMapping("/changeMoney")
     public AccountDO changeAccountMoney(@RequestParam("id") String id,
                                         @RequestParam("money") String money,
-                                        @RequestParam("reason") String reason,
-                                        @RequestParam("timestamp") String timestamp) {
-        return accountService.changeAccountMoney(id, money, reason, timestamp);
+                                        @RequestParam("reason") String reason) {
+        return accountService.changeAccountMoney(id, money, reason);
     }
 
     @RequestMapping("/queryMoneyHistory")
@@ -56,9 +54,8 @@ public class AccountController {
     @RequestMapping("/transferMoney")
     public AccountMoneyTransHistoryDO transferAccountMoney(@RequestParam("from") String from,
                                                            @RequestParam("to") String to,
-                                                           @RequestParam("money") String money,
-                                                           @RequestParam("timestamp") String timestamp) {
-        return accountService.transferAccountMoney(from, to, money, timestamp);
+                                                           @RequestParam("money") String money) {
+        return accountService.transferAccountMoney(from, to, money);
     }
 
     @RequestMapping("/queryMoneyTransFromHistory")

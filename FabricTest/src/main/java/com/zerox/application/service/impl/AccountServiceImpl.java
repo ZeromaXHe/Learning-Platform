@@ -26,8 +26,8 @@ public class AccountServiceImpl implements AccountService {
 
 
     @Override
-    public AccountDO createAccount(String id, String timestamp) {
-        return accountDao.createAccount(id, timestamp);
+    public AccountDO createAccount(String id) {
+        return accountDao.createAccount(id);
     }
 
     @Override
@@ -36,8 +36,8 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
-    public AccountDO changeAccountMoney(String id, String money, String reason, String timestamp) {
-        return accountDao.changeAccountMoney(id, money, reason, timestamp);
+    public AccountDO changeAccountMoney(String id, String money, String reason) {
+        return accountDao.changeAccountMoney(id, money, reason);
     }
 
     @Override
@@ -46,8 +46,8 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
-    public AccountMoneyTransHistoryDO transferAccountMoney(String from, String to, String money, String timestamp) {
-        return accountDao.transferAccountMoney(from, to, money, timestamp);
+    public AccountMoneyTransHistoryDO transferAccountMoney(String from, String to, String money) {
+        return accountDao.transferAccountMoney(from, to, money);
     }
 
     @Override

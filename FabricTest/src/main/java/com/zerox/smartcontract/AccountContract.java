@@ -59,27 +59,29 @@ public class AccountContract implements ContractInterface {
     }
 
     @Transaction
-    public Account createAccount(final Context ctx, final String id, final String timestamp) {
+    public Account createAccount(final Context ctx, final String id) {
         ChaincodeStub stub = ctx.getStub();
         String key = getAccountKey(id);
         ContractUtils.validateNonExistence(LOG, stub, key, "Account");
         Account account = new Account(id, 0L, new HashMap<>());
         stub.putStringState(key, ChaincodeJsonUtils.objectToJson(account));
 
-        CompositeKey compKey = stub.createCompositeKey(ACCOUNT_MONEY_HISTORY_KEY, id, timestamp);
+        long timestamp = stub.getTxTimestamp().toEpochMilli();
+        CompositeKey compKey = stub.createCompositeKey(ACCOUNT_MONEY_HISTORY_KEY, id, String.valueOf(timestamp));
         stub.putStringState(compKey.toString(), ChaincodeJsonUtils.objectToJson(
-                new AccountMoneyHistory(id, 0L, 0L, "INIT", Long.parseLong(timestamp))));
+                new AccountMoneyHistory(id, 0L, 0L, "INIT", timestamp)));
         return account;
     }
 
-    private String getAccountKey(String id) {
+    private static String getAccountKey(String id) {
         return "account_" + id;
     }
 
     @Transaction
     public Account queryAccount(final Context ctx, final String id) {
         ChaincodeStub stub = ctx.getStub();
-        String accountJson = ContractUtils.validateExistenceAndGetValueJson(LOG, stub, getAccountKey(id), "Account");
+        String accountJson = ContractUtils.validateExistenceAndGetValueJson(
+                LOG, stub, getAccountKey(id), "Account");
         return ChaincodeJsonUtils.jsonToObject(accountJson, Account.class);
     }
 
@@ -89,9 +91,21 @@ public class AccountContract implements ContractInterface {
     }
 
     @Transaction
-    public Account changeAccountMoney(final Context ctx, final String id, final String moneyStr,
-                                      final String reason, final String timestamp) {
+    public Account changeAccountMoney(final Context ctx, final String id, final String moneyStr, final String reason) {
         ChaincodeStub stub = ctx.getStub();
+        return changeAccountMoney(stub, id, moneyStr, reason);
+    }
+
+    /**
+     * 供 AssetContract 中调用
+     *
+     * @param stub
+     * @param id
+     * @param moneyStr
+     * @param reason
+     * @return
+     */
+    public static Account changeAccountMoney(ChaincodeStub stub, String id, String moneyStr, String reason) {
         String key = getAccountKey(id);
         long money = parseMoney(moneyStr);
         String json = ContractUtils.validateExistenceAndGetValueJson(LOG, stub, key, "Account");
@@ -100,14 +114,15 @@ public class AccountContract implements ContractInterface {
         account = new Account(id, moneyAfter, account.getAssets());
         stub.putStringState(key, ChaincodeJsonUtils.objectToJson(account));
 
-        CompositeKey compKey = stub.createCompositeKey(ACCOUNT_MONEY_HISTORY_KEY, id, timestamp);
+        long timestamp = stub.getTxTimestamp().toEpochMilli();
+        CompositeKey compKey = stub.createCompositeKey(ACCOUNT_MONEY_HISTORY_KEY, id, String.valueOf(timestamp));
         stub.putStringState(compKey.toString(), ChaincodeJsonUtils.objectToJson(
-                new AccountMoneyHistory(id, money, moneyAfter, reason, Long.parseLong(timestamp))));
+                new AccountMoneyHistory(id, money, moneyAfter, reason, timestamp)));
 
         return account;
     }
 
-    private long parseMoney(String money) {
+    private static long parseMoney(String money) {
         try {
             return Long.parseLong(money);
         } catch (Exception e) {
@@ -122,17 +137,18 @@ public class AccountContract implements ContractInterface {
 
     @Transaction
     public AccountMoneyTransHistory transferAccountMoney(final Context ctx, final String from, final String to,
-                                                         final String moneyStr, final String timestamp) {
+                                                         final String moneyStr) {
         if (moneyStr.startsWith("-")) {
             ContractUtils.throwChaincodeException(LOG, "transfer money can't be negative", "TRANSFER_MONEY_NEGATIVE");
         }
-        changeAccountMoney(ctx, from, "-" + moneyStr, "TRANS_OUT", timestamp);
-        changeAccountMoney(ctx, to, moneyStr, "TRANS_IN", timestamp);
         ChaincodeStub stub = ctx.getStub();
+        changeAccountMoney(stub, from, "-" + moneyStr, "TRANS_OUT");
+        changeAccountMoney(stub, to, moneyStr, "TRANS_IN");
         long money = parseMoney(moneyStr);
+        long timestamp = stub.getTxTimestamp().toEpochMilli();
         CompositeKey compKey = stub.createCompositeKey(
                 ACCOUNT_MONEY_TRANS_HISTORY_KEY, from, to, String.valueOf(timestamp));
-        AccountMoneyTransHistory history = new AccountMoneyTransHistory(from, to, money, Long.parseLong(timestamp));
+        AccountMoneyTransHistory history = new AccountMoneyTransHistory(from, to, money, timestamp);
         stub.putStringState(compKey.toString(), ChaincodeJsonUtils.objectToJson(history));
         return history;
     }

@@ -35,9 +35,8 @@ public class AssetController {
 
     @RequestMapping("/create")
     public AssetBO createAsset(@RequestParam("id") String id,
-                               @RequestParam("owners") String owners,
-                               @RequestParam("timestamp") String timestamp) {
-        return assetService.createAsset(id, owners, timestamp);
+                               @RequestParam("owners") String owners) {
+        return assetService.createAsset(id, owners);
     }
 
     @RequestMapping("/changeOwner")
@@ -45,16 +44,14 @@ public class AssetController {
                                     @RequestParam("from") String from,
                                     @RequestParam("to") String to,
                                     @RequestParam("share") String share,
-                                    @RequestParam("cost") String cost,
-                                    @RequestParam("timestamp") String timestamp) {
-        return assetService.changeAssetOwner(id, from, to, share, cost, timestamp);
+                                    @RequestParam("cost") String cost) {
+        return assetService.changeAssetOwner(id, from, to, share, cost);
     }
 
     @RequestMapping("/bonus")
     public AssetBO bonus(@RequestParam("id") String id,
-                         @RequestParam("bonus") String bonus,
-                         @RequestParam("timestamp") String timestamp) {
-        return assetService.bonus(id, bonus, timestamp);
+                         @RequestParam("bonus") String bonus) {
+        return assetService.bonus(id, bonus);
     }
 
     @RequestMapping("/queryTransHistory")

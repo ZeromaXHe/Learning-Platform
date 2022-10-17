@@ -75,24 +75,24 @@ peer lifecycle chaincode commit -o localhost:7050 --ordererTLSHostnameOverride o
 # peer lifecycle chaincode querycommitted --channelID mychannel --name my_chaincode --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
 
 # 调用链码
-peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n my_chaincode --peerAddresses localhost:7051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses localhost:9051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt -c '{"function":"AccountContract:createAccount","Args":["zerox","1231000"]}'
+peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n my_chaincode --peerAddresses localhost:7051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses localhost:9051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt -c '{"function":"AccountContract:createAccount","Args":["zerox"]}'
 
 peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n my_chaincode --peerAddresses localhost:7051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses localhost:9051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt -c {指令JSON}
 # 按顺序执行下面指令 JSON
-'{"function":"AccountContract:createAccount","Args":["zerox","1231000"]}'
+'{"function":"AccountContract:createAccount","Args":["zerox"]}'
 '{"function":"AccountContract:queryAccount","Args":["zerox"]}'
 '{"function":"AccountContract:queryAccount","Args":["zerox2"]}'
-'{"function":"AccountContract:changeAccountMoney","Args":["zerox","200","CHARGE","1232000"]}'
+'{"function":"AccountContract:changeAccountMoney","Args":["zerox","200","CHARGE"]}'
 '{"function":"AccountContract:queryAccountMoneyHistory","Args":["zerox"]}'
-'{"function":"AccountContract:createAccount","Args":["zerox2","1233000"]}'
+'{"function":"AccountContract:createAccount","Args":["zerox2"]}'
 '{"function":"AccountContract:queryAccount","Args":["zerox2"]}'
-'{"function":"AccountContract:transferAccountMoney","Args":["zerox","zerox2","100","1234000"]}'
+'{"function":"AccountContract:transferAccountMoney","Args":["zerox","zerox2","100"]}'
 '{"function":"AccountContract:queryAccountMoneyTransFromHistory","Args":["zerox"]}'
-'{"function":"AssetContract:createAsset","Args":["test1","zerox=10000","1235000"]}'
+'{"function":"AssetContract:createAsset","Args":["test1","zerox=10000"]}'
 '{"function":"AssetContract:queryAsset","Args":["test1"]}'
-'{"function":"AssetContract:changeAssetOwner","Args":["test1","zerox","zerox2","5000","50","1236000"]}'
+'{"function":"AssetContract:changeAssetOwner","Args":["test1","zerox","zerox2","5000","50"]}'
 '{"function":"AssetContract:queryAssetTransHistory","Args":["test1"]}'
-'{"function":"AssetContract:bonus","Args":["test1","10000","1237000"]}'
+'{"function":"AssetContract:bonus","Args":["test1","10000"]}'
 '{"function":"AssetContract:queryAssetBonusHistory","Args":["test1"]}'
 '{"function":"AccountContract:queryAccountBonusHistory","Args":["zerox"]}'
 '{"function":"AccountContract:queryAccountBonusFromAssetHistory","Args":["zerox2","test1"]}'
@@ -103,6 +103,7 @@ docker ps -a
 docker logs -f {节点NAME}
 
 # 退出
+# cd /home/zeromax/fabric/fabric-samples/test-network
 ./network.sh down
 # 退出 sudo bash
 exit
@@ -128,20 +129,20 @@ java -jar /home/zeromax/myapp/FabricTest-app.jar
 对于未访问过链码测试的指令的，可以执行如下 http 访问：
 
 ```
-http://localhost:8080/account/create?id=zerox&timestamp=1231000
+http://localhost:8080/account/create?id=zerox
 http://localhost:8080/account/query?id=zerox
 http://localhost:8080/account/query?id=zerox2
-http://localhost:8080/account/changeMoney?id=zerox&money=200&reason=CHARGE&timestamp=1232000
+http://localhost:8080/account/changeMoney?id=zerox&money=200&reason=CHARGE
 http://localhost:8080/account/queryMoneyHistory?id=zerox
-http://localhost:8080/account/create?id=zerox2&timestamp=1233000
+http://localhost:8080/account/create?id=zerox2
 http://localhost:8080/account/query?id=zerox2
-http://localhost:8080/account/transferMoney?from=zerox&to=zerox2&money=100&timestamp=1234000
+http://localhost:8080/account/transferMoney?from=zerox&to=zerox2&money=100
 http://localhost:8080/account/queryMoneyTransFromHistory?id=zerox
-http://localhost:8080/asset/create?id=test1&owners=zerox%3D10000&timestamp=1235000
+http://localhost:8080/asset/create?id=test1&owners=zerox%3D10000
 http://localhost:8080/asset/query?id=test1
-http://localhost:8080/asset/changeOwner?id=test1&from=zerox&to=zerox2&share=5000&cost=50&timestamp=1236000
+http://localhost:8080/asset/changeOwner?id=test1&from=zerox&to=zerox2&share=5000&cost=50
 http://localhost:8080/asset/queryTransHistory?id=test1
-http://localhost:8080/asset/bonus?id=test1&bonus=10000&timestamp=1237000
+http://localhost:8080/asset/bonus?id=test1&bonus=10000
 http://localhost:8080/account/queryBonusHistory?id=zerox
 http://localhost:8080/account/queryBonusFromAssetHistory?accountId=zerox2&assetId=test1
 ```

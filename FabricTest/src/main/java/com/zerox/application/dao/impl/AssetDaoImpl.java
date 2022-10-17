@@ -36,21 +36,21 @@ public class AssetDaoImpl implements AssetDao {
     }
 
     @Override
-    public AssetDO createAsset(String id, String owners, String timestamp) {
+    public AssetDO createAsset(String id, String owners) {
         return fabricManager.contractSubmitTransactionAndGetObject(
-                AssetDO.class, ASSET_CONTRACT_NAME, "createAsset", id, owners, timestamp);
+                AssetDO.class, ASSET_CONTRACT_NAME, "createAsset", id, owners);
     }
 
     @Override
-    public AssetDO changeAssetOwner(String id, String from, String to, String share, String cost, String timestamp) {
+    public AssetDO changeAssetOwner(String id, String from, String to, String share, String cost) {
         return fabricManager.contractSubmitTransactionAndGetObject(
-                AssetDO.class, ASSET_CONTRACT_NAME, "changeAssetOwner", id, from, to, share, cost, timestamp);
+                AssetDO.class, ASSET_CONTRACT_NAME, "changeAssetOwner", id, from, to, share, cost);
     }
 
     @Override
-    public AssetDO bonus(String id, String bonus, String timestamp) {
+    public AssetDO bonus(String id, String bonus) {
         return fabricManager.contractSubmitTransactionAndGetObject(
-                AssetDO.class, ASSET_CONTRACT_NAME, "bonus", id, bonus, timestamp);
+                AssetDO.class, ASSET_CONTRACT_NAME, "bonus", id, bonus);
     }
 
     @Override

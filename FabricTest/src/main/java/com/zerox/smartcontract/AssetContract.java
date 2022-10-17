@@ -62,19 +62,20 @@ public class AssetContract implements ContractInterface {
     }
 
     @Transaction
-    public Asset createAsset(final Context ctx, final String id, final String ownersStr, final String timestamp) {
+    public Asset createAsset(final Context ctx, final String id, final String ownersStr) {
         ChaincodeStub stub = ctx.getStub();
         String key = getAssetKey(id);
         ContractUtils.validateNonExistence(LOG, stub, key, "Asset");
         Map<String, Integer> owners = parseOwners(ownersStr);
         Asset asset = new Asset(id, owners);
         stub.putStringState(key, ChaincodeJsonUtils.objectToJson(asset));
+        long timestamp = stub.getTxTimestamp().toEpochMilli();
         for (Map.Entry<String, Integer> entry : owners.entrySet()) {
             CompositeKey compKey = stub.createCompositeKey(ASSET_TRANS_HISTORY_KEY,
-                    id, "INIT", entry.getKey(), timestamp);
+                    id, "INIT", entry.getKey(), String.valueOf(timestamp));
             stub.putStringState(compKey.toString(), ChaincodeJsonUtils.objectToJson(
                     new AssetTransHistory(id, "INIT", entry.getKey(), entry.getValue(),
-                            0L, Long.parseLong(timestamp))));
+                            0L, timestamp)));
         }
         return asset;
     }
@@ -125,7 +126,7 @@ public class AssetContract implements ContractInterface {
 
     @Transaction
     public Asset changeAssetOwner(final Context ctx, final String id, final String from, final String to,
-                                  final String shareStr, final String costStr, final String timestamp) {
+                                  final String shareStr, final String costStr) {
         int share = parseShare(shareStr);
         long cost = parseLong(costStr);
         ChaincodeStub stub = ctx.getStub();
@@ -145,29 +146,15 @@ public class AssetContract implements ContractInterface {
         stub.putStringState(key, ChaincodeJsonUtils.objectToJson(asset));
 
         // cost 逻辑
-        List<String> params = new ArrayList<>();
-        params.add("AccountContract:changeAccountMoney");
-        params.add(from);
-        params.add(String.valueOf(cost));
-        params.add("ASSET_SELL");
-        params.add(timestamp);
-        // 跨 Contract 调用
-        stub.invokeChaincodeWithStringArgs(CHAINCODE_NAME, params);
-
-        List<String> params2 = new ArrayList<>();
-        params2.add("AccountContract:changeAccountMoney");
-        params2.add(to);
-        params2.add(String.valueOf(-cost));
-        params2.add("ASSET_BUY");
-        params2.add(timestamp);
-        // 跨 Contract 调用
-        stub.invokeChaincodeWithStringArgs(CHAINCODE_NAME, params2);
+        AccountContract.changeAccountMoney(stub, from, costStr, "ASSET_SELL");
+        AccountContract.changeAccountMoney(stub, to, String.valueOf(-cost), "ASSET_BUY");
 
         // 资产交易历史
+        long timestamp = stub.getTxTimestamp().toEpochMilli();
         CompositeKey compositeKey = stub.createCompositeKey(
-                ASSET_TRANS_HISTORY_KEY, id, from, to, timestamp);
+                ASSET_TRANS_HISTORY_KEY, id, from, to, String.valueOf(timestamp));
         stub.putStringState(compositeKey.toString(), ChaincodeJsonUtils.objectToJson(
-                new AssetTransHistory(id, from, to, share, cost, Long.parseLong(timestamp))));
+                new AssetTransHistory(id, from, to, share, cost, timestamp)));
 
         return asset;
     }
@@ -216,7 +203,7 @@ public class AssetContract implements ContractInterface {
     }
 
     @Transaction
-    public Asset bonus(final Context ctx, final String id, final String bonusStr, final String timestamp) {
+    public Asset bonus(final Context ctx, final String id, final String bonusStr) {
         long bonus = parseLong(bonusStr);
         ChaincodeStub stub = ctx.getStub();
         String key = getAssetKey(id);
@@ -225,32 +212,25 @@ public class AssetContract implements ContractInterface {
         assert asset != null;
         Map<String, Integer> owners = asset.getOwners();
         Map<String, Long> ownerBonus = new HashMap<>();
+        long timestamp = stub.getTxTimestamp().toEpochMilli();
         for (Map.Entry<String, Integer> entry : owners.entrySet()) {
             String accountId = entry.getKey();
             Integer share = entry.getValue();
             long accountBonus = (long) (bonus * (share / 10000.0));
-
-            List<String> params = new ArrayList<>();
-            params.add("AccountContract:changeAccountMoney");
-            params.add(accountId);
-            params.add(String.valueOf(accountBonus));
-            params.add("BONUS");
-            params.add(timestamp);
-            // 跨 Contract 调用
-            stub.invokeChaincodeWithStringArgs(CHAINCODE_NAME, params);
+            AccountContract.changeAccountMoney(stub, accountId, String.valueOf(accountBonus), "BONUS");
 
             // 账户分红历史
             CompositeKey acntBnsHisKey = stub.createCompositeKey(
-                    ACCOUNT_BONUS_HISTORY_KEY, accountId, id, timestamp);
+                    ACCOUNT_BONUS_HISTORY_KEY, accountId, id, String.valueOf(timestamp));
             stub.putStringState(acntBnsHisKey.toString(), ChaincodeJsonUtils.objectToJson(
-                    new AccountBonusHistory(accountId, id, share, accountBonus, Long.parseLong(timestamp))));
+                    new AccountBonusHistory(accountId, id, share, accountBonus, timestamp)));
         }
 
         // 资产分红历史
         CompositeKey compositeKey = stub.createCompositeKey(
                 ASSET_BONUS_HISTORY_KEY, id, String.valueOf(timestamp));
         stub.putStringState(compositeKey.toString(), ChaincodeJsonUtils.objectToJson(
-                new AssetBonusHistory(id, bonus, ownerBonus, Long.parseLong(timestamp))));
+                new AssetBonusHistory(id, bonus, ownerBonus, timestamp)));
 
         return asset;
     }

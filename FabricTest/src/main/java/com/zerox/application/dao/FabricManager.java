@@ -228,8 +228,12 @@ public class FabricManager {
             String json = new String(response);
             logger.info(method + " resp json: {}", json);
             return json;
-        } catch (ContractException | InterruptedException | TimeoutException e) {
+        } catch (InterruptedException | TimeoutException e) {
             logger.error(method + " error", e);
+            return null;
+        } catch (ContractException e) {
+            // TODO: 合约内异常的处理逻辑
+            logger.error(method + " contract error", e);
             return null;
         }
     }

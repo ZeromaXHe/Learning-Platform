@@ -27,9 +27,9 @@ public class AccountDaoImpl implements AccountDao {
     }
 
     @Override
-    public AccountDO createAccount(String id, String timestamp) {
+    public AccountDO createAccount(String id) {
         return fabricManager.contractSubmitTransactionAndGetObject(
-                AccountDO.class, ACCOUNT_CONTRACT_NAME, "createAccount", id, timestamp);
+                AccountDO.class, ACCOUNT_CONTRACT_NAME, "createAccount", id);
     }
 
     @Override
@@ -39,9 +39,9 @@ public class AccountDaoImpl implements AccountDao {
     }
 
     @Override
-    public AccountDO changeAccountMoney(String id, String money, String reason, String timestamp) {
+    public AccountDO changeAccountMoney(String id, String money, String reason) {
         return fabricManager.contractSubmitTransactionAndGetObject(
-                AccountDO.class, ACCOUNT_CONTRACT_NAME, "changeAccountMoney", id, money, reason, timestamp);
+                AccountDO.class, ACCOUNT_CONTRACT_NAME, "changeAccountMoney", id, money, reason);
     }
 
     @Override
@@ -51,9 +51,9 @@ public class AccountDaoImpl implements AccountDao {
     }
 
     @Override
-    public AccountMoneyTransHistoryDO transferAccountMoney(String from, String to, String money, String timestamp) {
+    public AccountMoneyTransHistoryDO transferAccountMoney(String from, String to, String money) {
         return fabricManager.contractSubmitTransactionAndGetObject(
-                AccountMoneyTransHistoryDO.class, ACCOUNT_CONTRACT_NAME, "transferAccountMoney", from, to, money, timestamp);
+                AccountMoneyTransHistoryDO.class, ACCOUNT_CONTRACT_NAME, "transferAccountMoney", from, to, money);
     }
 
     @Override
