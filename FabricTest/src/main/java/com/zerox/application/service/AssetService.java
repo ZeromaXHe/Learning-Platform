@@ -15,11 +15,11 @@ import java.util.List;
 public interface AssetService {
     AssetBO queryAssert(String id);
 
-    AssetBO createAssert(String id, String owners);
+    AssetBO createAsset(String id, String owners, String timestamp);
 
-    AssetBO changeAssetOwner(String id, String from, String to, String share, String cost);
+    AssetBO changeAssetOwner(String id, String from, String to, String share, String cost, String timestamp);
 
-    AssetBO bonus(String id, String bonus);
+    AssetBO bonus(String id, String bonus, String timestamp);
 
     List<AssetTransHistoryDO> queryAssetTransHistory(String id);
 

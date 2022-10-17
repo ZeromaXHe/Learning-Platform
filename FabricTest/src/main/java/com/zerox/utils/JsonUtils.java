@@ -24,7 +24,7 @@ public class JsonUtils {
         try {
             return mapper.readValue(json, objectClass);
         } catch (JsonProcessingException e) {
-            logger.error("JsonUtils.jsonToObject failed|{}|{}", json, objectClass.getSimpleName());
+            logger.error("JsonUtils.jsonToObject failed|{}|{}", json, objectClass.getSimpleName(), e);
             return null;
         }
     }
@@ -34,7 +34,7 @@ public class JsonUtils {
             JavaType type = mapper.getTypeFactory().constructParametricType(List.class, elementClass);
             return mapper.readValue(json, type);
         } catch (JsonProcessingException e) {
-            logger.error("JsonUtils.jsonToList failed|{}|{}", json, elementClass.getSimpleName());
+            logger.error("JsonUtils.jsonToList failed|{}|{}", json, elementClass.getSimpleName(), e);
             return null;
         }
     }
@@ -43,7 +43,7 @@ public class JsonUtils {
         try {
             return mapper.writeValueAsString(object);
         } catch (JsonProcessingException e) {
-            logger.error("JsonUtils.jsonToObject failed|{}", object);
+            logger.error("JsonUtils.jsonToObject failed|{}", object, e);
             return null;
         }
     }

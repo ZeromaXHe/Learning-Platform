@@ -15,11 +15,11 @@ import java.util.List;
 public interface AssetDao {
     AssetDO queryAsset(String id);
 
-    AssetDO createAssert(String id, String owners);
+    AssetDO createAsset(String id, String owners, String timestamp);
 
-    AssetDO changeAssetOwner(String id, String from, String to, String share, String cost);
+    AssetDO changeAssetOwner(String id, String from, String to, String share, String cost, String timestamp);
 
-    AssetDO bonus(String id, String bonus);
+    AssetDO bonus(String id, String bonus, String timestamp);
 
     List<AssetTransHistoryDO> queryAssetTransHistory(String id);
 

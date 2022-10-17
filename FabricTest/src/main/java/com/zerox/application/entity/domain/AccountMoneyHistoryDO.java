@@ -1,5 +1,7 @@
 package com.zerox.application.entity.domain;
 
+import org.hyperledger.fabric.contract.annotation.Property;
+
 /**
  * @author ZeromaXHe
  * @apiNote
@@ -8,9 +10,9 @@ package com.zerox.application.entity.domain;
  */
 public class AccountMoneyHistoryDO {
     private String accountId;
-    private String assetId;
-    private Integer shares;
-    private Long bonus;
+    private Long moneyChange;
+    private Long moneyAfter;
+    private String reason;
     private Long timestamp;
 
     public String getAccountId() {
@@ -21,28 +23,28 @@ public class AccountMoneyHistoryDO {
         this.accountId = accountId;
     }
 
-    public String getAssetId() {
-        return assetId;
+    public Long getMoneyChange() {
+        return moneyChange;
     }
 
-    public void setAssetId(String assetId) {
-        this.assetId = assetId;
+    public void setMoneyChange(Long moneyChange) {
+        this.moneyChange = moneyChange;
     }
 
-    public Integer getShares() {
-        return shares;
+    public Long getMoneyAfter() {
+        return moneyAfter;
     }
 
-    public void setShares(Integer shares) {
-        this.shares = shares;
+    public void setMoneyAfter(Long moneyAfter) {
+        this.moneyAfter = moneyAfter;
     }
 
-    public Long getBonus() {
-        return bonus;
+    public String getReason() {
+        return reason;
     }
 
-    public void setBonus(Long bonus) {
-        this.bonus = bonus;
+    public void setReason(String reason) {
+        this.reason = reason;
     }
 
     public Long getTimestamp() {

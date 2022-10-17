@@ -32,22 +32,22 @@ public class AssetServiceImpl implements AssetService {
     }
 
     @Override
-    public AssetBO createAssert(String id, String owners) {
-        AssetDO domain = assetDao.createAssert(id, owners);
+    public AssetBO createAsset(String id, String owners, String timestamp) {
+        AssetDO domain = assetDao.createAsset(id, owners, timestamp);
         if (domain == null) return null;
         return domain.toAssetBO();
     }
 
     @Override
-    public AssetBO changeAssetOwner(String id, String from, String to, String share, String cost) {
-        AssetDO domain = assetDao.changeAssetOwner(id, from, to, share, cost);
+    public AssetBO changeAssetOwner(String id, String from, String to, String share, String cost, String timestamp) {
+        AssetDO domain = assetDao.changeAssetOwner(id, from, to, share, cost, timestamp);
         if (domain == null) return null;
         return domain.toAssetBO();
     }
 
     @Override
-    public AssetBO bonus(String id, String bonus) {
-        AssetDO domain = assetDao.bonus(id, bonus);
+    public AssetBO bonus(String id, String bonus, String timestamp) {
+        AssetDO domain = assetDao.bonus(id, bonus, timestamp);
         if (domain == null) return null;
         return domain.toAssetBO();
     }

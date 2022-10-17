@@ -11,6 +11,8 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
+import static com.zerox.constant.ContractConstants.ASSET_CONTRACT_NAME;
+
 /**
  * @author zhuxi
  * @apiNote
@@ -30,36 +32,36 @@ public class AssetDaoImpl implements AssetDao {
     @Override
     public AssetDO queryAsset(String id) {
         return fabricManager.contractSubmitTransactionAndGetObject(
-                AssetDO.class, "queryAsset", id);
+                AssetDO.class, ASSET_CONTRACT_NAME, "queryAsset", id);
     }
 
     @Override
-    public AssetDO createAssert(String id, String owners) {
+    public AssetDO createAsset(String id, String owners, String timestamp) {
         return fabricManager.contractSubmitTransactionAndGetObject(
-                AssetDO.class, "createAssert", id, owners);
+                AssetDO.class, ASSET_CONTRACT_NAME, "createAsset", id, owners, timestamp);
     }
 
     @Override
-    public AssetDO changeAssetOwner(String id, String from, String to, String share, String cost) {
+    public AssetDO changeAssetOwner(String id, String from, String to, String share, String cost, String timestamp) {
         return fabricManager.contractSubmitTransactionAndGetObject(
-                AssetDO.class, "changeAssetOwner", id, from, to, share, cost);
+                AssetDO.class, ASSET_CONTRACT_NAME, "changeAssetOwner", id, from, to, share, cost, timestamp);
     }
 
     @Override
-    public AssetDO bonus(String id, String bonus) {
+    public AssetDO bonus(String id, String bonus, String timestamp) {
         return fabricManager.contractSubmitTransactionAndGetObject(
-                AssetDO.class, "bonus", id, bonus);
+                AssetDO.class, ASSET_CONTRACT_NAME, "bonus", id, bonus, timestamp);
     }
 
     @Override
     public List<AssetTransHistoryDO> queryAssetTransHistory(String id) {
         return fabricManager.contractSubmitTransactionAndGetList(
-                AssetTransHistoryDO.class, "queryAssetTransHistory", id);
+                AssetTransHistoryDO.class, ASSET_CONTRACT_NAME, "queryAssetTransHistory", id);
     }
 
     @Override
     public List<AssetBonusHistoryDO> queryAssetBonusHistory(String id) {
         return fabricManager.contractSubmitTransactionAndGetList(
-                AssetBonusHistoryDO.class, "queryAssetBonusHistory", id);
+                AssetBonusHistoryDO.class, ASSET_CONTRACT_NAME, "queryAssetBonusHistory", id);
     }
 }

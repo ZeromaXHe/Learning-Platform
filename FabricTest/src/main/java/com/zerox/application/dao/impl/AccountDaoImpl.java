@@ -10,6 +10,8 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
+import static com.zerox.constant.ContractConstants.ACCOUNT_CONTRACT_NAME;
+
 /**
  * @author ZeromaXHe
  * @apiNote
@@ -25,44 +27,50 @@ public class AccountDaoImpl implements AccountDao {
     }
 
     @Override
-    public AccountDO createAccount(String id) {
+    public AccountDO createAccount(String id, String timestamp) {
         return fabricManager.contractSubmitTransactionAndGetObject(
-                AccountDO.class, "createAccount", id);
+                AccountDO.class, ACCOUNT_CONTRACT_NAME, "createAccount", id, timestamp);
     }
 
     @Override
-    public AccountDO changeAccountMoney(String id, String money, String reason) {
+    public AccountDO queryAccount(String id) {
         return fabricManager.contractSubmitTransactionAndGetObject(
-                AccountDO.class, "changeAccountMoney", id, money, reason);
+                AccountDO.class, ACCOUNT_CONTRACT_NAME, "queryAccount", id);
+    }
+
+    @Override
+    public AccountDO changeAccountMoney(String id, String money, String reason, String timestamp) {
+        return fabricManager.contractSubmitTransactionAndGetObject(
+                AccountDO.class, ACCOUNT_CONTRACT_NAME, "changeAccountMoney", id, money, reason, timestamp);
     }
 
     @Override
     public List<AccountMoneyHistoryDO> queryAccountMoneyHistory(String id) {
         return fabricManager.contractSubmitTransactionAndGetList(
-                AccountMoneyHistoryDO.class, "queryAccountMoneyHistory", id);
+                AccountMoneyHistoryDO.class, ACCOUNT_CONTRACT_NAME, "queryAccountMoneyHistory", id);
     }
 
     @Override
-    public AccountMoneyTransHistoryDO transferAccountMoney(String from, String to, String money) {
+    public AccountMoneyTransHistoryDO transferAccountMoney(String from, String to, String money, String timestamp) {
         return fabricManager.contractSubmitTransactionAndGetObject(
-                AccountMoneyTransHistoryDO.class, "changeAccountMoney", from, to, money);
+                AccountMoneyTransHistoryDO.class, ACCOUNT_CONTRACT_NAME, "transferAccountMoney", from, to, money, timestamp);
     }
 
     @Override
     public List<AccountMoneyTransHistoryDO> queryAccountMoneyTransFromHistory(String id) {
         return fabricManager.contractSubmitTransactionAndGetList(
-                AccountMoneyTransHistoryDO.class, "queryAccountMoneyTransFromHistory", id);
+                AccountMoneyTransHistoryDO.class, ACCOUNT_CONTRACT_NAME, "queryAccountMoneyTransFromHistory", id);
     }
 
     @Override
     public List<AccountBonusHistoryDO> queryAccountBonusHistory(String id) {
         return fabricManager.contractSubmitTransactionAndGetList(
-                AccountBonusHistoryDO.class, "queryAccountBonusHistory", id);
+                AccountBonusHistoryDO.class, ACCOUNT_CONTRACT_NAME, "queryAccountBonusHistory", id);
     }
 
     @Override
     public List<AccountBonusHistoryDO> queryAccountBonusFromAssetHistory(String accountId, String assetId) {
         return fabricManager.contractSubmitTransactionAndGetList(
-                AccountBonusHistoryDO.class, "queryAccountBonusFromAssetHistory", accountId, assetId);
+                AccountBonusHistoryDO.class, ACCOUNT_CONTRACT_NAME, "queryAccountBonusFromAssetHistory", accountId, assetId);
     }
 }

@@ -200,13 +200,15 @@ public class FabricManager {
     public <T> List<T> contractSubmitTransactionAndGetList(Class<T> tClass, String contractName, String method, String... params) {
         doubleCheckBuilderSingletonInit();
         String json = contractSubmitTransaction(builder, logger, contractName, method, params);
-        return JsonUtils.jsonToList(json, tClass);
+        if (json != null) return JsonUtils.jsonToList(json, tClass);
+        else return null;
     }
 
     public <T> T contractSubmitTransactionAndGetObject(Class<T> tClass, String contractName, String method, String... params) {
         doubleCheckBuilderSingletonInit();
         String json = contractSubmitTransaction(builder, logger, contractName, method, params);
-        return JsonUtils.jsonToObject(json, tClass);
+        if (json != null) return JsonUtils.jsonToObject(json, tClass);
+        else return null;
     }
 
     private static String contractSubmitTransaction(Gateway.Builder builder, Logger logger, String contractName, String method, String... params) {

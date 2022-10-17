@@ -16,13 +16,15 @@ import java.util.List;
  * @since 2022/10/12 17:11
  */
 public interface AccountDao {
-    AccountDO createAccount(String id);
+    AccountDO createAccount(String id, String timestamp);
 
-    AccountDO changeAccountMoney(String id, String money, String reason);
+    AccountDO queryAccount(String id);
+
+    AccountDO changeAccountMoney(String id, String money, String reason, String timestamp);
 
     List<AccountMoneyHistoryDO> queryAccountMoneyHistory(String id);
 
-    AccountMoneyTransHistoryDO transferAccountMoney(String from, String to, String money);
+    AccountMoneyTransHistoryDO transferAccountMoney(String from, String to, String money, String timestamp);
 
     List<AccountMoneyTransHistoryDO> queryAccountMoneyTransFromHistory(String id);
 
