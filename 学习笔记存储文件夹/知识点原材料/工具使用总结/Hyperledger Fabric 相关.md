@@ -78,6 +78,8 @@
 > `go env -w GO111MODULE=on`
 >
 > 整了半天，还是不行…… 根本不熟悉 Go 的生态，各种问题只能上网搜，搜索还解决不了…… 放弃了官方文档里的示例，自己改用了 java 链码
+>
+> （后来发现换 七牛 的源就好了：`go env -w GOPROXY=https://goproxy.cn,direct`，详情看后面使用 couchDB 测试过程的记录——那个没有 Java 代码……）
 
 
 
@@ -1163,3 +1165,97 @@ public class ClientApp {
 `evaluateTransaction` 方法代表了一种区块链网络中和智能合约最简单的交互。它只是的根据配置文件中的定义连接一个节点，然后向节点发送请求，请求内容将在节点中执行。智能合约查询节点账本上的所有汽车，然后把结果返回给应用程序。这次交互没有导致账本的更新。
 
 `submitTransaction` 比 `evaluateTransaction` 更加复杂。除了跟一个单独的 peer 进行互动外，SDK 会将 `submitTransaction` 提案发送给在区块链网络中的每个需要的组织的 peer。其中的每个 peer 将会使用这个提案来执行被请求的智能合约，以此来产生一个建议的回复，它会为这个回复签名并将其返回给 SDK。SDK 搜集所有签过名的交易反馈到一个单独的交易中，这个交易会被发送给排序节点。排序节点从每个应用程序那里搜集并将交易排序，然后打包进一个交易的区块中。接下来它会将这些区块分发给网络中的每个 peer，在那里每笔交易会被验证并提交。最后，SDK 会被通知，这允许它能够将控制返回给应用程序。
+
+
+
+# 使用 CouchDB
+
+## 启动网络
+
+```shell
+cd fabric-samples/test-network
+./network.sh down
+
+# 如果你之前从没运行过这个教程，在我们部署链码到网络之前你需要使用 vendor 来安装链码的依赖文件。
+cd ../chaincode/marbles02/go
+GO111MODULE=on go mod vendor
+cd ../../../test-network
+
+./network.sh up createChannel -s couchdb
+```
+
+`GO111MODULE=on go mod vendor` 这一步报 `connect: connection refused` 的话，可以尝试换一下源
+
+旧版 GO111MODULE 不支持换源是导致他下载非常麻烦的一大因素,在国内我们无论是使用 Python 的 pip,还是 nodejs 的 npm,甚至是很多 Linux 发行版都会优先换个源在使用。GO111MODULE 首先解决了这个不能换源的问题。所以在使用新版包管理器前建议你先进行一下换源。
+
+- 七牛 CDN
+  `go env -w GOPROXY=https://goproxy.cn,direct`
+- 阿里云
+  `go env -w GOPROXY=https://mirrors.aliyun.com/goproxy/,direct`
+- 官方
+  `go env -w GOPROXY=https://goproxy.io,direct`
+  网上比较流行使用的多的是七牛的,三选一即可,可以都试试看在你的网络环境下谁快
+  这个换源命令只有在使用新的包管理器时才会生效
+
+## 安装和定义链码
+
+```shell
+export PATH=${PWD}/../bin:$PATH
+export FABRIC_CFG_PATH=${PWD}/../config/
+export CORE_PEER_TLS_ENABLED=true
+export CORE_PEER_LOCALMSPID="Org1MSP"
+export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+export CORE_PEER_ADDRESS=localhost:7051
+
+peer lifecycle chaincode package marbles.tar.gz --path ../chaincode/marbles02/go --lang golang --label marbles_1
+
+peer lifecycle chaincode install marbles.tar.gz
+
+# peer lifecycle chaincode queryinstalled
+# 将上面命令返回的结果 package ID 声明成环境变量：格式如下 export CC_PACKAGE_ID=marbles_1:60ec9430b221140a45b96b4927d1c3af736c1451f8d432e2a869bdbf417f9787
+export CC_PACKAGE_ID={将packageID声明为一个环境变量}
+
+# 批准链码定义
+export ORDERER_CA=${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+peer lifecycle chaincode approveformyorg -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --channelID mychannel --name marbles --version 1.0 --signature-policy "OR('Org1MSP.member','Org2MSP.member')" --init-required --package-id $CC_PACKAGE_ID --sequence 1 --tls --cafile $ORDERER_CA
+
+export CORE_PEER_LOCALMSPID="Org2MSP"
+export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
+export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
+export CORE_PEER_ADDRESS=localhost:9051
+
+peer lifecycle chaincode approveformyorg -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --channelID mychannel --name marbles --version 1.0 --signature-policy "OR('Org1MSP.member','Org2MSP.member')" --init-required --sequence 1 --tls --cafile $ORDERER_CA
+
+# 提交链码定义到通道
+export ORDERER_CA=${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+export ORG1_CA=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+export ORG2_CA=${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
+peer lifecycle chaincode commit -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --channelID mychannel --name marbles --version 1.0 --sequence 1 --signature-policy "OR('Org1MSP.member','Org2MSP.member')" --init-required --tls --cafile $ORDERER_CA --peerAddresses localhost:7051 --tlsRootCertFiles $ORG1_CA --peerAddresses localhost:9051 --tlsRootCertFiles $ORG2_CA
+
+# 调用链码的 Init() 初始化函数
+peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --channelID mychannel --name marbles --isInit --tls --cafile $ORDERER_CA --peerAddresses localhost:7051 --tlsRootCertFiles $ORG1_CA -c '{"Args":["Init"]}'
+```
+
+新建一个终端窗口来验证部署的索引
+
+```shell
+# 验证部署的索引
+docker logs peer0.org1.example.com  2>&1 | grep "CouchDB index"
+```
+
+## 查询 CouchDB 状态数据库
+
+使用 peer 命令运行查询
+
+```shell
+# 使用 Org1 创建一个拥有者是 “tom” 的 marble
+export CORE_PEER_LOCALMSPID="Org1MSP"
+export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+export CORE_PEER_ADDRESS=localhost:7051
+peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n marbles -c '{"Args":["initMarble","marble1","blue","35","tom"]}'
+
+peer chaincode query -C mychannel -n marbles -c '{"Args":["queryMarbles", "{\"selector\":{\"docType\":\"marble\",\"owner\":\"tom\"}, \"use_index\":[\"_design/indexOwnerDoc\", \"indexOwner\"]}"]}'
+```
+
