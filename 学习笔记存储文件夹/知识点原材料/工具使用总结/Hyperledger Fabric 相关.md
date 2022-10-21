@@ -1259,3 +1259,392 @@ peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.exa
 peer chaincode query -C mychannel -n marbles -c '{"Args":["queryMarbles", "{\"selector\":{\"docType\":\"marble\",\"owner\":\"tom\"}, \"use_index\":[\"_design/indexOwnerDoc\", \"indexOwner\"]}"]}'
 ```
 
+# network.sh 脚本阅读
+
+## pushd、popd、trap 和 /dev/null
+
+```shell
+# push to the required directory & set a trap to go back if needed
+pushd ${ROOTDIR} > /dev/null
+trap "popd > /dev/null" EXIT
+```
+
+**pushd 的功能是创建一个目录栈**，你可以把你目前常见的几个目录压入栈中，并可以迅速地进行切换，非常方便。
+
+`>` 为重定向符号
+
+`> /dev/null` 是一个特殊的设备文件，这个文件接收到任何数据都会被丢弃，俗称“黑洞”
+
+至于 popd，作用则是与 pushd 相反，将栈顶的目录弹出，此时除非再一次使用 pushd 压栈，否则 pushd 无法再找到已弹出的目录。
+
+`trap "commands" signals` 接收到 signals 指定的信号时，执行 commands 命令(这里其实就是退出前把目录栈弹空)
+
+## . + 空格 + sh 脚本
+
+```shell
+. scripts/utils.sh
+```
+
+`. scripts/utils.sh` 相当于 `source scripts/utils.sh`，即这里"."相当于 source 命令。关于 shell scripts 描述如下：
+
+> source命令用法：
+>
+> `source FileName`
+> 作用:在当前bash环境下读取并执行FileName中的命令。
+>
+> 注：该命令通常用命令“.”来替代。
+>
+> 如：`source .bash_rc` 与 `. .bash_rc` 是等效的。
+>
+> 注意：source 命令与 shell scripts 的区别是，source 在当前 bash 环境下执行命令，而 scripts 是启动一个子 shell 来执行命令。这样如果把设置环境变量（或 alias 等等）的命令写进 scripts 中，就只会影响子 shell,无法改变当前的 BASH,所以通过文件（命令列）设置环境变量时，要用 source 命令。
+
+
+链接：https://blog.csdn.net/chenyixuan0923_yp/article/details/101075425
+
+其实后面出现的那些 infoln、warnln 之类的就是从这里导入的。
+
+## : ${VAR:=DEFAULT}
+
+```shell
+: ${CONTAINER_CLI:="docker"}
+: ${CONTAINER_CLI_COMPOSE:="${CONTAINER_CLI}-compose"}
+```
+
+`: ${VAR:=DEFAULT}` 当变量 VAR 没有声明或者为 NULL 时，将 VAR 设置为默认值 DEFAULT。如果不在前面加上 `:` 命令，那么就会把 `${VAR:=DEFAULT}` 本身当做一个命令来执行，报错是肯定的。
+
+空命令[冒号]. 这个命令意思是空操作(即什么操作也不做). 它一般被认为是和 shell 的内建命令 true 是一样的。冒号 ":" 命令是 Bash 自身内建的, 它的退出状态码是真(即 0)。
+
+## $()、docker rm、docker ps
+
+```shell
+# Obtain CONTAINER_IDS and remove them
+# This function is called when you bring a network down
+function clearContainers() {
+  infoln "Removing remaining containers"
+  ${CONTAINER_CLI} rm -f $(${CONTAINER_CLI} ps -aq --filter label=service=hyperledger-fabric) 2>/dev/null || true
+  ${CONTAINER_CLI} rm -f $(${CONTAINER_CLI} ps -aq --filter name='dev-peer*') 2>/dev/null || true
+}
+```
+
+在 bash 中，`$( )` 与 ` `` `（反引号）都是用来作命令替换的。
+命令替换是用来重组命令行的，先完成引号里的命令行，然后将其结果替换出来，再重组成新的命令行。
+
+注意：`$( )` 的弊端是，并不是所有的类 unix 系统都支持这种方式，但反引号是肯定支持的
+
+**docker rm ：**删除一个或多个容器。
+
+OPTIONS 说明：
+
+- **-f、--force:** 通过 SIGKILL 信号强制删除一个运行中的容器。
+- **-l、--link:** 移除容器间的网络连接，而非容器本身。
+- **-v、--volumes:** 删除与容器关联的卷。
+
+**docker ps :** 列出容器
+
+OPTIONS 说明：
+
+- **-a、--all:**显示所有的容器，包括未运行的。
+- **-f、--filter:**根据条件过滤显示的内容。
+- **--format :**指定返回值的模板文件。
+- **-l、--latest:**显示最近创建的容器。
+- **-n、--last:**列出最近创建的n个容器。
+- **--no-trunc :**不截断输出。
+- **-q、--quiet:**静默模式，只显示容器编号。
+- **-s、--size:**显示总的文件大小。
+
+## docker images、docker image rm
+
+```shell
+# Delete any images that were generated as a part of this setup
+# specifically the following images are often left behind:
+# This function is called when you bring the network down
+function removeUnwantedImages() {
+  infoln "Removing generated chaincode docker images"
+  ${CONTAINER_CLI} image rm -f $(${CONTAINER_CLI} images -aq --filter reference='dev-peer*') 2>/dev/null || true
+}
+```
+
+**docker images :** 列出本地镜像。
+
+OPTIONS 说明：
+
+- **-a、--all :**列出本地所有的镜像（含中间映像层，默认情况下，过滤掉中间映像层）；
+- **--digests :**显示镜像的摘要信息；
+- **-f、--filter :**显示满足条件的镜像；
+- **--format :**指定返回值的模板文件；
+- **--no-trunc :**显示完整的镜像信息；
+- **-q、--quiet :**只显示镜像ID。
+
+**docker image rm :** 命令用于删除一个或多个映像。
+
+OPTIONS 说明：
+
+- **--force、-f :** 强制删除映像
+- **--no-prune :** 不要删除未标记的父映像
+
+## > /dev/null 2>&1
+
+```shell
+# Do some basic sanity checking to make sure that the appropriate versions of fabric
+# binaries/images are available. In the future, additional checking for the presence
+# of go or other items could be added.
+function checkPrereqs() {
+  ## Check if your have cloned the peer binaries and configuration files.
+  peer version > /dev/null 2>&1
+```
+
+`command >/dev/null 2>&1 &`  == `command 1>/dev/null 2>&1 &`
+
+1. `command`: 表示shell命令或者为一个可执行程序
+2. `>`: 表示重定向到哪里
+3. `/dev/null`: 表示Linux的空设备文件
+4. `2`:表示标准错误输出
+5. `&1`: &表示等同于的意思,`2>&1`,表示 2 的输出重定向等于于 1
+6. `&`:表示后台执行,即这条指令执行在后台运行
+
+ 
+
+`1>/dev/null`: 表示标准输出重定向到空设备文件,也就是不输出任何信息到终端,不显示任何信息。
+`2>&1`: 表示标准错误输出重定向等同于标准输出,因为之前标准输出已经重定向到了空设备文件,所以标准错误输出也重定向到空设备文件。
+
+这条命令的意思就是在后台执行这个程序,并将错误输出 2 重定向到标准输出 1,然后将标准输出 1 全部放到 /dev/null 文件,也就是清空.
+所以可以看出 ">/dev/null 2>&1" 常用来避免 shell 命令或者程序等运行中有内容输出。
+
+## $? -ne 0、! -d
+
+```shell
+  if [[ $? -ne 0 || ! -d "../config" ]]; then
+    errorln "Peer binary and configuration files not found.."
+    errorln
+    errorln "Follow the instructions in the Fabric docs to install the Fabric Binaries:"
+    errorln "https://hyperledger-fabric.readthedocs.io/en/latest/install.html"
+    exit 1
+  fi
+```
+
+`$?` 是 shell 变量,表示"最后一次执行命令"的退出状态.0 为成功,非 0 为失败.
+
+整数比较
+
+`-eq`   等于,如: `if ["$a" -eq "$b" ]`
+
+`-ne`   不等于,如: `if ["$a" -ne "$b" ]`
+
+`-gt`   大于,如: `if ["$a" -gt "$b" ]`
+
+`-ge`  大于等于,如: `if ["$a" -ge "$b" ]`
+
+`-lt`   小于,如: `if ["$a" -lt "$b" ]`
+
+`-le`   小于等于,如: `if ["$a" -le "$b" ]`
+
+`<=` 小于等于(需要双括号),如: `(("$a" <= "$b"))`
+
+`>` 大于(需要双括号),如: `(("$a" > "$b"))`
+
+`>=` 大于等于(需要双括号),如: `(("$a" >= "$b"))`
+
+
+
+- 第1步: ` !` 一般在 shell 脚本中表示取反
+- 第2步: `[]` 这个叫条件表达式，简易版的 if
+  `-n` 用于判断变量是否为空,注意只要有一个符号就不为空,空格也不行
+  `-d` directory意思 用于判断目录是否存在
+- 第3步: `[ ! -n ]` `[ ! -d ]` 的意思你应该懂了
+  `[ ! -n ]` 判断变量如果不为空则条件成立
+  `[ ! -d ]` 判断变量如果不是目录则条件成立
+
+## sed、docker run
+
+```shell
+  # use the fabric tools container to see if the samples and binaries match your
+  # docker images
+  LOCAL_VERSION=$(peer version | sed -ne 's/^ Version: //p')
+  DOCKER_IMAGE_VERSION=$(${CONTAINER_CLI} run --rm hyperledger/fabric-tools:latest peer version | sed -ne 's/^ Version: //p')
+
+  infoln "LOCAL_VERSION=$LOCAL_VERSION"
+  infoln "DOCKER_IMAGE_VERSION=$DOCKER_IMAGE_VERSION"
+
+  if [ "$LOCAL_VERSION" != "$DOCKER_IMAGE_VERSION" ]; then
+    warnln "Local fabric binaries and docker images are out of  sync. This may cause problems."
+  fi
+```
+
+sed 命令是利用 script 来处理文本文件。
+
+sed 可依照 script 的指令，来处理、编辑文本文件。
+
+sed 主要用来自动编辑一个或多个文件；简化对文件的反复操作；编写转换程序等。
+
+**语法**
+
+`sed [-hnV][-e<script>][-f<script文件>][文本文件]`
+
+**参数说明**：
+
+- `-e<script>` 或 `--expression=<script>` 以选项中指定的 script 来处理输入的文本文件。
+- `-f<script文件>` 或 `--file=<script文件>` 以选项中指定的script文件来处理输入的文本文件。
+- `-h` 或 `--help` 显示帮助。
+- `-i` ：直接修改文件内容;
+- `-r` ：支持扩展表达式;
+- `-n` 或 `--quiet` 或 `--silent` 仅显示script处理后的结果。
+- `-V` 或 `--version` 显示版本信息。
+
+**动作说明**：
+
+- a ：新增， a 的后面可以接字串，而这些字串会在新的一行出现(目前的下一行)
+- c ：取代， c 的后面可以接字串，这些字串可以取代 n1,n2 之间的行！
+- d 删除，删除选择的行;
+- D 删除模板块的第一行;
+- i ：插入， i 的后面可以接字串，而这些字串会在新的一行出现(目前的上一行)；
+- p ：列印，亦即将某个选择的数据印出。通常 p 会与参数 sed -n 一起运行
+- s ：取代，可以直接进行取代的工作哩！通常这个 s 的动作可以搭配正规表示法！例如 1,20s/old/new/g 就是啦！
+- h 拷贝模板块的内容到内存中的缓冲区;
+- H 追加模板块的内容到内存中的缓冲区;
+- g 获得内存缓冲区的内容，并替代当前模板块中的文本;
+- G 获得内存缓冲区的内容，并追加到当前模板块文本的后面;
+- l 列表不能打印字符的清单;
+- n 读取下一个输入行，用下一个命令处理新的行而不是用第一个命令;
+- N 追加下一个输入行到模板块后面并在二者间嵌入一个新行，改变当前行号码;
+- p 打印模板块的行。 P(大写) 打印模板块的第一行;
+- q 退出Sed;
+- b lable 分支到脚本中带有标记的地方，如果分支不存在则分支到脚本的末尾;
+- r file 从file中读行;
+- t label if分支，从最后一行开始，条件一旦满足或者T，t命令，将导致分支到带有标号的命令处，或者到脚本的末尾;
+- T label 错误分支，从最后一行开始，一旦发生错误或者T，t命令，将导致分支到带有标号的命令处，或者到脚本的末尾;
+- w file 写并追加模板块到file末尾;
+- W file 写并追加模板块的第一行到file末尾;
+- `!` 表示后面的命令对所有没有被选定的行发生作用;
+- `=` 打印当前行号;
+- `#` 把注释扩展到下一个换行符以前;
+
+**sed 元字符集**
+
+- `^` 匹配行开始，如：`/^sed/` 匹配所有以 sed 开头的行;
+
+- `$` 匹配行结束，如：`/sed$/` 匹配所有以 sed 结尾的行;
+
+- `.` 匹配一个非换行符的任意字符，如：`/s.d/` 匹配 s 后接一个任意字符，最后是 d;
+
+- `*` 匹配 0 个或多个字符，如：`/*sed/` 匹配所有模板是一个或多个空格后紧跟 sed 的行;
+
+- `[]` 匹配一个指定范围内的字符，如/[ss]ed/匹配sed和Sed;
+
+- `[^]` 匹配一个不在指定范围内的字符，如：/[^A-RT-Z]ed/匹配不包含A-R和T-Z的一个字母开头，紧跟ed的行;
+
+- `\(..\)` 匹配子串，保存匹配的字符，如 `s/\(love\)able/\1rs`，loveable被替换成lovers;
+
+- `&` 保存搜索字符用来替换其他字符，如 `s/love/**&**/`，`love` 这成`**love**`;
+
+- `\<` 匹配单词的开始 `\>` 匹配单词的结束，如 `/love\>/` 匹配包含以 love 结尾的单词的行;
+
+- `x\{m\}` 重复字符x，m次，如：`/0\{5\}/` 匹配包含5个0的行;
+
+  `x\{m,\}` 重复字符x，至少m次，如：`/0\{5,\}/` 匹配至少有5个0的行;
+
+  `x\{m,n\}` 重复字符x，至少m次，不多于n次，如：`/0\{5,10\}/` 匹配5~10个0的行;
+
+**docker run ：**创建一个新的容器并运行一个命令
+
+语法
+
+`docker run [OPTIONS] IMAGE [COMMAND] [ARG...]`
+
+OPTIONS 说明：
+
+- **-a stdin:** 指定标准输入输出内容类型，可选 STDIN/STDOUT/STDERR 三项；
+- **-d:** 后台运行容器，并返回容器ID；
+- **-i:** 以交互模式运行容器，通常与 -t 同时使用；
+- **-P:** 随机端口映射，容器内部端口**随机**映射到主机的端口
+- **-p:** 指定端口映射，格式为：**主机(宿主)端口:容器端口**
+- **-t:** 为容器重新分配一个伪输入终端，通常与 -i 同时使用；
+- **--name="nginx-lb":** 为容器指定一个名称；
+- **--dns 8.8.8.8:** 指定容器使用的DNS服务器，默认和宿主一致；
+- **--dns-search example.com:** 指定容器DNS搜索域名，默认和宿主一致；
+- **-h "mars":** 指定容器的hostname；
+- **-e username="ritchie":** 设置环境变量；
+- **--env-file=[]:** 从指定文件读入环境变量；
+- **--cpuset="0-2" or --cpuset="0,1,2":** 绑定容器到指定CPU运行；
+- **-m :**设置容器使用内存最大值；
+- **--net="bridge":** 指定容器的网络连接类型，支持 bridge/host/none/container: 四种类型；
+- **--link=[]:** 添加链接到另一个容器；
+- **--expose=[]:** 开放一个端口或一组端口；
+- **--volume , -v:** 绑定一个卷
+- **--rm:** 自动在退出时删除容器
+
+## set -x
+
+```shell
+    set -x
+    cryptogen generate --config=./organizations/cryptogen/crypto-config-org1.yaml --output="organizations"
+    res=$?
+    { set +x; } 2>/dev/null
+    if [ $res -ne 0 ]; then
+      fatalln "Failed to generate certificates..."
+    fi
+```
+
+set -x 一句话总结：显示脚本运行是的冗余输出，在 set 命令之后执行的每一条命令以及加载命令行中的任何参数都会显示出来，每一行都会加上加号（+），提示它是跟踪输出的标识。
+
+**set -x 开启**
+
+**set +x 关闭**
+
+## docker-compose -f
+
+```shell
+  # Create crypto material using Fabric CA
+  if [ "$CRYPTO" == "Certificate Authorities" ]; then
+    infoln "Generating certificates using Fabric CA"
+    ${CONTAINER_CLI_COMPOSE} -f compose/$COMPOSE_FILE_CA -f compose/$CONTAINER_CLI/${CONTAINER_CLI}-$COMPOSE_FILE_CA up -d 2>&1
+
+    . organizations/fabric-ca/registerEnroll.sh
+
+    while :
+    do
+      if [ ! -f "organizations/fabric-ca/org1/tls-cert.pem" ]; then
+        sleep 1
+      else
+        break
+      fi
+    done
+
+    infoln "Creating Org1 Identities"
+
+    createOrg1
+
+    infoln "Creating Org2 Identities"
+
+    createOrg2
+
+    infoln "Creating Orderer Org Identities"
+
+    createOrderer
+
+  fi
+
+  infoln "Generating CCP files for Org1 and Org2"
+  ./organizations/ccp-generate.sh
+```
+
+`docker-compose -f xxx -f xxxx` :会将多个 `compose.yaml` 文件合并到一起。当指定了多个文件时(包括没指定 `-f` 但同时存在 `docker-compose.yml` 和 `docker-compose.override.yml` 文件)，Compose 会将多个文件合并成一个配置文件，合并的结果与指定文件的顺序有关。合并有两种操作，没有的添加，相同的覆盖。
+
+**`docker-compose up` 与 `docker-compose up -d` 用法和区别**
+
+两者都是创建或者重新创建容器，附加给当前服务器，除此之外，除非服务已经运行，否则启动所有链接服务。
+
+`docker-compose up` 本质是 `docker-compose logs -f`，它会收集所有容器的日志输出直到退出命令，或者容器都停止运行。
+
+`docker-compose up -d` 以后台的方式运行容器。不会在终端上打印运行日志
+
+## docker 的 /var/run/docker.sock 参数
+
+```shell
+# Get docker sock path from environment variable
+SOCK="${DOCKER_HOST:-/var/run/docker.sock}"
+DOCKER_SOCK="${SOCK##unix://}"
+```
+
+Docker Daemon 的配置参数默认监听的是 /var/run/docker.sock 这个文件，所以 docker 客户端只要把请求发往这里，daemon 就能收到并且做出响应。
+
+我们也可以向 /var/run/docker.sock 发送请求，也能达到 docker ps、docker images 这样的效果
